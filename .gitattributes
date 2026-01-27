@@ -1,0 +1,7 @@
+# Ensure Unity YAML files merge reasonably
+*.unity merge=unityyamlmerge eol=lf
+*.prefab merge=unityyamlmerge eol=lf
+*.asset merge=unityyamlmerge eol=lf
+
+# Text normalization
+* text=auto

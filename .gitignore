@@ -1,0 +1,42 @@
+# ===== Unity generated =====
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+
+
+# ===== Visual Studio / VS Code =====
+.vscode/
+.vs/
+*.csproj
+*.sln
+*.slnx
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+mono_crash*.json
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Unity Cloud / Collaboration =====
+.collabignore
+
+# ===== Crash reports =====
+sysinfo.txt
+
+# ===== Addressables / Asset Bundles (if used later) =====
+# [Aa]ssets/AddressableAssetsData/*/*.bin*
+# [Aa]ssets/StreamingAssets/aa.meta
+# [Aa]ssets/StreamingAssets/aa/*
