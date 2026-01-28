@@ -6,31 +6,31 @@ using System.Collections.Generic;
 public class InventorySystem : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject hotbarPanel;
-    public GameObject inventoryPanel;
-    public Canvas canvas;
-    public List<Image> hotbarSlots = new List<Image>(2);
-    public List<Image> inventorySlots = new List<Image>(3);
+    [HideInInspector] public GameObject hotbarPanel;
+    [HideInInspector] public GameObject inventoryPanel;
+    [HideInInspector] public Canvas canvas;
+    [HideInInspector] public List<Image> hotbarSlots = new List<Image>(2);
+    [HideInInspector] public List<Image> inventorySlots = new List<Image>(3);
 
     [Header("Inventory Data")]
     private List<Sprite> items = new List<Sprite>();
     private List<Material> itemMaterials = new List<Material>();
-    
+
     [Header("Player Reference")]
-    public PlayerMovement playerMovement;
-    
+    [HideInInspector] public PlayerMovement playerMovement;
+
     [Header("Hand Display")]
-    public Transform handPosition;
+    [HideInInspector] public Transform handPosition;
     private GameObject currentHandItem;
-    
+
     [Header("Hotbar Selection")]
     public Color outlineColor = new Color32(139, 0, 0, 255);
     private int selectedHotbarSlot = 0;
-    
+
     [Header("Drop Settings")]
-    public Transform dropPosition;
+    [HideInInspector] public Transform dropPosition;
     public GameObject droppedItemPrefab;
-    
+
     private bool isInventoryOpen = false;
     private GameObject currentDraggedItem;
     private int draggedFromSlot = -1;
@@ -39,13 +39,15 @@ public class InventorySystem : MonoBehaviour
 
     void Start()
     {
-        InitializeInventory();
-        SetupSlots();
-        SelectHotbarSlot(0);
+        // Wait one frame to ensure NetworkInventorySetup has run
+        Invoke(nameof(InitializeInventory), 0.1f);
     }
 
     void Update()
     {
+        // Don't run if UI isn't assigned (not local player)
+        if (hotbarPanel == null) return;
+
         HandleInventoryToggle();
         HandleHotbarSelection();
         HandleItemDrop();
@@ -56,28 +58,41 @@ public class InventorySystem : MonoBehaviour
 
     void InitializeInventory()
     {
+        // Check if UI is assigned (for local player only)
+        if (hotbarPanel == null || canvas == null)
+        {
+            Debug.LogWarning("Inventory UI not assigned - likely not local player");
+            enabled = false; // Disable this component for non-local players
+            return;
+        }
+
         if (hotbarPanel != null)
             hotbarPanel.SetActive(true);
-        
+
         if (inventoryPanel != null)
             inventoryPanel.SetActive(false);
-        
+
         items.Clear();
         itemMaterials.Clear();
-        
+
         int totalSlots = hotbarSlots.Count + inventorySlots.Count;
         for (int i = 0; i < totalSlots; i++)
         {
             items.Add(null);
             itemMaterials.Add(null);
         }
-        
+
         Color slotColor = new Color32(45, 45, 45, 255);
-        foreach (Image slot in hotbarSlots)
+        foreach (var slot in hotbarSlots)
         {
             if (slot != null)
                 slot.color = slotColor;
         }
+
+        SetupSlots();
+        SelectHotbarSlot(0); // This will enable the outline
+
+        Debug.Log("Inventory initialized with " + hotbarSlots.Count + " hotbar slots and " + inventorySlots.Count + " inventory slots");
     }
 
     void SetupSlots()
@@ -157,7 +172,7 @@ public class InventorySystem : MonoBehaviour
         if (currentDraggedItem != null)
         {
             currentDraggedItem.transform.position = Input.mousePosition;
-            
+
             if (Input.GetMouseButtonDown(0) && !IsMouseOverInventory())
             {
                 DropDraggedItem();
@@ -177,12 +192,12 @@ public class InventorySystem : MonoBehaviour
             if (items[i] == null)
             {
                 SetItemInSlot(i, itemSprite, itemMaterial);
-                
+
                 if (i == selectedHotbarSlot)
                 {
                     UpdateHandDisplay();
                 }
-                
+
                 return true;
             }
         }
@@ -205,7 +220,7 @@ public class InventorySystem : MonoBehaviour
     {
         items[slotIndex] = itemSprite;
         itemMaterials[slotIndex] = itemMaterial;
-        
+
         Image slotImage = GetSlotImage(slotIndex);
         if (slotImage != null)
         {
@@ -218,7 +233,7 @@ public class InventorySystem : MonoBehaviour
     {
         items[slotIndex] = null;
         itemMaterials[slotIndex] = null;
-        
+
         Image slotImage = GetSlotImage(slotIndex);
         if (slotImage != null)
         {
@@ -244,11 +259,11 @@ public class InventorySystem : MonoBehaviour
     {
         if (slotIndex < hotbarSlots.Count)
             return hotbarSlots[slotIndex];
-        
+
         int inventoryIndex = slotIndex - hotbarSlots.Count;
         if (inventoryIndex >= 0 && inventoryIndex < inventorySlots.Count)
             return inventorySlots[inventoryIndex];
-        
+
         return null;
     }
 
@@ -259,15 +274,24 @@ public class InventorySystem : MonoBehaviour
     void ToggleInventory()
     {
         isInventoryOpen = !isInventoryOpen;
-        
+
+        Debug.Log($"Toggling inventory. IsOpen: {isInventoryOpen}");
+
         if (inventoryPanel != null)
+        {
             inventoryPanel.SetActive(isInventoryOpen);
-        
+            Debug.Log($"Inventory panel set to: {isInventoryOpen}");
+        }
+        else
+        {
+            Debug.LogError("Inventory panel is null!");
+        }
+
         if (isInventoryOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            
+
             if (playerMovement != null)
                 playerMovement.enabled = false;
         }
@@ -275,7 +299,7 @@ public class InventorySystem : MonoBehaviour
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
-            
+
             if (playerMovement != null)
                 playerMovement.enabled = true;
         }
@@ -301,6 +325,11 @@ public class InventorySystem : MonoBehaviour
                 if (outline != null)
                 {
                     outline.enabled = (i == selectedHotbarSlot);
+                    Debug.Log($"Slot {i} outline enabled: {outline.enabled}");
+                }
+                else
+                {
+                    Debug.LogWarning($"No Outline component on hotbar slot {i}!");
                 }
             }
         }
@@ -354,7 +383,7 @@ public class InventorySystem : MonoBehaviour
         draggedFromSlot = slotIndex;
         draggedSprite = itemSprite;
         draggedMaterial = GetMaterialInSlot(slotIndex);
-        
+
         RemoveItem(slotIndex);
         CreateDraggedItemVisual(itemSprite);
     }
@@ -370,19 +399,19 @@ public class InventorySystem : MonoBehaviour
         currentDraggedItem = new GameObject("DraggedItem");
         currentDraggedItem.transform.SetParent(canvas.transform);
         currentDraggedItem.transform.SetAsLastSibling();
-        
+
         RectTransform rt = currentDraggedItem.AddComponent<RectTransform>();
         rt.sizeDelta = new Vector2(60, 60);
-        
+
         UnityEngine.UI.Image img = currentDraggedItem.AddComponent<UnityEngine.UI.Image>();
         img.sprite = itemSprite;
         img.raycastTarget = false;
         img.color = Color.white;
-        
+
         CanvasGroup cg = currentDraggedItem.AddComponent<CanvasGroup>();
         cg.alpha = 0.8f;
         cg.blocksRaycasts = false;
-        
+
         currentDraggedItem.transform.position = Input.mousePosition;
     }
 
@@ -440,7 +469,7 @@ public class InventorySystem : MonoBehaviour
         Material itemMaterial = GetMaterialInSlot(slotIndex);
         SpawnDroppedItem(itemSprite, itemMaterial);
         RemoveItem(slotIndex);
-        
+
         if (slotIndex == selectedHotbarSlot)
         {
             UpdateHandDisplay();
