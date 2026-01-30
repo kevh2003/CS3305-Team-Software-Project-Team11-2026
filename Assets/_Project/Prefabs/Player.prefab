@@ -45,9 +45,11 @@ GameObject:
   - component: {fileID: 576562533699300680}
   - component: {fileID: -2524902828527760842}
   - component: {fileID: -1088517858027452970}
-  - component: {fileID: 7147222490551223047}
-  - component: {fileID: 5788324664334679507}
-  - component: {fileID: 3863018541450564984}
+  - component: {fileID: 1742529311603822545}
+  - component: {fileID: 624921777139550945}
+  - component: {fileID: 8621371040668675818}
+  - component: {fileID: 8665377815404331436}
+  - component: {fileID: 605268519782264842}
   m_Layer: 3
   m_Name: Player
   m_TagString: Untagged
@@ -214,8 +216,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   moveSpeed: 5
   lookSensitivity: 0.12
-  playerCamera: {fileID: 0}
---- !u!114 &7147222490551223047
+  playerCamera: {fileID: 6299705925954022843}
+--- !u!114 &1742529311603822545
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -224,20 +226,59 @@ MonoBehaviour:
   m_GameObject: {fileID: 3510778963214601395}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 48fd02640dd21406ba57bb1faf2026c9, type: 3}
+  m_Script: {fileID: 11500000, guid: 1849b1e308d9c41e09e9b44d44802245, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InventorySystem
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleInventory
   hotbarPanel: {fileID: 0}
   inventoryPanel: {fileID: 0}
   canvas: {fileID: 0}
-  hotbarSlots: []
-  inventorySlots: []
+  hotbarSlot0: {fileID: 0}
+  hotbarSlot1: {fileID: 0}
+  inventorySlot0: {fileID: 0}
+  inventorySlot1: {fileID: 0}
+  inventorySlot2: {fileID: 0}
   playerMovement: {fileID: 0}
-  handPosition: {fileID: 0}
-  outlineColor: {r: 0.54509807, g: 0, b: 0, a: 1}
-  dropPosition: {fileID: 0}
-  droppedItemPrefab: {fileID: 0}
---- !u!114 &5788324664334679507
+  handPosition: {fileID: 6577275226124943629}
+  dropPosition: {fileID: 545616217076580523}
+--- !u!114 &624921777139550945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe8c735f74e3a47adb3c6d911d475859, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleCrosshair
+--- !u!114 &8621371040668675818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01894691d329c4d389d91f35dd5cce88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimplePickup
+  icon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  mat: {fileID: 0}
+--- !u!114 &8665377815404331436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1007b733b94234b61b840d23c5bc37fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleInventorySetup
+--- !u!114 &605268519782264842
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -251,20 +292,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Interactor
   InteractSource: {fileID: 9090654707310040234}
   InteractRange: 3
-  InteractKey: 101
---- !u!114 &3863018541450564984
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510778963214601395}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ac1acfce8d5084561a0f12fa927c45ac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NetworkInventorySetup
-  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0
