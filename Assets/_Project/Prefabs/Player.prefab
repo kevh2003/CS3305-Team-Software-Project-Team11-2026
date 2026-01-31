@@ -45,11 +45,10 @@ GameObject:
   - component: {fileID: 576562533699300680}
   - component: {fileID: -2524902828527760842}
   - component: {fileID: -1088517858027452970}
-  - component: {fileID: 1742529311603822545}
-  - component: {fileID: 624921777139550945}
-  - component: {fileID: 8621371040668675818}
-  - component: {fileID: 8665377815404331436}
   - component: {fileID: 605268519782264842}
+  - component: {fileID: 640773831133869007}
+  - component: {fileID: 1346111275799930769}
+  - component: {fileID: 7899239478544301507}
   m_Layer: 3
   m_Name: Player
   m_TagString: Untagged
@@ -87,7 +86,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 934990576
+  GlobalObjectIdHash: 1350446368
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -217,67 +216,6 @@ MonoBehaviour:
   moveSpeed: 5
   lookSensitivity: 0.12
   playerCamera: {fileID: 6299705925954022843}
---- !u!114 &1742529311603822545
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510778963214601395}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1849b1e308d9c41e09e9b44d44802245, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleInventory
-  hotbarPanel: {fileID: 0}
-  inventoryPanel: {fileID: 0}
-  canvas: {fileID: 0}
-  hotbarSlot0: {fileID: 0}
-  hotbarSlot1: {fileID: 0}
-  inventorySlot0: {fileID: 0}
-  inventorySlot1: {fileID: 0}
-  inventorySlot2: {fileID: 0}
-  playerMovement: {fileID: 0}
-  handPosition: {fileID: 6577275226124943629}
-  dropPosition: {fileID: 545616217076580523}
---- !u!114 &624921777139550945
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510778963214601395}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe8c735f74e3a47adb3c6d911d475859, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleCrosshair
---- !u!114 &8621371040668675818
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510778963214601395}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01894691d329c4d389d91f35dd5cce88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimplePickup
-  icon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  mat: {fileID: 0}
---- !u!114 &8665377815404331436
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3510778963214601395}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1007b733b94234b61b840d23c5bc37fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleInventorySetup
 --- !u!114 &605268519782264842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -292,6 +230,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Interactor
   InteractSource: {fileID: 9090654707310040234}
   InteractRange: 3
+  InteractKey: 101
+--- !u!114 &640773831133869007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 980b489440f0548828b7e9cb8e6d51e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
+  ShowTopMostFoldoutHeaderGroup: 1
+  hotbarSlots: 2
+  inventorySlots: 3
+  canvas: {fileID: 0}
+  hotbarPanel: {fileID: 0}
+  inventoryPanel: {fileID: 0}
+  hotbarSlotImages: []
+  inventorySlotImages: []
+  playerMovement: {fileID: 0}
+  handPosition: {fileID: 0}
+  dropPosition: {fileID: 0}
+--- !u!114 &1346111275799930769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b21b7d0a4d63e4594bbec3e821edfeb3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Crosshair
+  ShowTopMostFoldoutHeaderGroup: 1
+  crosshairColor: {r: 1, g: 1, b: 1, a: 1}
+  crosshairSize: 10
+  crosshairThickness: 2
+--- !u!114 &7899239478544301507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bca1056157cef4ce49e52172f6cdf990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InventoryUI
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0

@@ -45,7 +45,36 @@ public sealed class MainMenuController : MonoBehaviour
     {
         hostLanButton.onClick.AddListener(HostLan);
         joinLanButton.onClick.AddListener(JoinLan);
-        SetStatus("Ready");
+
+        // Check if services are ready
+        if (Services.NetSession == null)
+        {
+            SetStatus("Initializing network...");
+            hostLanButton.interactable = false;
+            joinLanButton.interactable = false;
+
+            // Check again in a moment
+            Invoke(nameof(CheckServicesReady), 0.5f);
+        }
+        else
+        {
+            SetStatus("Ready");
+        }
+    }
+
+    private void CheckServicesReady()
+    {
+        if (Services.NetSession != null)
+        {
+            SetStatus("Ready");
+            hostLanButton.interactable = true;
+            joinLanButton.interactable = true;
+        }
+        else
+        {
+            SetStatus("Still initializing...");
+            Invoke(nameof(CheckServicesReady), 0.5f);
+        }
     }
 
     private void SetStatus(string msg)
@@ -63,6 +92,14 @@ public sealed class MainMenuController : MonoBehaviour
     private void HostLan()
     {
         SetStatus("Starting LAN host...");
+
+        if (Services.NetSession == null)
+        {
+            Debug.LogError("❌ Services.NetSession is null! Services not initialized yet.");
+            SetStatus("Error: Network not ready. Wait a moment and try again.");
+            return;
+        }
+
         var res = Services.NetSession.HostLan(ReadPort());
         SetStatus("Host LAN: " + res);
     }
@@ -74,6 +111,14 @@ public sealed class MainMenuController : MonoBehaviour
             : "127.0.0.1";
 
         SetStatus("Joining LAN host...");
+
+        if (Services.NetSession == null)
+        {
+            Debug.LogError("❌ Services.NetSession is null! Services not initialized yet.");
+            SetStatus("Error: Network not ready. Wait a moment and try again.");
+            return;
+        }
+
         var res = Services.NetSession.JoinLan(ip, ReadPort());
         SetStatus("Join LAN: " + res);
     }
