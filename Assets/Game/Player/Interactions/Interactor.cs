@@ -3,9 +3,9 @@ using Unity.Netcode;
 
 public class Interactor : NetworkBehaviour
 {
-    public Transform InteractSource;  
+    public Transform InteractSource;
     public float InteractRange = 3f;
-    
+
     private PlayerInputActions inputActions;
 
     void Awake()
@@ -17,12 +17,14 @@ public class Interactor : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        
+
         if (!IsOwner)
         {
             enabled = false;
             return;
         }
+
+        Debug.Log($"✅ Interactor OnNetworkSpawn - inputActions null? {inputActions == null}");
 
         // Safety check
         if (inputActions == null)
@@ -31,9 +33,21 @@ public class Interactor : NetworkBehaviour
             inputActions = new PlayerInputActions();
         }
 
-        inputActions.Enable();
-        inputActions.Player.Interact.performed += ctx => TryInteract();
-        
+        try
+        {
+            Debug.Log("Enabling inputActions...");
+            inputActions.Enable();
+
+            Debug.Log("Subscribing to Interact event...");
+            inputActions.Player.Interact.performed += ctx => TryInteract();
+
+            Debug.Log("✅ Input subscription successful");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error in Interactor.OnNetworkSpawn: {e.Message}\nStack: {e.StackTrace}");
+        }
+
         // Auto-find camera if not assigned
         if (InteractSource == null)
         {
@@ -48,14 +62,14 @@ public class Interactor : NetworkBehaviour
                 Debug.LogError("❌ Interactor: No camera found!");
             }
         }
-        
+
         Debug.Log("✅ Interactor fully initialized");
     }
 
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
-        
+
         if (inputActions != null)
             inputActions.Disable();
     }
@@ -67,7 +81,7 @@ public class Interactor : NetworkBehaviour
             Debug.LogError("❌ Interactor: InteractSource is null!");
             return;
         }
-        
+
         Ray ray = new Ray(InteractSource.position, InteractSource.forward);
         RaycastHit hit;
 

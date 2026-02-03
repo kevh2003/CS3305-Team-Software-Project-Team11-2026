@@ -30,8 +30,31 @@ public class InventoryUI : NetworkBehaviour
             return;
         }
 
-        Debug.Log("✅ Found PlayerInventory, setting up UI...");
-        SetupUI();
+        Debug.Log("✅ Found PlayerInventory, waiting for GameCanvas...");
+
+        // Try to setup UI, with retries if canvas not found yet
+        StartCoroutine(WaitForCanvasAndSetup());
+    }
+
+    System.Collections.IEnumerator WaitForCanvasAndSetup()
+    {
+        int attempts = 0;
+        while (attempts < 20) // Try for 2 seconds
+        {
+            Canvas canvas = FindCanvasInScene();
+            if (canvas != null)
+            {
+                Debug.Log($"✅ Found canvas on attempt {attempts + 1}, setting up UI...");
+                SetupUI();
+                yield break;
+            }
+
+            attempts++;
+            Debug.Log($"⏳ Waiting for GameCanvas... attempt {attempts}/20");
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogError("❌ GameCanvas never appeared after 2 seconds!");
     }
 
     void SetupUI()
@@ -144,6 +167,36 @@ public class InventoryUI : NetworkBehaviour
             drop.SetParent(transform);
             drop.localPosition = new Vector3(0, 1, 1);
         }
+
+        // Find camera controller (around line 145, after camera check)
+        if (cam != null)
+        {
+            Debug.Log("✅ Found camera");
+            Transform hand = cam.transform.Find("HandPosition");
+            if (hand == null)
+            {
+                Debug.Log("Creating HandPosition...");
+                hand = new GameObject("HandPosition").transform;
+                hand.SetParent(cam.transform);
+                hand.localPosition = new Vector3(0.3f, -0.2f, 0.5f);
+            }
+            inventory.handPosition = hand;
+            Debug.Log("✅ HandPosition set");
+
+            // Find camera controller script
+            // Try common script names
+            MonoBehaviour camController = cam.GetComponent<MonoBehaviour>();
+            if (camController != null)
+            {
+                // Check if it's a look/camera controller (you can add more names here)
+                string scriptName = camController.GetType().Name;
+                if (scriptName.Contains("Look") || scriptName.Contains("Camera") || scriptName.Contains("Mouse"))
+                {
+                    inventory.cameraController = camController;
+                    Debug.Log($"✅ Found camera controller: {scriptName}");
+                }
+            }
+        }
         inventory.dropPosition = drop;
         Debug.Log("✅ DropPosition set");
 
@@ -156,6 +209,7 @@ public class InventoryUI : NetworkBehaviour
         Debug.Log("✅ Selected slot 0");
 
         Debug.Log("✅✅✅ InventoryUI: Setup complete!");
+
     }
     Canvas FindCanvasInScene()
     {

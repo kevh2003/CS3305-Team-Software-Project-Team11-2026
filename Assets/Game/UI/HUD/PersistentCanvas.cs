@@ -10,7 +10,7 @@ public class PersistentCanvas : MonoBehaviour
     void Awake()
     {
         // Check if there's already a persistent canvas
-        PersistentCanvas[] canvases = FindObjectsOfType<PersistentCanvas>();
+        PersistentCanvas[] canvases = FindObjectsByType<PersistentCanvas>(FindObjectsSortMode.None);
         if (canvases.Length > 1)
         {
             Destroy(gameObject);

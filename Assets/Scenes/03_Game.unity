@@ -450,7 +450,7 @@ GameObject:
   - component: {fileID: 1887724657}
   - component: {fileID: 1887724656}
   - component: {fileID: 1887724655}
-  - component: {fileID: 1887724654}
+  - component: {fileID: 1887724659}
   m_Layer: 0
   m_Name: TestItem
   m_TagString: Untagged
@@ -458,20 +458,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1887724654
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1887724653}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01894691d329c4d389d91f35dd5cce88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PickupItem
-  inventoryIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  itemMaterial: {fileID: 0}
 --- !u!65 &1887724655
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -565,6 +551,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1887724659
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1887724653}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7e4f9897cbac4e959be0f4e6f280143, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldPickup
+  itemIcon: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  itemMaterial: {fileID: 15303, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!1 &2137376033
 GameObject:
   m_ObjectHideFlags: 0

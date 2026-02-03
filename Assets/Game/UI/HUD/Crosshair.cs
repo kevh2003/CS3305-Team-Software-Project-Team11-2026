@@ -28,8 +28,8 @@ public class Crosshair : NetworkBehaviour
             return;
         }
 
-        Debug.Log("✅ Is owner, creating crosshair in 0.1s...");
-        Invoke(nameof(CreateCrosshair), 0.1f);
+        Debug.Log("✅ Is owner, creating crosshair in 0.2s...");
+        Invoke(nameof(CreateCrosshair), 0.2f); // Changed from 0.1 to 0.2
     }
 
     public override void OnNetworkDespawn()
@@ -81,7 +81,7 @@ public class Crosshair : NetworkBehaviour
     Canvas FindCanvas()
     {
         // Try to find the persistent GameCanvas first
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
 
         foreach (Canvas c in canvases)
         {
@@ -95,5 +95,21 @@ public class Crosshair : NetworkBehaviour
         // Fallback
         Debug.LogWarning("⚠️ Crosshair: GameCanvas not found, using first available canvas");
         return canvases.Length > 0 ? canvases[0] : null;
+    }
+
+    public void Show()
+    {
+        if (crosshairObject != null)
+        {
+            crosshairObject.SetActive(true);
+        }
+    }
+
+    public void Hide()
+    {
+        if (crosshairObject != null)
+        {
+            crosshairObject.SetActive(false);
+        }
     }
 }
