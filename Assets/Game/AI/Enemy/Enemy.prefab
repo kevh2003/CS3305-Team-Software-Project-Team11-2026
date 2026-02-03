@@ -154,14 +154,18 @@ MonoBehaviour:
   damage: 10
   attackRange: 2
   attackCooldown: 1
-  detectionRange: 10
+  detectionRange: 15
   updateRate: 0.25
+  viewAngle: 175
   whatIsPlayer:
     serializedVersion: 2
     m_Bits: 128
   obstacleMask:
     serializedVersion: 2
     m_Bits: 512
+  alertedDetectionMultiplier: 1.5
+  alertedViewAngle: 300
+  searchDuration: 10
 --- !u!114 &1354475477447838215
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,9 +183,13 @@ MonoBehaviour:
   attackCooldown: 1
   detectionRange: 10
   updateRate: 0.25
+  viewAngle: 175
   whatIsPlayer:
     serializedVersion: 2
     m_Bits: 128
   obstacleMask:
     serializedVersion: 2
     m_Bits: 512
+  alertedDetectionMultiplier: 1.5
+  alertedViewAngle: 270
+  searchDuration: 8
