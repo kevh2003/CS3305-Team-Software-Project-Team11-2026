@@ -24,6 +24,7 @@ public class EnemyAI : MonoBehaviour
     public float alertedDetectionMultiplier = 1.5f; //Multiplier for detection range when alerted
     public float alertedViewAngle = 300f;       //View angle wheen player is lost
     public float searchDuration = 10f;      //Duration of alert state after losing sight of player
+    public float searchOvershootDistance = 3f; //Extra distance over last known location of player
 
     private NavMeshAgent agent;     // Reference to NavMeshAgent component
     private Transform currentTarget;   // Current target player
@@ -33,6 +34,7 @@ public class EnemyAI : MonoBehaviour
     private float searchEndTime;        // Time when search state ends
     private float originalDetectionRange;   // Saves original detection range
     private float originalViewAngle;    // Saves original view angele
+
 
     void Awake()
     {
@@ -107,11 +109,15 @@ public class EnemyAI : MonoBehaviour
                     closestDistance = distanceToPlayer;
                     closestPlayer = playerCollider.transform;
 
-                    lastKnownPosition = playerCollider.transform.position;
+                    Vector3 directionToPlayerFlat = directionToPlayer;
+                    directionToPlayerFlat.y = 0f;
+                    directionToPlayerFlat.Normalize();
+
+                    lastKnownPosition = playerCollider.transform.position + directionToPlayerFlat * searchOvershootDistance;
                     isSearching = false;
                     detectionRange = originalDetectionRange;
                     viewAngle = originalViewAngle;
-                }
+                }gi
             }
         }
 
