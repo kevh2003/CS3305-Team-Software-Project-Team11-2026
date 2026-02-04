@@ -117,7 +117,7 @@ public class EnemyAI : MonoBehaviour
                     isSearching = false;
                     detectionRange = originalDetectionRange;
                     viewAngle = originalViewAngle;
-                }gi
+                }
             }
         }
 
