@@ -14,6 +14,8 @@ GameObject:
   - component: {fileID: 576562533699300680}
   - component: {fileID: -2524902828527760842}
   - component: {fileID: -1088517858027452970}
+  - component: {fileID: 1745521175803550177}
+  - component: {fileID: 699725007467170078}
   m_Layer: 3
   m_Name: Player
   m_TagString: Untagged
@@ -50,7 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1350446368
+  GlobalObjectIdHash: 934990576
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -180,6 +182,32 @@ MonoBehaviour:
   moveSpeed: 5
   lookSensitivity: 0.12
   playerCamera: {fileID: 0}
+--- !u!114 &1745521175803550177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2192c2d7ad34d4861aa1fb0915252057, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Interactor
+  InteractSource: {fileID: 9090654707310040234}
+  InteractRange: 3
+--- !u!114 &699725007467170078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f12f4d62ddf99483587d6762999763fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalPlayerReference
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0

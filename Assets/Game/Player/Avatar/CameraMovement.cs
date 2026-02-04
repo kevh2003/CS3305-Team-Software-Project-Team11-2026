@@ -1,7 +1,9 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class CameraMovement : MonoBehaviour
 {
+    [Header("Settings")]
     public float sensitivity = 2f;
     public float minY = -40f;
     public float maxY = 40f;
@@ -11,10 +13,10 @@ public class CameraMovement : MonoBehaviour
 
     void OnEnable()
     {
-        // Properly initialize rotation from current transform
+        // Initialize rotation from current transform
         Vector3 currentRotation = transform.localEulerAngles;
         
-        // Convert to -180 to 180 range for proper clamping
+        // Convert to -180 to 180 range
         rotationX = currentRotation.x;
         if (rotationX > 180f) rotationX -= 360f;
         
@@ -27,14 +29,20 @@ public class CameraMovement : MonoBehaviour
 
     void Update()
     {
-        float mouseY = Input.GetAxis("Mouse Y");
-        float mouseX = Input.GetAxis("Mouse X");
+        // Get mouse input directly
+        var mouse = Mouse.current;
+        if (mouse == null) return; // No mouse connected
 
-        // Update rotations
-        rotationX -= mouseY * sensitivity;
+        // Read mouse delta (how much the mouse moved this frame)
+        Vector2 mouseDelta = mouse.delta.ReadValue();
+
+        // Apply sensitivity - adjusted to feel similar to old Input.GetAxis
+        float adjustedSensitivity = sensitivity * 0.1f;
+        
+        rotationX -= mouseDelta.y * adjustedSensitivity;
         rotationX = Mathf.Clamp(rotationX, minY, maxY);
         
-        rotationY += mouseX * sensitivity;
+        rotationY += mouseDelta.x * adjustedSensitivity;
 
         // Apply rotation
         transform.localRotation = Quaternion.Euler(rotationX, rotationY, 0f);
