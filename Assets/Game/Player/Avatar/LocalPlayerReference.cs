@@ -5,6 +5,7 @@ using Unity.Netcode;
 /// Improved singleton helper that provides access to the local player's components.
 /// Handles timing issues with NetworkPlayer.IsOwner by checking in multiple lifecycle methods.
 /// Add this script to your NetworkPlayer prefab.
+/// Specifically designed for hunter's camera interaction system.
 /// </summary>
 public class LocalPlayerReference : MonoBehaviour
 {
@@ -13,6 +14,7 @@ public class LocalPlayerReference : MonoBehaviour
     public Camera PlayerCamera { get; private set; }
     public NetworkPlayer NetworkPlayer { get; private set; }
     public UnityEngine.InputSystem.PlayerInput PlayerInput { get; private set; }
+    public Interactor Interactor { get; private set; }  // Added for convenience
 
     private bool _hasRegistered = false;
 
@@ -21,6 +23,7 @@ public class LocalPlayerReference : MonoBehaviour
         NetworkPlayer = GetComponent<NetworkPlayer>();
         PlayerCamera = GetComponentInChildren<Camera>(true);
         PlayerInput = GetComponent<UnityEngine.InputSystem.PlayerInput>();
+        Interactor = GetComponent<Interactor>();  // Cache the Interactor reference
 
         Debug.Log($"LocalPlayerReference.Awake() on {gameObject.name}");
     }
@@ -60,9 +63,10 @@ public class LocalPlayerReference : MonoBehaviour
             Instance = this;
             _hasRegistered = true;
             
-            Debug.Log($"✓ LocalPlayerReference: Registered as Instance for local player (ClientId: {NetworkPlayer.OwnerClientId})");
+            Debug.Log($"✅ LocalPlayerReference: Registered as Instance for local player (ClientId: {NetworkPlayer.OwnerClientId})");
             Debug.Log($"  - Camera found: {PlayerCamera != null}");
             Debug.Log($"  - PlayerInput found: {PlayerInput != null}");
+            Debug.Log($"  - Interactor found: {Interactor != null}");
         }
         else if (NetworkPlayer == null)
         {

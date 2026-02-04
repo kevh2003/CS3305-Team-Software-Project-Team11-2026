@@ -1,44 +1,73 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
 /// <summary>
-/// Interactor that uses the PlayerInput component and your existing Input Actions.
-/// Add an "Interact" action to your Input Actions asset, then this will use it automatically.
+/// Interactor that uses Unity's PlayerInput component (matches your team's input setup).
+/// Add this script to your player prefab and create an "Interact" action in your Input Actions asset.
+/// The OnInteract method will be called automatically when the player presses the interact button.
 /// </summary>
-[RequireComponent(typeof(PlayerInput))]
-public class Interactor : MonoBehaviour
+public class Interactor : NetworkBehaviour
 {
     [Header("Raycast Settings")]
-    public Transform InteractSource;  
+    public Transform InteractSource;
     public float InteractRange = 3f;
 
-    private PlayerInput _playerInput;
-    private InputAction _interactAction;
+    // Reference to NetworkPlayer so inventory system knows which player is interacting
+    public NetworkPlayer Player { get; private set; }
 
-    private void Awake()
+    private bool _interactPressed = false;
+
+    void Awake()
     {
-        _playerInput = GetComponent<PlayerInput>();
+        // Get the NetworkPlayer component for inventory system compatibility
+        Player = GetComponent<NetworkPlayer>();
+        
+        if (Player == null)
+        {
+            Debug.LogError("❌ Interactor: NetworkPlayer component not found on this GameObject!");
+        }
+        
+        Debug.Log("✅ Interactor: Initialized in Awake");
     }
 
-    private void OnEnable()
+    public override void OnNetworkSpawn()
     {
-        // Get the "Interact" action from the PlayerInput component
-        // Make sure you have an "Interact" action in your Input Actions asset!
-        if (_playerInput != null)
+        base.OnNetworkSpawn();
+
+        if (!IsOwner)
         {
-            _interactAction = _playerInput.actions["Interact"];
-            
-            if (_interactAction == null)
+            enabled = false;
+            return;
+        }
+
+        // Auto-find camera if not assigned
+        if (InteractSource == null)
+        {
+            Camera cam = GetComponentInChildren<Camera>();
+            if (cam != null)
             {
-                Debug.LogError("Interactor: No 'Interact' action found in Input Actions! Please add one.");
+                InteractSource = cam.transform;
+                Debug.Log("✅ Interactor: Auto-assigned camera");
+            }
+            else
+            {
+                Debug.LogError("❌ Interactor: No camera found!");
             }
         }
+
+        Debug.Log("✅ Interactor fully initialized");
     }
 
-    void Update()
+    // This method is called by Unity's PlayerInput component when the "Interact" action is triggered
+    // Make sure you have an "Interact" action in your Input Actions asset!
+    public void OnInteract(InputValue value)
     {
-        // Check if the interact action was pressed this frame
-        if (_interactAction != null && _interactAction.WasPressedThisFrame())
+        if (!IsOwner) return;
+        
+        _interactPressed = value.isPressed;
+        
+        if (_interactPressed)
         {
             TryInteract();
         }
@@ -48,7 +77,7 @@ public class Interactor : MonoBehaviour
     {
         if (InteractSource == null)
         {
-            Debug.LogWarning("Interactor: InteractSource is null!");
+            Debug.LogError("❌ Interactor: InteractSource is null!");
             return;
         }
 
@@ -64,7 +93,7 @@ public class Interactor : MonoBehaviour
                 bool success = interactable.Interact(this);
                 if (success)
                 {
-                    Debug.Log($"Interacted with: {hit.collider.gameObject.name}");
+                    Debug.Log($"✅ Interacted with: {hit.collider.name}");
                 }
             }
         }
