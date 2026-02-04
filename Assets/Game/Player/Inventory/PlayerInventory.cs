@@ -60,13 +60,6 @@ public class PlayerInventory : NetworkBehaviour
         Debug.Log("✅ Is owner, inventory ready");
     }
 
-    // These methods are called by Unity's PlayerInput component
-    // Make sure you have these actions in your Input Actions asset:
-    // - HotbarSlot0 (key: 1)
-    // - HotbarSlot1 (key: 2)
-    // - ToggleInventory (key: Tab or I)
-    // - DropItem (key: Q)
-    // - ScrollWheel (Mouse scroll)
 
     public void OnHotbarSlot0(InputValue value)
     {
@@ -87,10 +80,19 @@ public class PlayerInventory : NetworkBehaviour
     }
 
     public void OnDropItem(InputValue value)
+{
+    if (!IsOwner) return;
+    
+    Debug.Log("🔑 Q PRESSED!");
+    Debug.Log($"   value.isPressed: {value.isPressed}");
+    Debug.Log($"   selectedSlot: {selectedSlot}");
+    
+    if (value.isPressed) 
     {
-        if (!IsOwner) return;
-        if (value.isPressed) DropItem(selectedSlot);
+        Debug.Log("   Calling DropItem()...");
+        DropItem(selectedSlot);
     }
+}
 
     public void OnScrollWheel(InputValue value)
     {
@@ -123,19 +125,49 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    public void SelectSlot(int index)
+  public void SelectSlot(int index)
+{
+    Debug.Log("═══════════════════════════════");
+    Debug.Log($"📍 SelectSlot() called with index: {index}");
+    Debug.Log($"   Current selectedSlot before change: {selectedSlot}");
+    Debug.Log($"   Total hotbarSlots: {hotbarSlots}");
+    
+    // Validation check
+    if (index < 0 || index >= hotbarSlots)
     {
-        if (index < 0 || index >= hotbarSlots) return;
-
-        selectedSlot = index;
-
-        Debug.Log($"🎯 SelectSlot({index}) called");
-        Debug.Log($"   handPosition null? {handPosition == null}");
-        Debug.Log($"   itemMaterials[{index}] null? {(index < itemMaterials.Length ? itemMaterials[index] == null : true)}");
-
-        UpdateHotbarOutlines();
-        UpdateHandDisplay();
+        Debug.LogError($"❌ INVALID SLOT INDEX! index={index}, hotbarSlots={hotbarSlots}");
+        Debug.Log($"   Calculation: index < 0? {index < 0}");
+        Debug.Log($"   Calculation: index >= hotbarSlots? {index >= hotbarSlots}");
+        Debug.Log("   RETURNING WITHOUT CHANGING SLOT!");
+        Debug.Log("═══════════════════════════════");
+        return;
     }
+
+    // Update selected slot
+    selectedSlot = index;
+    Debug.Log($"✅ selectedSlot changed to: {selectedSlot}");
+
+    Debug.Log($"   handPosition null? {handPosition == null}");
+    
+    if (index < itemMaterials.Length)
+    {
+        Debug.Log($"   itemMaterials[{index}] null? {itemMaterials[index] == null}");
+    }
+    else
+    {
+        Debug.LogError($"❌ Index {index} is out of bounds for itemMaterials array!");
+    }
+
+    // Update visuals
+    Debug.Log("   Calling UpdateHotbarOutlines()...");
+    UpdateHotbarOutlines();
+    
+    Debug.Log("   Calling UpdateHandDisplay()...");
+    UpdateHandDisplay();
+    
+    Debug.Log("✅ SelectSlot() completed successfully");
+    Debug.Log("═══════════════════════════════");
+}
 
     void UpdateHotbarOutlines()
     {

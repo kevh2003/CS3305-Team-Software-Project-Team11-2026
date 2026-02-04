@@ -34,7 +34,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Cancel",
+                    "name": "DropItem",
                     "type": "Button",
                     "id": "fbece9ef-7ff5-40d9-a428-1d42b18dbd41",
                     "expectedControlType": "",
@@ -43,7 +43,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Hotbar1",
+                    "name": "HotbarSlot0",
                     "type": "Button",
                     "id": "e0d8526d-e00d-49fd-930a-6609a8e5aa5b",
                     "expectedControlType": "",
@@ -52,9 +52,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Hotbar2",
+                    "name": "HotbarSlot1",
                     "type": "Button",
                     "id": "2d688a93-c0ca-4f8d-8adc-32500038dedf",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleInventory",
+                    "type": "Button",
+                    "id": "b8b476d4-69c6-43e3-b202-d25ab7e18b43",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -146,7 +155,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Cancel",
+                    "action": "DropItem",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -157,7 +166,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Hotbar1",
+                    "action": "HotbarSlot0",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -168,7 +177,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Hotbar2",
+                    "action": "HotbarSlot1",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "948b357e-fd5d-46e5-91bf-78d02a7fdceb",
+                    "path": "<Keyboard>/tab",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInventory",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

@@ -120,7 +120,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Cancel"",
+                    ""name"": ""DropItem"",
                     ""type"": ""Button"",
                     ""id"": ""fbece9ef-7ff5-40d9-a428-1d42b18dbd41"",
                     ""expectedControlType"": """",
@@ -129,7 +129,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Hotbar1"",
+                    ""name"": ""HotbarSlot0"",
                     ""type"": ""Button"",
                     ""id"": ""e0d8526d-e00d-49fd-930a-6609a8e5aa5b"",
                     ""expectedControlType"": """",
@@ -138,9 +138,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Hotbar2"",
+                    ""name"": ""HotbarSlot1"",
                     ""type"": ""Button"",
                     ""id"": ""2d688a93-c0ca-4f8d-8adc-32500038dedf"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleInventory"",
+                    ""type"": ""Button"",
+                    ""id"": ""b8b476d4-69c6-43e3-b202-d25ab7e18b43"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -232,7 +241,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Cancel"",
+                    ""action"": ""DropItem"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -243,7 +252,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Hotbar1"",
+                    ""action"": ""HotbarSlot0"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -254,7 +263,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Hotbar2"",
+                    ""action"": ""HotbarSlot1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""948b357e-fd5d-46e5-91bf-78d02a7fdceb"",
+                    ""path"": ""<Keyboard>/tab"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleInventory"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -268,9 +288,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_Move = m_Player.FindAction("Move", throwIfNotFound: true);
         m_Player_Look = m_Player.FindAction("Look", throwIfNotFound: true);
         m_Player_Interact = m_Player.FindAction("Interact", throwIfNotFound: true);
-        m_Player_Cancel = m_Player.FindAction("Cancel", throwIfNotFound: true);
-        m_Player_Hotbar1 = m_Player.FindAction("Hotbar1", throwIfNotFound: true);
-        m_Player_Hotbar2 = m_Player.FindAction("Hotbar2", throwIfNotFound: true);
+        m_Player_DropItem = m_Player.FindAction("DropItem", throwIfNotFound: true);
+        m_Player_HotbarSlot0 = m_Player.FindAction("HotbarSlot0", throwIfNotFound: true);
+        m_Player_HotbarSlot1 = m_Player.FindAction("HotbarSlot1", throwIfNotFound: true);
+        m_Player_ToggleInventory = m_Player.FindAction("ToggleInventory", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -354,9 +375,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Move;
     private readonly InputAction m_Player_Look;
     private readonly InputAction m_Player_Interact;
-    private readonly InputAction m_Player_Cancel;
-    private readonly InputAction m_Player_Hotbar1;
-    private readonly InputAction m_Player_Hotbar2;
+    private readonly InputAction m_Player_DropItem;
+    private readonly InputAction m_Player_HotbarSlot0;
+    private readonly InputAction m_Player_HotbarSlot1;
+    private readonly InputAction m_Player_ToggleInventory;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -381,17 +403,21 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @Interact => m_Wrapper.m_Player_Interact;
         /// <summary>
-        /// Provides access to the underlying input action "Player/Cancel".
+        /// Provides access to the underlying input action "Player/DropItem".
         /// </summary>
-        public InputAction @Cancel => m_Wrapper.m_Player_Cancel;
+        public InputAction @DropItem => m_Wrapper.m_Player_DropItem;
         /// <summary>
-        /// Provides access to the underlying input action "Player/Hotbar1".
+        /// Provides access to the underlying input action "Player/HotbarSlot0".
         /// </summary>
-        public InputAction @Hotbar1 => m_Wrapper.m_Player_Hotbar1;
+        public InputAction @HotbarSlot0 => m_Wrapper.m_Player_HotbarSlot0;
         /// <summary>
-        /// Provides access to the underlying input action "Player/Hotbar2".
+        /// Provides access to the underlying input action "Player/HotbarSlot1".
         /// </summary>
-        public InputAction @Hotbar2 => m_Wrapper.m_Player_Hotbar2;
+        public InputAction @HotbarSlot1 => m_Wrapper.m_Player_HotbarSlot1;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/ToggleInventory".
+        /// </summary>
+        public InputAction @ToggleInventory => m_Wrapper.m_Player_ToggleInventory;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -427,15 +453,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Interact.started += instance.OnInteract;
             @Interact.performed += instance.OnInteract;
             @Interact.canceled += instance.OnInteract;
-            @Cancel.started += instance.OnCancel;
-            @Cancel.performed += instance.OnCancel;
-            @Cancel.canceled += instance.OnCancel;
-            @Hotbar1.started += instance.OnHotbar1;
-            @Hotbar1.performed += instance.OnHotbar1;
-            @Hotbar1.canceled += instance.OnHotbar1;
-            @Hotbar2.started += instance.OnHotbar2;
-            @Hotbar2.performed += instance.OnHotbar2;
-            @Hotbar2.canceled += instance.OnHotbar2;
+            @DropItem.started += instance.OnDropItem;
+            @DropItem.performed += instance.OnDropItem;
+            @DropItem.canceled += instance.OnDropItem;
+            @HotbarSlot0.started += instance.OnHotbarSlot0;
+            @HotbarSlot0.performed += instance.OnHotbarSlot0;
+            @HotbarSlot0.canceled += instance.OnHotbarSlot0;
+            @HotbarSlot1.started += instance.OnHotbarSlot1;
+            @HotbarSlot1.performed += instance.OnHotbarSlot1;
+            @HotbarSlot1.canceled += instance.OnHotbarSlot1;
+            @ToggleInventory.started += instance.OnToggleInventory;
+            @ToggleInventory.performed += instance.OnToggleInventory;
+            @ToggleInventory.canceled += instance.OnToggleInventory;
         }
 
         /// <summary>
@@ -456,15 +485,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Interact.started -= instance.OnInteract;
             @Interact.performed -= instance.OnInteract;
             @Interact.canceled -= instance.OnInteract;
-            @Cancel.started -= instance.OnCancel;
-            @Cancel.performed -= instance.OnCancel;
-            @Cancel.canceled -= instance.OnCancel;
-            @Hotbar1.started -= instance.OnHotbar1;
-            @Hotbar1.performed -= instance.OnHotbar1;
-            @Hotbar1.canceled -= instance.OnHotbar1;
-            @Hotbar2.started -= instance.OnHotbar2;
-            @Hotbar2.performed -= instance.OnHotbar2;
-            @Hotbar2.canceled -= instance.OnHotbar2;
+            @DropItem.started -= instance.OnDropItem;
+            @DropItem.performed -= instance.OnDropItem;
+            @DropItem.canceled -= instance.OnDropItem;
+            @HotbarSlot0.started -= instance.OnHotbarSlot0;
+            @HotbarSlot0.performed -= instance.OnHotbarSlot0;
+            @HotbarSlot0.canceled -= instance.OnHotbarSlot0;
+            @HotbarSlot1.started -= instance.OnHotbarSlot1;
+            @HotbarSlot1.performed -= instance.OnHotbarSlot1;
+            @HotbarSlot1.canceled -= instance.OnHotbarSlot1;
+            @ToggleInventory.started -= instance.OnToggleInventory;
+            @ToggleInventory.performed -= instance.OnToggleInventory;
+            @ToggleInventory.canceled -= instance.OnToggleInventory;
         }
 
         /// <summary>
@@ -527,25 +559,32 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnInteract(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Cancel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "DropItem" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnCancel(InputAction.CallbackContext context);
+        void OnDropItem(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Hotbar1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "HotbarSlot0" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnHotbar1(InputAction.CallbackContext context);
+        void OnHotbarSlot0(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Hotbar2" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "HotbarSlot1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnHotbar2(InputAction.CallbackContext context);
+        void OnHotbarSlot1(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleInventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleInventory(InputAction.CallbackContext context);
     }
 }

@@ -1,24 +1,28 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using System.Collections;
 
 /// <summary>
-/// Connects the UI elements to the PlayerInventory component.
-/// Runs on the local player only.
+/// MULTIPLAYER-SAFE VERSION with Multi-Scene Support
+/// Creates a separate UI instance for each local player.
+/// Handles camera activation delays across scene changes.
+/// Remote players don't see or interact with your UI.
 /// </summary>
 public class InventoryUI : NetworkBehaviour
 {
     private PlayerInventory inventory;
+    private Canvas localCanvas; // Each player gets their own canvas reference
 
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
 
-        Debug.Log($"âš™ï¸ InventoryUI.OnNetworkSpawn() - IsOwner: {IsOwner}");
+        Debug.Log($"⚙️ InventoryUI.OnNetworkSpawn() - IsOwner: {IsOwner}");
 
         if (!IsOwner)
         {
-            Debug.Log("âŒ Not owner, disabling InventoryUI");
+            Debug.Log("❌ Not owner, disabling InventoryUI");
             enabled = false;
             return;
         }
@@ -26,139 +30,225 @@ public class InventoryUI : NetworkBehaviour
         inventory = GetComponent<PlayerInventory>();
         if (inventory == null)
         {
-            Debug.LogError("âŒ InventoryUI: No PlayerInventory component found!");
+            Debug.LogError("❌ InventoryUI: No PlayerInventory component found!");
             return;
         }
 
-        Debug.Log("âœ… Found PlayerInventory, waiting for GameCanvas...");
+        Debug.Log("✅ Found PlayerInventory, creating local UI...");
 
-        // Try to setup UI, with retries if canvas not found yet
-        StartCoroutine(WaitForCanvasAndSetup());
+        // Create UI for this player only
+        CreateLocalUI();
     }
 
-    System.Collections.IEnumerator WaitForCanvasAndSetup()
+    void CreateLocalUI()
     {
-        int attempts = 0;
-        while (attempts < 20) // Try for 2 seconds
-        {
-            Canvas canvas = FindCanvasInScene();
-            if (canvas != null)
-            {
-                Debug.Log($"âœ… Found canvas on attempt {attempts + 1}, setting up UI...");
-                SetupUI();
-                yield break;
-            }
+        // Create a new Canvas specifically for THIS player
+        GameObject canvasObj = new GameObject($"PlayerInventory_{OwnerClientId}");
+        localCanvas = canvasObj.AddComponent<Canvas>();
+        localCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        localCanvas.sortingOrder = 100; // Above other UI
+        
+        // Add required components
+        canvasObj.AddComponent<CanvasScaler>();
+        canvasObj.AddComponent<GraphicRaycaster>();
 
-            attempts++;
-            Debug.Log($"â³ Waiting for GameCanvas... attempt {attempts}/20");
-            yield return new WaitForSeconds(0.1f);
-        }
+        // Don't destroy when loading new scenes
+        DontDestroyOnLoad(canvasObj);
 
-        Debug.LogError("âŒ GameCanvas never appeared after 2 seconds!");
-    }
+        Debug.Log($"✅ Created local canvas for player {OwnerClientId}");
 
-    void SetupUI()
-    {
-        // Find canvas in scene
-        Canvas canvas = FindCanvasInScene();
-        if (canvas == null)
-        {
-            Debug.LogError("âŒ InventoryUI: No Canvas found in scene!");
-            return;
-        }
-
-        Debug.Log($"âœ… Found Canvas: {canvas.name}");
-        inventory.canvas = canvas;
-
-        // Find panels
-        Transform hotbar = canvas.transform.Find("HotbarPanel");
-        Transform inventoryPanel = canvas.transform.Find("InventoryPanel");
-
-        if (hotbar == null)
-        {
-            Debug.LogError("âŒ InventoryUI: HotbarPanel not found!");
-            Debug.Log($"Canvas children: {string.Join(", ", System.Linq.Enumerable.Select(canvas.GetComponentsInChildren<Transform>(), t => t.name))}");
-            return;
-        }
-
-        if (inventoryPanel == null)
-        {
-            Debug.LogError("âŒ InventoryUI: InventoryPanel not found!");
-            return;
-        }
-
-        Debug.Log("âœ… Found HotbarPanel and InventoryPanel");
-
-        inventory.hotbarPanel = hotbar.gameObject;
-        inventory.inventoryPanel = inventoryPanel.gameObject;
-
-        // Setup hotbar slots
-        inventory.hotbarSlotImages = new Image[inventory.hotbarSlots];
-        for (int i = 0; i < inventory.hotbarSlots; i++)
-        {
-            Transform slot = hotbar.Find($"HotbarSlot_{i}");
-            if (slot != null)
-            {
-                Debug.Log($"âœ… Found HotbarSlot_{i}");
-                inventory.hotbarSlotImages[i] = slot.GetComponent<Image>();
-
-                // Add drag/drop component
-                InventorySlot slotComponent = slot.gameObject.AddComponent<InventorySlot>();
-                slotComponent.slotIndex = i;
-                slotComponent.inventory = inventory;
-            }
-            else
-            {
-                Debug.LogError($"âŒ HotbarSlot_{i} not found!");
-            }
-        }
-
-        // Setup inventory slots
-        inventory.inventorySlotImages = new Image[inventory.inventorySlots];
-        for (int i = 0; i < inventory.inventorySlots; i++)
-        {
-            Transform slot = inventoryPanel.Find($"InventorySlot_{i}");
-            if (slot != null)
-            {
-                Debug.Log($"âœ… Found InventorySlot_{i}");
-                inventory.inventorySlotImages[i] = slot.GetComponent<Image>();
-
-                // Add drag/drop component
-                InventorySlot slotComponent = slot.gameObject.AddComponent<InventorySlot>();
-                slotComponent.slotIndex = i + inventory.hotbarSlots;
-                slotComponent.inventory = inventory;
-            }
-            else
-            {
-                Debug.LogError($"âŒ InventorySlot_{i} not found!");
-            }
-        }
+        // Create the UI structure
+        CreateHotbarPanel();
+        CreateInventoryPanel();
 
         // Get player movement reference
         inventory.playerMovement = GetComponent<PlayerMovement>();
-        Debug.Log($"PlayerMovement found: {inventory.playerMovement != null}");
 
-        // Find hand and drop positions
-        Camera cam = GetComponentInChildren<Camera>();
-        if (cam != null)
+        // Setup hand and drop positions (with retry for camera)
+        StartCoroutine(SetupHandAndDropPositionsWithRetry());
+
+        // Hide inventory panel initially
+        inventory.inventoryPanel.SetActive(false);
+
+        // Select first slot
+        inventory.SelectSlot(0);
+
+        Debug.Log("✅✅✅ InventoryUI: Local UI setup complete!");
+    }
+
+    void CreateHotbarPanel()
+    {
+        // Create hotbar panel
+        GameObject hotbarPanel = new GameObject("HotbarPanel");
+        hotbarPanel.transform.SetParent(localCanvas.transform, false);
+        
+        RectTransform hotbarRect = hotbarPanel.AddComponent<RectTransform>();
+        hotbarRect.anchorMin = new Vector2(0.5f, 0f); // Bottom center
+        hotbarRect.anchorMax = new Vector2(0.5f, 0f);
+        hotbarRect.pivot = new Vector2(0.5f, 0f);
+        hotbarRect.anchoredPosition = new Vector2(0, 20);
+        hotbarRect.sizeDelta = new Vector2(200, 60);
+
+        Image hotbarImage = hotbarPanel.AddComponent<Image>();
+        hotbarImage.color = new Color(0, 0, 0, 0.5f); // Semi-transparent background
+
+        inventory.hotbarPanel = hotbarPanel;
+
+        // Create hotbar slots
+        inventory.hotbarSlotImages = new Image[inventory.hotbarSlots];
+        for (int i = 0; i < inventory.hotbarSlots; i++)
         {
-            Debug.Log("âœ… Found camera");
-            Transform hand = cam.transform.Find("HandPosition");
-            if (hand == null)
+            GameObject slot = new GameObject($"HotbarSlot_{i}");
+            slot.transform.SetParent(hotbarPanel.transform, false);
+
+            RectTransform slotRect = slot.AddComponent<RectTransform>();
+            slotRect.sizeDelta = new Vector2(50, 50);
+            slotRect.anchoredPosition = new Vector2(-30 + (i * 60), 5);
+
+            Image slotImage = slot.AddComponent<Image>();
+            slotImage.color = new Color(1, 1, 1, 0.3f); // Semi-transparent slot
+
+            inventory.hotbarSlotImages[i] = slotImage;
+
+            // Add drag/drop component
+            InventorySlot slotComponent = slot.AddComponent<InventorySlot>();
+            slotComponent.slotIndex = i;
+            slotComponent.inventory = inventory;
+
+            Debug.Log($"✅ Created HotbarSlot_{i}");
+        }
+    }
+
+    void CreateInventoryPanel()
+    {
+        // Create inventory panel
+        GameObject invPanel = new GameObject("InventoryPanel");
+        invPanel.transform.SetParent(localCanvas.transform, false);
+
+        RectTransform invRect = invPanel.AddComponent<RectTransform>();
+        invRect.anchorMin = new Vector2(0.5f, 0.5f); // Center
+        invRect.anchorMax = new Vector2(0.5f, 0.5f);
+        invRect.pivot = new Vector2(0.5f, 0.5f);
+        invRect.anchoredPosition = Vector2.zero;
+        invRect.sizeDelta = new Vector2(300, 250);
+
+        Image invImage = invPanel.AddComponent<Image>();
+        invImage.color = new Color(0.2f, 0.2f, 0.2f, 0.9f); // Dark background
+
+        inventory.inventoryPanel = invPanel;
+
+        // Create inventory slots
+        inventory.inventorySlotImages = new Image[inventory.inventorySlots];
+        for (int i = 0; i < inventory.inventorySlots; i++)
+        {
+            GameObject slot = new GameObject($"InventorySlot_{i}");
+            slot.transform.SetParent(invPanel.transform, false);
+
+            RectTransform slotRect = slot.AddComponent<RectTransform>();
+            slotRect.sizeDelta = new Vector2(50, 50);
+            
+            // Arrange in grid (2 columns)
+            int row = i / 2;
+            int col = i % 2;
+            slotRect.anchoredPosition = new Vector2(-50 + (col * 110), 50 - (row * 70));
+
+            Image slotImage = slot.AddComponent<Image>();
+            slotImage.color = new Color(1, 1, 1, 0.3f); // Semi-transparent slot
+
+            inventory.inventorySlotImages[i] = slotImage;
+
+            // Add drag/drop component
+            InventorySlot slotComponent = slot.AddComponent<InventorySlot>();
+            slotComponent.slotIndex = i + inventory.hotbarSlots;
+            slotComponent.inventory = inventory;
+
+            Debug.Log($"✅ Created InventorySlot_{i}");
+        }
+    }
+
+    IEnumerator SetupHandAndDropPositionsWithRetry()
+    {
+        // Camera might not be active yet (disabled in lobby scene)
+        // Keep trying for up to 5 seconds
+        int attempts = 0;
+        int maxAttempts = 50; // 5 seconds
+        
+        while (attempts < maxAttempts)
+        {
+            Camera cam = TryFindCamera();
+            
+            if (cam != null)
             {
-                Debug.Log("Creating HandPosition...");
-                hand = new GameObject("HandPosition").transform;
-                hand.SetParent(cam.transform);
-                hand.localPosition = new Vector3(0.3f, -0.2f, 0.5f);
+                Debug.Log($"✅ Found camera on attempt {attempts + 1}");
+                SetupHandPosition(cam);
+                break;
             }
-            inventory.handPosition = hand;
-            Debug.Log("âœ… HandPosition set");
+            
+            attempts++;
+            yield return new WaitForSeconds(0.1f);
         }
-        else
+        
+        if (attempts >= maxAttempts)
         {
-            Debug.LogError("âŒ No camera found!");
+            Debug.LogWarning("⚠️ Camera not found after 5 seconds. Hand display will not work until camera is active.");
         }
+        
+        // Setup drop position (doesn't need camera)
+        SetupDropPosition();
+    }
 
+    Camera TryFindCamera()
+    {
+        // Try multiple methods to find the camera
+        
+        // Method 1: GetComponentInChildren (include inactive)
+        Camera cam = GetComponentInChildren<Camera>(true);
+        if (cam != null && cam.gameObject.activeInHierarchy)
+        {
+            return cam;
+        }
+        
+        // Method 2: Check LocalPlayerReference
+        if (LocalPlayerReference.Instance != null)
+        {
+            cam = LocalPlayerReference.Instance.PlayerCamera;
+            if (cam != null && cam.gameObject.activeInHierarchy)
+            {
+                Debug.Log("Found camera via LocalPlayerReference");
+                return cam;
+            }
+        }
+        
+        // Method 3: Find by NetworkPlayer reference
+        NetworkPlayer netPlayer = GetComponent<NetworkPlayer>();
+        if (netPlayer != null)
+        {
+            cam = netPlayer.GetComponentInChildren<Camera>(true);
+            if (cam != null && cam.gameObject.activeInHierarchy)
+            {
+                return cam;
+            }
+        }
+        
+        return null;
+    }
+
+    void SetupHandPosition(Camera cam)
+    {
+        Transform hand = cam.transform.Find("HandPosition");
+        if (hand == null)
+        {
+            Debug.Log("Creating HandPosition...");
+            hand = new GameObject("HandPosition").transform;
+            hand.SetParent(cam.transform);
+            hand.localPosition = new Vector3(0.3f, -0.2f, 0.5f);
+        }
+        inventory.handPosition = hand;
+        Debug.Log("✅ HandPosition set");
+    }
+
+    void SetupDropPosition()
+    {
         Transform drop = transform.Find("DropPosition");
         if (drop == null)
         {
@@ -167,80 +257,16 @@ public class InventoryUI : NetworkBehaviour
             drop.SetParent(transform);
             drop.localPosition = new Vector3(0, 1, 1);
         }
-
-        // Find camera controller (around line 145, after camera check)
-        if (cam != null)
-        {
-            Debug.Log("âœ… Found camera");
-            Transform hand = cam.transform.Find("HandPosition");
-            if (hand == null)
-            {
-                Debug.Log("Creating HandPosition...");
-                hand = new GameObject("HandPosition").transform;
-                hand.SetParent(cam.transform);
-                hand.localPosition = new Vector3(0.3f, -0.2f, 0.5f);
-            }
-            inventory.handPosition = hand;
-            Debug.Log("âœ… HandPosition set");
-
-            // Find camera controller script
-            // Try common script names
-            MonoBehaviour camController = cam.GetComponent<MonoBehaviour>();
-            if (camController != null)
-            {
-                // Check if it's a look/camera controller (you can add more names here)
-                string scriptName = camController.GetType().Name;
-                if (scriptName.Contains("Look") || scriptName.Contains("Camera") || scriptName.Contains("Mouse"))
-                {
-                    inventory.cameraController = camController;
-                    Debug.Log($"âœ… Found camera controller: {scriptName}");
-                }
-            }
-        }
         inventory.dropPosition = drop;
-        Debug.Log("âœ… DropPosition set");
-
-        // Hide inventory panel initially
-        inventoryPanel.gameObject.SetActive(false);
-        Debug.Log("âœ… Inventory panel hidden");
-
-        // Select first slot
-        inventory.SelectSlot(0);
-        Debug.Log("âœ… Selected slot 0");
-
-        Debug.Log("âœ…âœ…âœ… InventoryUI: Setup complete!");
-
+        Debug.Log("✅ DropPosition set");
     }
-    Canvas FindCanvasInScene()
+
+    void OnDestroy()
     {
-        // First, try to find the persistent GameCanvas
-        Canvas[] allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-
-        Debug.Log($"ðŸ” Found {allCanvases.Length} canvases in scene");
-
-        foreach (Canvas c in allCanvases)
+        // Clean up the UI when player disconnects
+        if (localCanvas != null)
         {
-            Debug.Log($"   - Canvas: {c.name}");
-
-            // Look for GameCanvas or canvas with PersistentCanvas component
-            if (c.name == "GameCanvas" || c.GetComponent<PersistentCanvas>() != null)
-            {
-                Debug.Log($"âœ… Found GameCanvas: {c.name}");
-                return c;
-            }
+            Destroy(localCanvas.gameObject);
         }
-
-        // Fallback: look for HotbarPanel child
-        foreach (Canvas c in allCanvases)
-        {
-            if (c.transform.Find("HotbarPanel") != null)
-            {
-                Debug.Log($"âœ… Found canvas with HotbarPanel: {c.name}");
-                return c;
-            }
-        }
-
-        Debug.LogError("âŒ Could not find GameCanvas!");
-        return null;
     }
 }
