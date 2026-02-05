@@ -9,6 +9,7 @@ using System.Collections;
 /// Handles camera activation delays across scene changes.
 /// Remote players don't see or interact with your UI.
 /// </summary>
+
 public class InventoryUI : NetworkBehaviour
 {
     private PlayerInventory inventory;
