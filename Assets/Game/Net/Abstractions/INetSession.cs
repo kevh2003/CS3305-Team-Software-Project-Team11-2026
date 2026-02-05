@@ -63,7 +63,7 @@ public interface INetSession
     Task<NetStartResult> JoinOnlineAsync(string joinCode);
 
     // LAN (Direct)
-    NetStartResult HostLan(ushort port);
+    NetStartResult HostLanAutoPort(out ushort chosenPort);
     NetStartResult JoinLan(string address, ushort port);
 
     // Host Authoritative Scene flow
