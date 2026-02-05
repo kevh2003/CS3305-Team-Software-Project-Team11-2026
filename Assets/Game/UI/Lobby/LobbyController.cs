@@ -18,6 +18,7 @@ public sealed class LobbyController : MonoBehaviour
     [SerializeField] private Button startGameButton;
     [SerializeField] private Button leaveButton;
     [SerializeField] private TMP_Text statusText;
+    [SerializeField] private TMP_Text joinInfoText;
 
     private void Start()
     {
@@ -43,6 +44,14 @@ public sealed class LobbyController : MonoBehaviour
 
         if (statusText != null)
             statusText.text = isHost ? "Host: you can start the game." : "Client: waiting for host.";
+
+        if (joinInfoText != null)
+        {
+            if (Services.NetSession.IsHost && Services.NetSession is NgoNetSession ngo && ngo.LastHostPort != 0)
+                joinInfoText.text = $"Hosting on {ngo.LastHostIp}:{ngo.LastHostPort}";
+            else
+                joinInfoText.text = "";
+        }
     }
 
     private void StartGame()
