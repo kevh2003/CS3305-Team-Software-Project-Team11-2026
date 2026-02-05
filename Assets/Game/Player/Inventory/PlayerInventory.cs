@@ -41,7 +41,12 @@ public class PlayerInventory : NetworkBehaviour
     {
         itemIcons = new Sprite[hotbarSlots + inventorySlots];
         itemMaterials = new Material[hotbarSlots + inventorySlots];
+<<<<<<< HEAD
         Debug.Log("✅ PlayerInventory: Initialized in Awake");
+=======
+        inputActions = new PlayerInputActions();
+        Debug.Log("PlayerInventory: PlayerInputActions created in Awake");
+>>>>>>> e3a13ed (removing emojis)
     }
 
     public override void OnNetworkSpawn()
@@ -52,12 +57,26 @@ public class PlayerInventory : NetworkBehaviour
 
         if (!IsOwner)
         {
-            Debug.Log("❌ Not owner, disabling PlayerInventory");
+            Debug.Log("Not owner, disabling PlayerInventory");
             enabled = false;
             return;
         }
 
+<<<<<<< HEAD
         Debug.Log("✅ Is owner, inventory ready");
+=======
+        // Safety check
+        if (inputActions == null)
+        {
+            Debug.LogWarning("⚠️ inputActions was null in OnNetworkSpawn, creating new");
+            inputActions = new PlayerInputActions();
+        }
+
+        Debug.Log("Is owner, enabling input");
+        inputActions.Enable();
+        SetupInputCallbacks();
+        Debug.Log("Input callbacks setup complete");
+>>>>>>> e3a13ed (removing emojis)
     }
 
 
@@ -73,11 +92,19 @@ public class PlayerInventory : NetworkBehaviour
         if (value.isPressed) SelectSlot(1);
     }
 
+<<<<<<< HEAD
     public void OnToggleInventory(InputValue value)
     {
         if (!IsOwner) return;
         if (value.isPressed) ToggleInventory();
     }
+=======
+        if (inputActions == null)
+        {
+            Debug.LogError("inputActions is null in SetupInputCallbacks!");
+            return;
+        }
+>>>>>>> e3a13ed (removing emojis)
 
     public void OnDropItem(InputValue value)
 {
@@ -94,10 +121,28 @@ public class PlayerInventory : NetworkBehaviour
     }
 }
 
+<<<<<<< HEAD
     public void OnScrollWheel(InputValue value)
     {
         if (!IsOwner) return;
         scrollWheelValue = value.Get<float>();
+=======
+            Debug.Log("Subscribing to HotbarSlot2...");
+            inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
+
+            Debug.Log("Subscribing to ToggleInventory...");
+            inputActions.Player.ToggleInventory.performed += ctx => ToggleInventory();
+
+            Debug.Log("Subscribing to DropItem...");
+            inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
+
+            Debug.Log("Input callbacks registered");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error in SetupInputCallbacks: {e.Message}\nStack: {e.StackTrace}");
+        }
+>>>>>>> e3a13ed (removing emojis)
     }
 
     void Update()
@@ -135,12 +180,25 @@ public class PlayerInventory : NetworkBehaviour
     // Validation check
     if (index < 0 || index >= hotbarSlots)
     {
+<<<<<<< HEAD
         Debug.LogError($"❌ INVALID SLOT INDEX! index={index}, hotbarSlots={hotbarSlots}");
         Debug.Log($"   Calculation: index < 0? {index < 0}");
         Debug.Log($"   Calculation: index >= hotbarSlots? {index >= hotbarSlots}");
         Debug.Log("   RETURNING WITHOUT CHANGING SLOT!");
         Debug.Log("═══════════════════════════════");
         return;
+=======
+        if (index < 0 || index >= hotbarSlots) return;
+
+        selectedSlot = index;
+
+        Debug.Log($"   SelectSlot({index}) called");
+        Debug.Log($"   handPosition null? {handPosition == null}");
+        Debug.Log($"   itemMaterials[{index}] null? {(index < itemMaterials.Length ? itemMaterials[index] == null : true)}");
+
+        UpdateHotbarOutlines();
+        UpdateHandDisplay();
+>>>>>>> e3a13ed (removing emojis)
     }
 
     // Update selected slot
@@ -221,7 +279,7 @@ public class PlayerInventory : NetworkBehaviour
                     rend.material = itemMaterials[selectedSlot];
                 }
 
-                Debug.Log($"✅ Displaying item in hand at slot {selectedSlot}");
+                Debug.Log($"Displaying item in hand at slot {selectedSlot}");
             }
         }
     }
@@ -303,7 +361,7 @@ public class PlayerInventory : NetworkBehaviour
                     inventorySlotImages[i - hotbarSlots].color = Color.white;
                 }
 
-                Debug.Log($"✅ Added item to slot {i}");
+                Debug.Log($"Added item to slot {i}");
 
                 // If added to selected slot, update hand display
                 if (i == selectedSlot)
@@ -382,7 +440,7 @@ public class PlayerInventory : NetworkBehaviour
         if (slotA < 0 || slotA >= itemIcons.Length) return;
         if (slotB < 0 || slotB >= itemIcons.Length) return;
 
-        Debug.Log($"🔄 Swapping slot {slotA} with slot {slotB}");
+        Debug.Log($"Swapping slot {slotA} with slot {slotB}");
 
         // Swap icons
         Sprite tempIcon = itemIcons[slotA];
