@@ -36,6 +36,7 @@ public class PlayerInventory : NetworkBehaviour
 
     private GameObject handItem;
     private float scrollWheelValue = 0f;
+    private PlayerInputActions inputActions;
 
     void Awake()
     {
@@ -61,7 +62,7 @@ public class PlayerInventory : NetworkBehaviour
         // Safety check
         if (inputActions == null)
         {
-            Debug.LogWarning("⚠️ inputActions was null in OnNetworkSpawn, creating new");
+            Debug.LogWarning("inputActions was null in OnNetworkSpawn, creating new");
             inputActions = new PlayerInputActions();
         }
 
@@ -84,42 +85,40 @@ public class PlayerInventory : NetworkBehaviour
         if (value.isPressed) SelectSlot(1);
     }
 
+    private void SetupInputCallbacks()
+    {
         if (inputActions == null)
         {
             Debug.LogError("inputActions is null in SetupInputCallbacks!");
             return;
         }
 
-public void OnDropItem(InputValue value)
-{
-    if (!IsOwner) return;
-
-    Debug.Log("🔑 Q PRESSED!");
-    Debug.Log($"   value.isPressed: {value.isPressed}");
-    Debug.Log($"   selectedSlot: {selectedSlot}");
-
-    if (value.isPressed)
-    {
-        Debug.Log("   Calling DropItem()...");
-        DropItem(selectedSlot);
-    }
-}
-
-Debug.Log("Subscribing to HotbarSlot2...");
-inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
-
-Debug.Log("Subscribing to ToggleInventory...");
-inputActions.Player.ToggleInventory.performed += ctx => ToggleInventory();
-
-Debug.Log("Subscribing to DropItem...");
-inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
-
-Debug.Log("Input callbacks registered");
+        try
+        {
+            inputActions.Player.HotbarSlot0.performed += ctx => SelectSlot(0);
+            inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
+            inputActions.Player.ToggleInventory.performed += ctx => ToggleInventory();
+            inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
         }
         catch (System.Exception e)
         {
-    Debug.LogError($"Error in SetupInputCallbacks: {e.Message}\nStack: {e.StackTrace}");
-}
+            Debug.LogError($"Error in SetupInputCallbacks: {e.Message}\nStack: {e.StackTrace}");
+        }
+    }
+
+    public void OnDropItem(InputValue value)
+    {
+        if (!IsOwner) return;
+
+        Debug.Log("Q PRESSED!");
+        Debug.Log($"value.isPressed: {value.isPressed}");
+        Debug.Log($"selectedSlot: {selectedSlot}");
+
+        if (value.isPressed)
+        {
+            Debug.Log("Calling DropItem()...");
+            DropItem(selectedSlot);
+        }
     }
 
     void Update()
@@ -150,9 +149,9 @@ void HandleScrollWheel()
 public void SelectSlot(int index)
 {
     Debug.Log("═══════════════════════════════");
-    Debug.Log($"📍 SelectSlot() called with index: {index}");
-    Debug.Log($"   Current selectedSlot before change: {selectedSlot}");
-    Debug.Log($"   Total hotbarSlots: {hotbarSlots}");
+    Debug.Log($"SelectSlot() called with index: {index}");
+    Debug.Log($"Current selectedSlot before change: {selectedSlot}");
+    Debug.Log($"Total hotbarSlots: {hotbarSlots}");
 
     // Validation check
     if (index < 0 || index >= hotbarSlots)
@@ -161,9 +160,9 @@ public void SelectSlot(int index)
 
         selectedSlot = index;
 
-        Debug.Log($"   SelectSlot({index}) called");
-        Debug.Log($"   handPosition null? {handPosition == null}");
-        Debug.Log($"   itemMaterials[{index}] null? {(index < itemMaterials.Length ? itemMaterials[index] == null : true)}");
+        Debug.Log($"SelectSlot({index}) called");
+        Debug.Log($"handPosition null? {handPosition == null}");
+        Debug.Log($"itemMaterials[{index}] null? {(index < itemMaterials.Length ? itemMaterials[index] == null : true)}");
 
         UpdateHotbarOutlines();
         UpdateHandDisplay();
@@ -171,27 +170,27 @@ public void SelectSlot(int index)
 
     // Update selected slot
     selectedSlot = index;
-    Debug.Log($"✅ selectedSlot changed to: {selectedSlot}");
+    Debug.Log($"selectedSlot changed to: {selectedSlot}");
 
-    Debug.Log($"   handPosition null? {handPosition == null}");
+    Debug.Log($"handPosition null? {handPosition == null}");
 
     if (index < itemMaterials.Length)
     {
-        Debug.Log($"   itemMaterials[{index}] null? {itemMaterials[index] == null}");
+        Debug.Log($"itemMaterials[{index}] null? {itemMaterials[index] == null}");
     }
     else
     {
-        Debug.LogError($"❌ Index {index} is out of bounds for itemMaterials array!");
+        Debug.LogError($"Index {index} is out of bounds for itemMaterials array!");
     }
 
     // Update visuals
-    Debug.Log("   Calling UpdateHotbarOutlines()...");
+    Debug.Log("Calling UpdateHotbarOutlines()...");
     UpdateHotbarOutlines();
 
-    Debug.Log("   Calling UpdateHandDisplay()...");
+    Debug.Log("Calling UpdateHandDisplay()...");
     UpdateHandDisplay();
 
-    Debug.Log("✅ SelectSlot() completed successfully");
+    Debug.Log("SelectSlot() completed successfully");
     Debug.Log("═══════════════════════════════");
 }
 
