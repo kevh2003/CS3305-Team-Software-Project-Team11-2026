@@ -19,11 +19,11 @@ public class InventoryUI : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
-        Debug.Log($"⚙️ InventoryUI.OnNetworkSpawn() - IsOwner: {IsOwner}");
+        Debug.Log($"InventoryUI.OnNetworkSpawn() - IsOwner: {IsOwner}");
 
         if (!IsOwner)
         {
-            Debug.Log("❌ Not owner, disabling InventoryUI");
+            Debug.Log("Not owner, disabling InventoryUI");
             enabled = false;
             return;
         }
@@ -31,11 +31,11 @@ public class InventoryUI : NetworkBehaviour
         inventory = GetComponent<PlayerInventory>();
         if (inventory == null)
         {
-            Debug.LogError("❌ InventoryUI: No PlayerInventory component found!");
+            Debug.LogError("InventoryUI: No PlayerInventory component found!");
             return;
         }
 
-        Debug.Log("✅ Found PlayerInventory, creating local UI...");
+        Debug.Log("Found PlayerInventory, creating local UI...");
 
         // Create UI for this player only
         CreateLocalUI();
@@ -56,7 +56,7 @@ public class InventoryUI : NetworkBehaviour
         // Don't destroy when loading new scenes
         DontDestroyOnLoad(canvasObj);
 
-        Debug.Log($"✅ Created local canvas for player {OwnerClientId}");
+        Debug.Log($"Created local canvas for player {OwnerClientId}");
 
         // Create the UI structure
         CreateHotbarPanel();
@@ -74,7 +74,7 @@ public class InventoryUI : NetworkBehaviour
         // Select first slot
         inventory.SelectSlot(0);
 
-        Debug.Log("✅✅✅ InventoryUI: Local UI setup complete!");
+        Debug.Log("InventoryUI: Local UI setup complete!");
     }
 
     void CreateHotbarPanel()
@@ -116,7 +116,7 @@ public class InventoryUI : NetworkBehaviour
             slotComponent.slotIndex = i;
             slotComponent.inventory = inventory;
 
-            Debug.Log($"✅ Created HotbarSlot_{i}");
+            Debug.Log($"Created HotbarSlot_{i}");
         }
     }
 
@@ -163,7 +163,7 @@ public class InventoryUI : NetworkBehaviour
             slotComponent.slotIndex = i + inventory.hotbarSlots;
             slotComponent.inventory = inventory;
 
-            Debug.Log($"✅ Created InventorySlot_{i}");
+            Debug.Log($"Created InventorySlot_{i}");
         }
     }
 
@@ -180,7 +180,7 @@ public class InventoryUI : NetworkBehaviour
             
             if (cam != null)
             {
-                Debug.Log($"✅ Found camera on attempt {attempts + 1}");
+                Debug.Log($"Found camera on attempt {attempts + 1}");
                 SetupHandPosition(cam);
                 break;
             }
@@ -191,7 +191,7 @@ public class InventoryUI : NetworkBehaviour
         
         if (attempts >= maxAttempts)
         {
-            Debug.LogWarning("⚠️ Camera not found after 5 seconds. Hand display will not work until camera is active.");
+            Debug.LogWarning("Camera not found after 5 seconds. Hand display will not work until camera is active.");
         }
         
         // Setup drop position (doesn't need camera)
@@ -259,7 +259,7 @@ public class InventoryUI : NetworkBehaviour
             drop.localPosition = new Vector3(0, 1, 1);
         }
         inventory.dropPosition = drop;
-        Debug.Log("✅ DropPosition set");
+        Debug.Log("DropPosition set");
     }
 
     void OnDestroy()

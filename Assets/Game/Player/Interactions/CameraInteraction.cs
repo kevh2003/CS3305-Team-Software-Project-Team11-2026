@@ -24,7 +24,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         // Safety: ensure CCTV never starts active
         if (cctvCamera != null)
             cctvCamera.enabled = false;
-        
+
         if (cctvCameraLook != null)
             cctvCameraLook.enabled = false;
 
@@ -82,7 +82,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         // Switch cameras
         if (player.PlayerCamera != null)
             player.PlayerCamera.enabled = false;
-        
+
         if (cctvCamera != null)
             cctvCamera.enabled = true;
 
@@ -110,7 +110,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         // Switch cameras back
         if (cctvCamera != null)
             cctvCamera.enabled = false;
-        
+
         if (player.PlayerCamera != null)
             player.PlayerCamera.enabled = true;
 

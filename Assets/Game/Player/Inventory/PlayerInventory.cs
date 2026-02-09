@@ -41,12 +41,8 @@ public class PlayerInventory : NetworkBehaviour
     {
         itemIcons = new Sprite[hotbarSlots + inventorySlots];
         itemMaterials = new Material[hotbarSlots + inventorySlots];
-<<<<<<< HEAD
-        Debug.Log("✅ PlayerInventory: Initialized in Awake");
-=======
         inputActions = new PlayerInputActions();
         Debug.Log("PlayerInventory: PlayerInputActions created in Awake");
->>>>>>> e3a13ed (removing emojis)
     }
 
     public override void OnNetworkSpawn()
@@ -62,9 +58,6 @@ public class PlayerInventory : NetworkBehaviour
             return;
         }
 
-<<<<<<< HEAD
-        Debug.Log("✅ Is owner, inventory ready");
-=======
         // Safety check
         if (inputActions == null)
         {
@@ -76,7 +69,6 @@ public class PlayerInventory : NetworkBehaviour
         inputActions.Enable();
         SetupInputCallbacks();
         Debug.Log("Input callbacks setup complete");
->>>>>>> e3a13ed (removing emojis)
     }
 
 
@@ -92,102 +84,79 @@ public class PlayerInventory : NetworkBehaviour
         if (value.isPressed) SelectSlot(1);
     }
 
-<<<<<<< HEAD
-    public void OnToggleInventory(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed) ToggleInventory();
-    }
-=======
         if (inputActions == null)
         {
             Debug.LogError("inputActions is null in SetupInputCallbacks!");
             return;
         }
->>>>>>> e3a13ed (removing emojis)
 
-    public void OnDropItem(InputValue value)
+public void OnDropItem(InputValue value)
 {
     if (!IsOwner) return;
-    
+
     Debug.Log("🔑 Q PRESSED!");
     Debug.Log($"   value.isPressed: {value.isPressed}");
     Debug.Log($"   selectedSlot: {selectedSlot}");
-    
-    if (value.isPressed) 
+
+    if (value.isPressed)
     {
         Debug.Log("   Calling DropItem()...");
         DropItem(selectedSlot);
     }
 }
 
-<<<<<<< HEAD
-    public void OnScrollWheel(InputValue value)
-    {
-        if (!IsOwner) return;
-        scrollWheelValue = value.Get<float>();
-=======
-            Debug.Log("Subscribing to HotbarSlot2...");
-            inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
+Debug.Log("Subscribing to HotbarSlot2...");
+inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
 
-            Debug.Log("Subscribing to ToggleInventory...");
-            inputActions.Player.ToggleInventory.performed += ctx => ToggleInventory();
+Debug.Log("Subscribing to ToggleInventory...");
+inputActions.Player.ToggleInventory.performed += ctx => ToggleInventory();
 
-            Debug.Log("Subscribing to DropItem...");
-            inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
+Debug.Log("Subscribing to DropItem...");
+inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
 
-            Debug.Log("Input callbacks registered");
+Debug.Log("Input callbacks registered");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Error in SetupInputCallbacks: {e.Message}\nStack: {e.StackTrace}");
-        }
->>>>>>> e3a13ed (removing emojis)
+    Debug.LogError($"Error in SetupInputCallbacks: {e.Message}\nStack: {e.StackTrace}");
+}
     }
 
     void Update()
+{
+    if (!IsOwner) return;
+    HandleScrollWheel();
+}
+
+void HandleScrollWheel()
+{
+    if (hotbarSlotImages == null || hotbarSlotImages.Length == 0)
     {
-        if (!IsOwner) return;
-        HandleScrollWheel();
+        return; // Safety check - not ready yet
     }
 
-    void HandleScrollWheel()
+    if (scrollWheelValue > 0.1f)
     {
-        if (hotbarSlotImages == null || hotbarSlotImages.Length == 0)
-        {
-            return; // Safety check - not ready yet
-        }
-
-        if (scrollWheelValue > 0.1f)
-        {
-            SelectSlot((selectedSlot + 1) % hotbarSlots);
-            scrollWheelValue = 0f;
-        }
-        else if (scrollWheelValue < -0.1f)
-        {
-            SelectSlot((selectedSlot - 1 + hotbarSlots) % hotbarSlots);
-            scrollWheelValue = 0f;
-        }
+        SelectSlot((selectedSlot + 1) % hotbarSlots);
+        scrollWheelValue = 0f;
     }
+    else if (scrollWheelValue < -0.1f)
+    {
+        SelectSlot((selectedSlot - 1 + hotbarSlots) % hotbarSlots);
+        scrollWheelValue = 0f;
+    }
+}
 
-  public void SelectSlot(int index)
+public void SelectSlot(int index)
 {
     Debug.Log("═══════════════════════════════");
     Debug.Log($"📍 SelectSlot() called with index: {index}");
     Debug.Log($"   Current selectedSlot before change: {selectedSlot}");
     Debug.Log($"   Total hotbarSlots: {hotbarSlots}");
-    
+
     // Validation check
     if (index < 0 || index >= hotbarSlots)
     {
-<<<<<<< HEAD
-        Debug.LogError($"❌ INVALID SLOT INDEX! index={index}, hotbarSlots={hotbarSlots}");
-        Debug.Log($"   Calculation: index < 0? {index < 0}");
-        Debug.Log($"   Calculation: index >= hotbarSlots? {index >= hotbarSlots}");
-        Debug.Log("   RETURNING WITHOUT CHANGING SLOT!");
-        Debug.Log("═══════════════════════════════");
-        return;
-=======
         if (index < 0 || index >= hotbarSlots) return;
 
         selectedSlot = index;
@@ -198,7 +167,6 @@ public class PlayerInventory : NetworkBehaviour
 
         UpdateHotbarOutlines();
         UpdateHandDisplay();
->>>>>>> e3a13ed (removing emojis)
     }
 
     // Update selected slot
@@ -206,7 +174,7 @@ public class PlayerInventory : NetworkBehaviour
     Debug.Log($"✅ selectedSlot changed to: {selectedSlot}");
 
     Debug.Log($"   handPosition null? {handPosition == null}");
-    
+
     if (index < itemMaterials.Length)
     {
         Debug.Log($"   itemMaterials[{index}] null? {itemMaterials[index] == null}");
@@ -219,267 +187,267 @@ public class PlayerInventory : NetworkBehaviour
     // Update visuals
     Debug.Log("   Calling UpdateHotbarOutlines()...");
     UpdateHotbarOutlines();
-    
+
     Debug.Log("   Calling UpdateHandDisplay()...");
     UpdateHandDisplay();
-    
+
     Debug.Log("✅ SelectSlot() completed successfully");
     Debug.Log("═══════════════════════════════");
 }
 
-    void UpdateHotbarOutlines()
+void UpdateHotbarOutlines()
+{
+    if (hotbarSlotImages == null) return;
+
+    for (int i = 0; i < hotbarSlotImages.Length; i++)
     {
-        if (hotbarSlotImages == null) return;
+        if (hotbarSlotImages[i] == null) continue;
 
-        for (int i = 0; i < hotbarSlotImages.Length; i++)
+        Outline outline = hotbarSlotImages[i].GetComponent<Outline>();
+        if (outline == null)
         {
-            if (hotbarSlotImages[i] == null) continue;
+            outline = hotbarSlotImages[i].gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color32(139, 0, 0, 255);
+            outline.effectDistance = new Vector2(3, 3);
+        }
+        outline.enabled = (i == selectedSlot);
+    }
+}
 
-            Outline outline = hotbarSlotImages[i].GetComponent<Outline>();
-            if (outline == null)
-            {
-                outline = hotbarSlotImages[i].gameObject.AddComponent<Outline>();
-                outline.effectColor = new Color32(139, 0, 0, 255);
-                outline.effectDistance = new Vector2(3, 3);
-            }
-            outline.enabled = (i == selectedSlot);
+void UpdateHandDisplay()
+{
+    // Clear existing hand item
+    if (handPosition != null)
+    {
+        foreach (Transform child in handPosition)
+        {
+            Destroy(child.gameObject);
         }
     }
 
-    void UpdateHandDisplay()
+    // Show item in selected slot
+    if (selectedSlot < hotbarSlots && itemMaterials[selectedSlot] != null)
     {
-        // Clear existing hand item
         if (handPosition != null)
         {
-            foreach (Transform child in handPosition)
+            GameObject handItem = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            handItem.transform.SetParent(handPosition);
+            handItem.transform.localPosition = Vector3.zero;
+            handItem.transform.localRotation = Quaternion.identity;
+            handItem.transform.localScale = Vector3.one * 0.3f; // Small cube in hand
+
+            // Remove collider so it doesn't interfere
+            Collider col = handItem.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+
+            // Apply material
+            Renderer rend = handItem.GetComponent<Renderer>();
+            if (rend != null)
             {
-                Destroy(child.gameObject);
+                rend.material = itemMaterials[selectedSlot];
+            }
+
+            Debug.Log($"Displaying item in hand at slot {selectedSlot}");
+        }
+    }
+}
+
+void ToggleInventory()
+{
+    if (inventoryPanel == null) return;
+
+    bool isOpen = !inventoryPanel.activeSelf;
+    inventoryPanel.SetActive(isOpen);
+
+    if (isOpen)
+    {
+        // Inventory opened
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        if (playerMovement != null)
+            playerMovement.enabled = false;
+
+        // Disable all camera scripts
+        if (scriptsToDisable != null)
+        {
+            foreach (var script in scriptsToDisable)
+            {
+                if (script != null) script.enabled = false;
             }
         }
 
-        // Show item in selected slot
-        if (selectedSlot < hotbarSlots && itemMaterials[selectedSlot] != null)
-        {
-            if (handPosition != null)
-            {
-                GameObject handItem = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                handItem.transform.SetParent(handPosition);
-                handItem.transform.localPosition = Vector3.zero;
-                handItem.transform.localRotation = Quaternion.identity;
-                handItem.transform.localScale = Vector3.one * 0.3f; // Small cube in hand
-
-                // Remove collider so it doesn't interfere
-                Collider col = handItem.GetComponent<Collider>();
-                if (col != null) Destroy(col);
-
-                // Apply material
-                Renderer rend = handItem.GetComponent<Renderer>();
-                if (rend != null)
-                {
-                    rend.material = itemMaterials[selectedSlot];
-                }
-
-                Debug.Log($"Displaying item in hand at slot {selectedSlot}");
-            }
-        }
+        // Hide crosshair
+        Crosshair crosshair = GetComponent<Crosshair>();
+        if (crosshair != null)
+            crosshair.Hide();
     }
-
-    void ToggleInventory()
+    else
     {
-        if (inventoryPanel == null) return;
+        // Inventory closed
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
-        bool isOpen = !inventoryPanel.activeSelf;
-        inventoryPanel.SetActive(isOpen);
+        if (playerMovement != null)
+            playerMovement.enabled = true;
 
-        if (isOpen)
+        // Re-enable all camera scripts
+        if (scriptsToDisable != null)
         {
-            // Inventory opened
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-            if (playerMovement != null)
-                playerMovement.enabled = false;
-
-            // Disable all camera scripts
-            if (scriptsToDisable != null)
+            foreach (var script in scriptsToDisable)
             {
-                foreach (var script in scriptsToDisable)
-                {
-                    if (script != null) script.enabled = false;
-                }
-            }
-
-            // Hide crosshair
-            Crosshair crosshair = GetComponent<Crosshair>();
-            if (crosshair != null)
-                crosshair.Hide();
-        }
-        else
-        {
-            // Inventory closed
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-
-            if (playerMovement != null)
-                playerMovement.enabled = true;
-
-            // Re-enable all camera scripts
-            if (scriptsToDisable != null)
-            {
-                foreach (var script in scriptsToDisable)
-                {
-                    if (script != null) script.enabled = true;
-                }
-            }
-
-            // Show crosshair
-            Crosshair crosshair = GetComponent<Crosshair>();
-            if (crosshair != null)
-                crosshair.Show();
-        }
-    }
-
-    public bool AddItem(Sprite icon, Material mat)
-    {
-        // Find empty slot
-        for (int i = 0; i < itemIcons.Length; i++)
-        {
-            if (itemIcons[i] == null)
-            {
-                itemIcons[i] = icon;
-                itemMaterials[i] = mat;
-
-                // Update visual
-                if (i < hotbarSlots && hotbarSlotImages[i] != null)
-                {
-                    hotbarSlotImages[i].sprite = icon;
-                    hotbarSlotImages[i].color = Color.white;
-                }
-                else if (i >= hotbarSlots && inventorySlotImages[i - hotbarSlots] != null)
-                {
-                    inventorySlotImages[i - hotbarSlots].sprite = icon;
-                    inventorySlotImages[i - hotbarSlots].color = Color.white;
-                }
-
-                Debug.Log($"Added item to slot {i}");
-
-                // If added to selected slot, update hand display
-                if (i == selectedSlot)
-                {
-                    UpdateHandDisplay();
-                }
-
-                return true;
+                if (script != null) script.enabled = true;
             }
         }
 
-        Debug.LogWarning("Inventory full!");
-        return false;
+        // Show crosshair
+        Crosshair crosshair = GetComponent<Crosshair>();
+        if (crosshair != null)
+            crosshair.Show();
     }
+}
 
-    public void RemoveItem(int index)
+public bool AddItem(Sprite icon, Material mat)
+{
+    // Find empty slot
+    for (int i = 0; i < itemIcons.Length; i++)
     {
-        if (index < 0 || index >= itemIcons.Length) return;
-        itemIcons[index] = null;
-        itemMaterials[index] = null;
-        UpdateSlotVisual(index);
-        if (index == selectedSlot) UpdateHandDisplay();
-    }
-
-    void UpdateSlotVisual(int index)
-    {
-        Image slotImage = GetSlotImage(index);
-        if (slotImage != null)
+        if (itemIcons[i] == null)
         {
-            slotImage.sprite = itemIcons[index];
-            slotImage.enabled = (itemIcons[index] != null);
+            itemIcons[i] = icon;
+            itemMaterials[i] = mat;
+
+            // Update visual
+            if (i < hotbarSlots && hotbarSlotImages[i] != null)
+            {
+                hotbarSlotImages[i].sprite = icon;
+                hotbarSlotImages[i].color = Color.white;
+            }
+            else if (i >= hotbarSlots && inventorySlotImages[i - hotbarSlots] != null)
+            {
+                inventorySlotImages[i - hotbarSlots].sprite = icon;
+                inventorySlotImages[i - hotbarSlots].color = Color.white;
+            }
+
+            Debug.Log($"Added item to slot {i}");
+
+            // If added to selected slot, update hand display
+            if (i == selectedSlot)
+            {
+                UpdateHandDisplay();
+            }
+
+            return true;
         }
     }
 
-    Image GetSlotImage(int index)
+    Debug.LogWarning("Inventory full!");
+    return false;
+}
+
+public void RemoveItem(int index)
+{
+    if (index < 0 || index >= itemIcons.Length) return;
+    itemIcons[index] = null;
+    itemMaterials[index] = null;
+    UpdateSlotVisual(index);
+    if (index == selectedSlot) UpdateHandDisplay();
+}
+
+void UpdateSlotVisual(int index)
+{
+    Image slotImage = GetSlotImage(index);
+    if (slotImage != null)
     {
-        if (index < hotbarSlots && hotbarSlotImages != null && index < hotbarSlotImages.Length)
-            return hotbarSlotImages[index];
+        slotImage.sprite = itemIcons[index];
+        slotImage.enabled = (itemIcons[index] != null);
+    }
+}
 
-        int invIndex = index - hotbarSlots;
-        if (invIndex >= 0 && inventorySlotImages != null && invIndex < inventorySlotImages.Length)
-            return inventorySlotImages[invIndex];
+Image GetSlotImage(int index)
+{
+    if (index < hotbarSlots && hotbarSlotImages != null && index < hotbarSlotImages.Length)
+        return hotbarSlotImages[index];
 
-        return null;
+    int invIndex = index - hotbarSlots;
+    if (invIndex >= 0 && inventorySlotImages != null && invIndex < inventorySlotImages.Length)
+        return inventorySlotImages[invIndex];
+
+    return null;
+}
+
+void DropItem(int index)
+{
+    if (itemIcons[index] == null || dropPosition == null) return;
+
+    GameObject dropped = GameObject.CreatePrimitive(PrimitiveType.Cube);
+    dropped.transform.position = dropPosition.position + dropPosition.forward * 1.5f;
+    dropped.transform.localScale = Vector3.one * 0.5f;
+
+    if (itemMaterials[index] != null)
+        dropped.GetComponent<Renderer>().material = itemMaterials[index];
+
+    WorldPickup pickup = dropped.AddComponent<WorldPickup>();
+    pickup.itemIcon = itemIcons[index];
+    pickup.itemMaterial = itemMaterials[index];
+
+    dropped.AddComponent<Rigidbody>().mass = 0.5f;
+
+    RemoveItem(index);
+}
+
+public Sprite GetItem(int index)
+{
+    if (index >= 0 && index < itemIcons.Length)
+        return itemIcons[index];
+    return null;
+}
+
+public void SwapItems(int slotA, int slotB)
+{
+    if (slotA < 0 || slotA >= itemIcons.Length) return;
+    if (slotB < 0 || slotB >= itemIcons.Length) return;
+
+    Debug.Log($"Swapping slot {slotA} with slot {slotB}");
+
+    // Swap icons
+    Sprite tempIcon = itemIcons[slotA];
+    itemIcons[slotA] = itemIcons[slotB];
+    itemIcons[slotB] = tempIcon;
+
+    // Swap materials
+    Material tempMat = itemMaterials[slotA];
+    itemMaterials[slotA] = itemMaterials[slotB];
+    itemMaterials[slotB] = tempMat;
+
+    // Update visuals for slot A
+    if (slotA < hotbarSlots && hotbarSlotImages[slotA] != null)
+    {
+        hotbarSlotImages[slotA].sprite = itemIcons[slotA];
+        hotbarSlotImages[slotA].color = itemIcons[slotA] != null ? Color.white : new Color(1, 1, 1, 0);
+    }
+    else if (slotA >= hotbarSlots && inventorySlotImages[slotA - hotbarSlots] != null)
+    {
+        inventorySlotImages[slotA - hotbarSlots].sprite = itemIcons[slotA];
+        inventorySlotImages[slotA - hotbarSlots].color = itemIcons[slotA] != null ? Color.white : new Color(1, 1, 1, 0);
     }
 
-    void DropItem(int index)
+    // Update visuals for slot B
+    if (slotB < hotbarSlots && hotbarSlotImages[slotB] != null)
     {
-        if (itemIcons[index] == null || dropPosition == null) return;
-
-        GameObject dropped = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        dropped.transform.position = dropPosition.position + dropPosition.forward * 1.5f;
-        dropped.transform.localScale = Vector3.one * 0.5f;
-
-        if (itemMaterials[index] != null)
-            dropped.GetComponent<Renderer>().material = itemMaterials[index];
-
-        WorldPickup pickup = dropped.AddComponent<WorldPickup>();
-        pickup.itemIcon = itemIcons[index];
-        pickup.itemMaterial = itemMaterials[index];
-
-        dropped.AddComponent<Rigidbody>().mass = 0.5f;
-
-        RemoveItem(index);
+        hotbarSlotImages[slotB].sprite = itemIcons[slotB];
+        hotbarSlotImages[slotB].color = itemIcons[slotB] != null ? Color.white : new Color(1, 1, 1, 0);
+    }
+    else if (slotB >= hotbarSlots && inventorySlotImages[slotB - hotbarSlots] != null)
+    {
+        inventorySlotImages[slotB - hotbarSlots].sprite = itemIcons[slotB];
+        inventorySlotImages[slotB - hotbarSlots].color = itemIcons[slotB] != null ? Color.white : new Color(1, 1, 1, 0);
     }
 
-    public Sprite GetItem(int index)
+    // Update hand display if selected slot was involved
+    if (slotA == selectedSlot || slotB == selectedSlot)
     {
-        if (index >= 0 && index < itemIcons.Length)
-            return itemIcons[index];
-        return null;
+        UpdateHandDisplay();
     }
-
-    public void SwapItems(int slotA, int slotB)
-    {
-        if (slotA < 0 || slotA >= itemIcons.Length) return;
-        if (slotB < 0 || slotB >= itemIcons.Length) return;
-
-        Debug.Log($"Swapping slot {slotA} with slot {slotB}");
-
-        // Swap icons
-        Sprite tempIcon = itemIcons[slotA];
-        itemIcons[slotA] = itemIcons[slotB];
-        itemIcons[slotB] = tempIcon;
-
-        // Swap materials
-        Material tempMat = itemMaterials[slotA];
-        itemMaterials[slotA] = itemMaterials[slotB];
-        itemMaterials[slotB] = tempMat;
-
-        // Update visuals for slot A
-        if (slotA < hotbarSlots && hotbarSlotImages[slotA] != null)
-        {
-            hotbarSlotImages[slotA].sprite = itemIcons[slotA];
-            hotbarSlotImages[slotA].color = itemIcons[slotA] != null ? Color.white : new Color(1, 1, 1, 0);
-        }
-        else if (slotA >= hotbarSlots && inventorySlotImages[slotA - hotbarSlots] != null)
-        {
-            inventorySlotImages[slotA - hotbarSlots].sprite = itemIcons[slotA];
-            inventorySlotImages[slotA - hotbarSlots].color = itemIcons[slotA] != null ? Color.white : new Color(1, 1, 1, 0);
-        }
-
-        // Update visuals for slot B
-        if (slotB < hotbarSlots && hotbarSlotImages[slotB] != null)
-        {
-            hotbarSlotImages[slotB].sprite = itemIcons[slotB];
-            hotbarSlotImages[slotB].color = itemIcons[slotB] != null ? Color.white : new Color(1, 1, 1, 0);
-        }
-        else if (slotB >= hotbarSlots && inventorySlotImages[slotB - hotbarSlots] != null)
-        {
-            inventorySlotImages[slotB - hotbarSlots].sprite = itemIcons[slotB];
-            inventorySlotImages[slotB - hotbarSlots].color = itemIcons[slotB] != null ? Color.white : new Color(1, 1, 1, 0);
-        }
-
-        // Update hand display if selected slot was involved
-        if (slotA == selectedSlot || slotB == selectedSlot)
-        {
-            UpdateHandDisplay();
-        }
-    }
+}
 }
