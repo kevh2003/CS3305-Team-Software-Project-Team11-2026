@@ -8,10 +8,7 @@ using UnityEngine.AI;
 public class EnemyAI : MonoBehaviour
 {
     [Header("Attack Settings")]
-    public float damage = 10f;      //Damage dealt per attack
     public float attackRange = 2f;  //Distance within enemy can grab player
-    public float cooldown = 15f;     //Time before enemy can grab again
-    private float nextAttackTime;   
 
     [Header("Detection Settings")]
     public float detectionRange = 15f;  //Range at which player can be detected
@@ -22,7 +19,7 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Search Settings")]
     public float alertedDetectionMultiplier = 1.5f; //Multiplier for detection range when alerted
-    public float alertedViewAngle = 300f;       //View angle wheen player is lost
+    public float alertedViewAngle = 240f;       //View angle wheen player is lost
     public float searchDuration = 10f;      //Duration of alert state after losing sight of player
     public float searchOvershootDistance = 3f; //Extra distance over last known location of player
 
