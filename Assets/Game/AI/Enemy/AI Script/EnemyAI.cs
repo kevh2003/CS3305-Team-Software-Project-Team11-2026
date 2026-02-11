@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -9,6 +10,7 @@ public class EnemyAI : MonoBehaviour
 {
     [Header("Attack Settings")]
     public float attackRange = 2f;  //Distance within enemy can grab player
+    private bool isPaused;      //EnemyAI halts after attacking, waiting for the cooldown to expire
 
     [Header("Detection Settings")]
     public float detectionRange = 15f;  //Range at which player can be detected
@@ -24,7 +26,7 @@ public class EnemyAI : MonoBehaviour
     public float searchOvershootDistance = 3f; //Extra distance over last known location of player
 
     private NavMeshAgent agent;     // Reference to NavMeshAgent component
-    private Transform currentTarget;   // Current target player
+    public Transform currentTarget;   // Current target player
 
     private Vector3 lastKnownPosition;  // Last known position of the player
     private bool isSearching;         // Whether the enemy is currently searching
@@ -51,6 +53,11 @@ public class EnemyAI : MonoBehaviour
 
     void Update()
     {
+        if (isPaused)
+        {
+            return;
+        }
+
         if (currentTarget != null)
         {
             agent.SetDestination(currentTarget.position);
@@ -72,6 +79,11 @@ public class EnemyAI : MonoBehaviour
     /// </summary>
     void UpdateTarget()
     {
+
+        if (isPaused)
+        {
+            return;
+        }
         Collider[] playersInRange = Physics.OverlapSphere(
             transform.position,
             detectionRange,
@@ -153,6 +165,22 @@ public class EnemyAI : MonoBehaviour
         viewAngle = originalViewAngle;
         agent.ResetPath();
     }
+
+    public IEnumerator PauseAI(float duration)
+{
+    isPaused = true;
+
+    currentTarget = null;
+    isSearching = false;
+
+    agent.isStopped = true;
+    agent.ResetPath();
+
+    yield return new WaitForSeconds(duration);
+
+    agent.isStopped = false;
+    isPaused = false;
+}
 
     /// <summary>
     /// Draws detection radius and vision cone for debugging.
