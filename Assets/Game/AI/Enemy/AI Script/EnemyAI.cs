@@ -13,27 +13,26 @@ public class EnemyAI : MonoBehaviour
     private bool isPaused;      //EnemyAI halts after attacking, waiting for the cooldown to expire
 
     [Header("Detection Settings")]
-    public float detectionRange = 15f;  //Range at which player can be detected
+    public float detectionRange = 24f;  //Range at which player can be detected
     public float updateRate = 0.3f;    //How often to update target
     public float viewAngle = 175f;        //Field of view angle
-    [SerializeField] private LayerMask whatIsPlayer;    //Player layer
-    [SerializeField] private LayerMask obstacleMask;    //Obstacle layer blocking line of sight
 
     [Header("Search Settings")]
     public float alertedDetectionMultiplier = 1.5f; //Multiplier for detection range when alerted
     public float alertedViewAngle = 240f;       //View angle wheen player is lost
     public float searchDuration = 10f;      //Duration of alert state after losing sight of player
-    public float searchOvershootDistance = 3f; //Extra distance over last known location of player
-
-    private NavMeshAgent agent;     // Reference to NavMeshAgent component
-    public Transform currentTarget;   // Current target player
-
+    public float searchOvershootDistance = 10f; //Extra distance over last known location of player
     private Vector3 lastKnownPosition;  // Last known position of the player
     private bool isSearching;         // Whether the enemy is currently searching
     private float searchEndTime;        // Time when search state ends
     private float originalDetectionRange;   // Saves original detection range
-    private float originalViewAngle;    // Saves original view angele
+    private float originalViewAngle;    // Saves original view angels
 
+    [Header("References")]
+    [SerializeField] private LayerMask whatIsPlayer;    //Player layer
+    [SerializeField] private LayerMask obstacleMask;    //Obstacle layer blocking line of sight
+    public Transform currentTarget;   // Current target player
+    private NavMeshAgent agent;     // Reference to NavMeshAgent component
 
     void Awake()
     {
