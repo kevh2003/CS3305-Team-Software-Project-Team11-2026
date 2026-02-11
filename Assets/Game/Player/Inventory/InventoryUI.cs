@@ -37,7 +37,7 @@ public class InventoryUI : NetworkBehaviour
         localCanvas = canvasObj.AddComponent<Canvas>();
         localCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         localCanvas.sortingOrder = 100;
-        
+
         canvasObj.AddComponent<CanvasScaler>();
         canvasObj.AddComponent<GraphicRaycaster>();
         DontDestroyOnLoad(canvasObj);
@@ -51,12 +51,16 @@ public class InventoryUI : NetworkBehaviour
     {
         GameObject hotbarPanel = new GameObject("HotbarPanel");
         hotbarPanel.transform.SetParent(localCanvas.transform, false);
-        
+
         RectTransform hotbarRect = hotbarPanel.AddComponent<RectTransform>();
-        hotbarRect.anchorMin = new Vector2(0.5f, 0f);
-        hotbarRect.anchorMax = new Vector2(0.5f, 0f);
-        hotbarRect.pivot = new Vector2(0.5f, 0f);
-        hotbarRect.anchoredPosition = new Vector2(0, 20);
+
+        // Anchor to bottom-right
+        hotbarRect.anchorMin = new Vector2(1f, 0f);
+        hotbarRect.anchorMax = new Vector2(1f, 0f);
+        hotbarRect.pivot = new Vector2(1f, 0f);
+
+        // Offset inward from the corner
+        hotbarRect.anchoredPosition = new Vector2(-20, 20);
         hotbarRect.sizeDelta = new Vector2(150, 70);
 
         Image hotbarImage = hotbarPanel.AddComponent<Image>();
@@ -71,8 +75,12 @@ public class InventoryUI : NetworkBehaviour
             slot.transform.SetParent(hotbarPanel.transform, false);
 
             RectTransform slotRect = slot.AddComponent<RectTransform>();
+            slotRect.anchorMin = new Vector2(0f, 0f);
+            slotRect.anchorMax = new Vector2(0f, 0f);
+            slotRect.pivot = new Vector2(0f, 0f);
+
             slotRect.sizeDelta = new Vector2(60, 60);
-            slotRect.anchoredPosition = new Vector2(-35 + (i * 70), 5);
+            slotRect.anchoredPosition = new Vector2(10 + (i * 70), 5);
 
             Image slotImage = slot.AddComponent<Image>();
             slotImage.color = new Color(1, 1, 1, 0.3f);
@@ -80,6 +88,7 @@ public class InventoryUI : NetworkBehaviour
             inventory.hotbarSlotImages[i] = slotImage;
         }
     }
+
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -89,12 +98,12 @@ public class InventoryUI : NetworkBehaviour
     void UpdateUIVisibility(string sceneName)
     {
         bool showUI = (sceneName == "03_Game");
-        
+
         if (inventory.hotbarPanel != null)
         {
             inventory.hotbarPanel.SetActive(showUI);
         }
-        
+
         if (inventory.handPosition != null)
         {
             foreach (Transform child in inventory.handPosition)
@@ -110,17 +119,17 @@ public class InventoryUI : NetworkBehaviour
         while (attempts < 50)
         {
             Camera cam = GetComponentInChildren<Camera>(true);
-            
+
             if (cam != null && cam.gameObject.activeInHierarchy)
             {
                 SetupHandPosition(cam);
                 break;
             }
-            
+
             attempts++;
             yield return new WaitForSeconds(0.1f);
         }
-        
+
         SetupDropPosition();
     }
 
@@ -151,7 +160,7 @@ public class InventoryUI : NetworkBehaviour
     void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        
+
         if (localCanvas != null)
         {
             Destroy(localCanvas.gameObject);
