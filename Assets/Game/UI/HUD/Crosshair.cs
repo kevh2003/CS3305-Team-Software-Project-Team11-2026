@@ -1,42 +1,24 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Creates a simple crosshair in the center of the screen.
-/// Only created for the local player.
-/// </summary>
 public class Crosshair : NetworkBehaviour
 {
-    [Header("Crosshair Settings")]
-    public Color crosshairColor = Color.white;
-    public float crosshairSize = 10f;
-    public float crosshairThickness = 2f;
-
     private GameObject crosshairObject;
 
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-
-        Debug.Log($"🎯 Crosshair.OnNetworkSpawn() - IsOwner: {IsOwner}");
-
+        
         if (!IsOwner)
         {
-            Debug.Log("❌ Not owner, disabling Crosshair");
             enabled = false;
             return;
         }
 
-        Debug.Log("✅ Is owner, creating crosshair in 0.2s...");
-        Invoke(nameof(CreateCrosshair), 0.2f); // Changed from 0.1 to 0.2
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        base.OnNetworkDespawn();
-        if (crosshairObject != null)
-            Destroy(crosshairObject);
+        Invoke(nameof(CreateCrosshair), 0.2f);
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void CreateCrosshair()
@@ -44,64 +26,54 @@ public class Crosshair : NetworkBehaviour
         Canvas canvas = FindCanvas();
         if (canvas == null)
         {
-            Debug.LogError("Crosshair: No Canvas found!");
+            Debug.LogError("Crosshair: No canvas found");
             return;
         }
 
+        // Create crosshair as a small circle
         crosshairObject = new GameObject("Crosshair");
-        crosshairObject.transform.SetParent(canvas.transform);
+        crosshairObject.transform.SetParent(canvas.transform, false);
 
         RectTransform rect = crosshairObject.AddComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(30, 30);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(8, 8); // Small circle
 
-        CreateLine(crosshairObject, "Horizontal", new Vector2(crosshairSize, crosshairThickness));
-        CreateLine(crosshairObject, "Vertical", new Vector2(crosshairThickness, crosshairSize));
+        Image image = crosshairObject.AddComponent<Image>();
+        
+        // Use a circle sprite (Unity's default UI sprite works)
+        image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+        image.color = Color.white;
+        image.type = Image.Type.Simple;
 
-        Debug.Log("✅ Crosshair created!");
+        UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
-    void CreateLine(GameObject parent, string name, Vector2 size)
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        GameObject line = new GameObject(name);
-        line.transform.SetParent(parent.transform);
-
-        RectTransform rect = line.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = size;
-
-        Image img = line.AddComponent<Image>();
-        img.color = crosshairColor;
+        UpdateVisibility(scene.name);
     }
 
-    Canvas FindCanvas()
+    void UpdateVisibility(string sceneName)
     {
-        // Try to find the persistent GameCanvas first
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-
-        foreach (Canvas c in canvases)
+        bool showCrosshair = (sceneName == "03_Game");
+        
+        if (crosshairObject != null)
         {
-            if (c.name == "GameCanvas" || c.GetComponent<PersistentCanvas>() != null)
-            {
-                Debug.Log($"✅ Crosshair found GameCanvas: {c.name}");
-                return c;
-            }
+            crosshairObject.SetActive(showCrosshair);
         }
-
-        // Fallback
-        Debug.LogWarning("⚠️ Crosshair: GameCanvas not found, using first available canvas");
-        return canvases.Length > 0 ? canvases[0] : null;
     }
 
     public void Show()
     {
         if (crosshairObject != null)
         {
-            crosshairObject.SetActive(true);
+            string sceneName = SceneManager.GetActiveScene().name;
+            if (sceneName == "03_Game")
+            {
+                crosshairObject.SetActive(true);
+            }
         }
     }
 
@@ -111,5 +83,30 @@ public class Crosshair : NetworkBehaviour
         {
             crosshairObject.SetActive(false);
         }
+    }
+
+    Canvas FindCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        
+        foreach (Canvas c in canvases)
+        {
+            if (c.name == "GameCanvas" || c.GetComponent<PersistentCanvas>() != null)
+            {
+                return c;
+            }
+        }
+        
+        if (canvases.Length > 0)
+        {
+            return canvases[0];
+        }
+        
+        return null;
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 }
