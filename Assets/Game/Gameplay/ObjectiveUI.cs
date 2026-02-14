@@ -1,13 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 public class ObjectiveUI : MonoBehaviour
 {
-    [Header("Elevator Objective")]
-    [SerializeField] private Toggle elevatorToggle;
-    [SerializeField] private TMP_Text elevatorLabel;
-
     [Header("Ducks Objective")]
     [SerializeField] private Toggle ducksToggle;
     [SerializeField] private TMP_Text ducksLabel;
@@ -17,14 +14,11 @@ public class ObjectiveUI : MonoBehaviour
     [SerializeField] private int ducksTotal = 6;
 
     private int ducksFound = 0;
-    private bool elevatorComplete = false;
+    private bool completed = false;
 
     private void Awake()
     {
-        if (elevatorToggle) elevatorToggle.interactable = false;
         if (ducksToggle) ducksToggle.interactable = false;
-
-        if (elevatorLabel) elevatorLabel.text = "Fix the elevator";
         if (ducksLabel) ducksLabel.text = "Find rubber ducks";
 
         Refresh();
@@ -32,27 +26,32 @@ public class ObjectiveUI : MonoBehaviour
 
     private void Refresh()
     {
-        if (elevatorToggle)
-            elevatorToggle.isOn = elevatorComplete;
-
         bool ducksComplete = ducksFound >= ducksTotal;
 
         if (ducksToggle)
             ducksToggle.isOn = ducksComplete;
 
         if (ducksCountText)
-            ducksCountText.text = ducksComplete ? "✓" : $"{ducksFound}/{ducksTotal}";
+            ducksCountText.text = ducksComplete ? $"{ducksTotal}/{ducksTotal}" : $"{ducksFound}/{ducksTotal}";
     }
 
-    public void SetElevatorComplete(bool complete)
+    public void AddDuck()
     {
-        elevatorComplete = complete;
+        if (completed) return;
+
+        ducksFound++;
         Refresh();
+
+        if (ducksFound >= ducksTotal)
+        {
+            completed = true;
+            StartCoroutine(HideAfterDelay());
+        }
     }
 
-    public void SetDucksFound(int found)
+    private IEnumerator HideAfterDelay()
     {
-        ducksFound = Mathf.Clamp(found, 0, ducksTotal);
-        Refresh();
+        yield return new WaitForSeconds(2f);
+        gameObject.SetActive(false);
     }
 }
