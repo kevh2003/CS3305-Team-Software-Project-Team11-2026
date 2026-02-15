@@ -25,17 +25,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [Header("Refs")]
     [SerializeField] private Camera playerCamera;
 
-    [Header("Jump / Gravity")]
-    [SerializeField] private float jumpHeight = 1.6f;
-    [SerializeField] private float gravity = -25f;
-        
-    private InputAction _jump;
-
     private CharacterController _cc;
     private PlayerInput _playerInput;
 
     private InputAction _move;
-    private float _verticalVelocity;
     private InputAction _look;
 
     private float _pitch;
@@ -56,8 +49,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Cache actions by name (must match InputActions asset)
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"];
-
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }
@@ -109,26 +100,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
         // WASD movement
         Vector2 move = _move.ReadValue<Vector2>();
-        Vector3 moveWorld = (transform.right * move.x + transform.forward * move.y);
-
-        // _cc.SimpleMove(moveWorld * moveSpeed);
-        if (moveWorld.sqrMagnitude > 1f) moveWorld.Normalize();
-
-        bool grounded = _cc.isGrounded;
-
-        if (grounded && _verticalVelocity < 0f)
-            _verticalVelocity = -2f;
-
-        if (_jump != null && _jump.WasPressedThisFrame() && grounded)
-        {
-            // v = sqrt(h * -2g)
-            _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
-
-        _verticalVelocity += gravity * Time.deltaTime;
-
-        Vector3 velocity = (moveWorld * moveSpeed) + (Vector3.up * _verticalVelocity);
-        _cc.Move(velocity * Time.deltaTime);
+        Vector3 moveWorld = (transform.right * move.x + transform.forward * move.y).normalized;
+        _cc.SimpleMove(moveWorld * moveSpeed);
 
         // Mouse look
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
