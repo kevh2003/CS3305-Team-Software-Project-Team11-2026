@@ -19,6 +19,14 @@ public class EnemyAttack : MonoBehaviour
         if (isAttacking) return;
         if (enemyAI.currentTarget == null) return;
 
+        // Skip dead targets
+        PlayerHealth targetHealth = enemyAI.currentTarget.GetComponent<PlayerHealth>();
+        if (targetHealth != null && targetHealth.IsDead)
+        {
+            enemyAI.currentTarget = null; // stop targeting dead player
+            return;
+        }
+
         float distance = Vector3.Distance(
             transform.position,
             enemyAI.currentTarget.position
@@ -36,12 +44,12 @@ public class EnemyAttack : MonoBehaviour
 
         // Deal damage
         PlayerHealth health = target.GetComponent<PlayerHealth>();
-        if (health != null)
+        if (health != null && !health.IsDead)
         {
             health.TakeDamage(damage);
         }
 
-        // Pause the entire AI for 5 seconds
+        // Pause the AI
         yield return StartCoroutine(enemyAI.PauseAI(attackCooldown));
 
         isAttacking = false;
