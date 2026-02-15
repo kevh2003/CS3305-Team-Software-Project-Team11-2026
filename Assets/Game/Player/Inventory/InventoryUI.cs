@@ -89,7 +89,6 @@ public class InventoryUI : NetworkBehaviour
         }
     }
 
-
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         UpdateUIVisibility(scene.name);
@@ -140,7 +139,8 @@ public class InventoryUI : NetworkBehaviour
         {
             hand = new GameObject("HandPosition").transform;
             hand.SetParent(cam.transform);
-            hand.localPosition = new Vector3(0.3f, -0.2f, 0.5f);
+            // FIXED: Position in front of camera, to the right, slightly down
+            hand.localPosition = new Vector3(0.5f, -0.3f, 0.8f);
         }
         inventory.handPosition = hand;
     }

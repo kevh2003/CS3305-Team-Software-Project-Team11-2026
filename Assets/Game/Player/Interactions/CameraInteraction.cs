@@ -124,6 +124,3 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         Debug.Log("CameraInteraction: Exited CCTV view");
     }
 }
-
-
-

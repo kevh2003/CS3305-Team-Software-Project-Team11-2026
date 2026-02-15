@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 public class Crosshair : NetworkBehaviour
 {
     private GameObject crosshairObject;
+    private Text interactText;
 
     public override void OnNetworkSpawn()
     {
@@ -30,7 +31,7 @@ public class Crosshair : NetworkBehaviour
             return;
         }
 
-        // Create crosshair as a small circle
+        // Create crosshair circle
         crosshairObject = new GameObject("Crosshair");
         crosshairObject.transform.SetParent(canvas.transform, false);
 
@@ -38,16 +39,57 @@ public class Crosshair : NetworkBehaviour
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(8, 8); // Small circle
+        rect.sizeDelta = new Vector2(8, 8);
 
         Image image = crosshairObject.AddComponent<Image>();
-        
-        // Use a circle sprite (Unity's default UI sprite works)
         image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
         image.color = Color.white;
         image.type = Image.Type.Simple;
 
+        // Create "Press E" text
+        CreateInteractPrompt(canvas);
+
+        Debug.Log("Crosshair created");
         UpdateVisibility(SceneManager.GetActiveScene().name);
+    }
+
+    void CreateInteractPrompt(Canvas canvas)
+    {
+        GameObject textObj = new GameObject("InteractPrompt");
+        textObj.transform.SetParent(canvas.transform, false);
+
+        RectTransform textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.pivot = new Vector2(0.5f, 1f);
+        textRect.anchoredPosition = new Vector2(0, -15);
+        textRect.sizeDelta = new Vector2(200, 30);
+
+        interactText = textObj.AddComponent<Text>();
+        interactText.text = "Press E";
+        interactText.fontSize = 16;
+        interactText.color = Color.white;
+        interactText.alignment = TextAnchor.MiddleCenter;
+        interactText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        interactText.enabled = false;
+
+        Debug.Log("Interact prompt created");
+    }
+
+    public void ShowInteractPrompt()
+    {
+        if (interactText != null)
+        {
+            interactText.enabled = true;
+        }
+    }
+
+    public void HideInteractPrompt()
+    {
+        if (interactText != null)
+        {
+            interactText.enabled = false;
+        }
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -62,6 +104,12 @@ public class Crosshair : NetworkBehaviour
         if (crosshairObject != null)
         {
             crosshairObject.SetActive(showCrosshair);
+        }
+        
+        if (interactText != null)
+        {
+            interactText.gameObject.SetActive(showCrosshair);
+            interactText.enabled = false;
         }
     }
 
@@ -83,6 +131,8 @@ public class Crosshair : NetworkBehaviour
         {
             crosshairObject.SetActive(false);
         }
+        
+        HideInteractPrompt();
     }
 
     Canvas FindCanvas()
