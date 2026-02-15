@@ -86,7 +86,8 @@ public class Interactor : NetworkBehaviour
 
         if (Physics.Raycast(ray, out hit, InteractRange))
         {
-            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+
 
             if (interactable != null && interactable.CanInteract())
             {
