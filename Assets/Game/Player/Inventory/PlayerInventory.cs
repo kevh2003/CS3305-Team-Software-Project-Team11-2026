@@ -177,30 +177,36 @@ public class PlayerInventory : NetworkBehaviour
         // Unparent
         item.transform.SetParent(null);
 
-        // Move to floor in front of player
+        // Position in front of player
         item.transform.position = transform.position + transform.forward * 1.5f;
         item.transform.rotation = Quaternion.identity;
 
-        // Re-enable colliders
+        // Enable colliders
         foreach (Collider col in item.GetComponentsInChildren<Collider>())
+        {
             col.enabled = true;
+            col.isTrigger = false;
+        }
 
-        // add rigidbody for physics
-        item.AddComponent<Rigidbody>();
+        // Add Rigidbody if it doesn't exist
+        Rigidbody rb = item.GetComponent<Rigidbody>();
+        if (rb == null)
+            rb = item.AddComponent<Rigidbody>();
 
-        // adding collision so it doesnt fall through the floor
-        // item.AddComponent<MeshCollider>();
-        item.AddComponent<MeshCollider>().convex = true; // still not working
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-        // add world pickup so its interactable
-        item.AddComponent<WorldPickup>();
+        // Add pickup script
+        if (!item.GetComponent<WorldPickup>())
+            item.AddComponent<WorldPickup>();
 
         // Remove from inventory
         itemObjects[selectedSlot] = null;
 
-        // Update hand visuals
         UpdateHandDisplay();
     }
+
 
     void OnDestroy()
     {
