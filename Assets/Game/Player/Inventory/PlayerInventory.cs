@@ -20,12 +20,11 @@ public class PlayerInventory : NetworkBehaviour
 
     private PlayerInputActions inputActions;
 
-    private void Awake()
+    void Awake()
     {
         itemIcons = new Sprite[hotbarSlots];
         itemMaterials = new Material[hotbarSlots];
         itemObjects = new GameObject[hotbarSlots];
-
         inputActions = new PlayerInputActions();
     }
 
@@ -43,7 +42,7 @@ public class PlayerInventory : NetworkBehaviour
         SetupInputCallbacks();
     }
 
-    private void SetupInputCallbacks()
+    void SetupInputCallbacks()
     {
         if (inputActions == null) return;
 
@@ -52,7 +51,7 @@ public class PlayerInventory : NetworkBehaviour
         inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
     }
 
-    private void Update()
+    void Update()
     {
         if (!IsOwner) return;
 
@@ -72,7 +71,7 @@ public class PlayerInventory : NetworkBehaviour
         UpdateHandDisplay();
     }
 
-    private void UpdateHotbarOutlines()
+    void UpdateHotbarOutlines()
     {
         if (hotbarSlotImages == null) return;
 
@@ -87,17 +86,19 @@ public class PlayerInventory : NetworkBehaviour
                 outline.effectColor = new Color32(139, 0, 0, 255);
                 outline.effectDistance = new Vector2(3, 3);
             }
-
             outline.enabled = (i == selectedSlot);
         }
     }
 
-    private void UpdateHandDisplay()
+    void UpdateHandDisplay()
     {
         // Hide all items
         for (int i = 0; i < hotbarSlots; i++)
         {
-            itemObjects[i]?.SetActive(false);
+            if (itemObjects[i] != null)
+            {
+                itemObjects[i].SetActive(false);
+            }
         }
 
         // Show selected item in hand
@@ -166,7 +167,7 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    private void DropItem(int index)
+    void DropItem(int index)
     {
         if (selectedSlot >= hotbarSlots) return;
 
@@ -176,35 +177,36 @@ public class PlayerInventory : NetworkBehaviour
         // Unparent
         item.transform.SetParent(null);
 
-        // Position in front of player
+        // Move to floor in front of player
         item.transform.position = transform.position + transform.forward * 1.5f;
         item.transform.rotation = Quaternion.identity;
 
-        // Enable colliders
+        // Re-enable colliders
         foreach (Collider col in item.GetComponentsInChildren<Collider>())
-        {
             col.enabled = true;
-            col.isTrigger = false;
-        }
 
-        // Add Rigidbody if missing
-        Rigidbody rb = item.GetComponent<Rigidbody>();
-        if (rb == null) rb = item.AddComponent<Rigidbody>();
-        rb.isKinematic = false;
-        rb.useGravity = true;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        // add rigidbody for physics
+        item.AddComponent<Rigidbody>();
 
-        // Add pickup script if missing
-        if (!item.GetComponent<WorldPickup>())
-            item.AddComponent<WorldPickup>();
+        // adding collision so it doesnt fall through the floor
+        // item.AddComponent<MeshCollider>();
+        item.AddComponent<MeshCollider>().convex = true; // still not working
+
+        // add world pickup so its interactable
+        item.AddComponent<WorldPickup>();
 
         // Remove from inventory
         itemObjects[selectedSlot] = null;
+
+        // Update hand visuals
         UpdateHandDisplay();
     }
 
-    private void OnDestroy()
+    void OnDestroy()
     {
-        inputActions?.Disable();
+        if (inputActions != null)
+        {
+            inputActions.Disable();
+        }
     }
 }

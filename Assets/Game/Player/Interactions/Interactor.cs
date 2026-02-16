@@ -9,13 +9,13 @@ public class Interactor : NetworkBehaviour
     public float InteractRange = 3f;
 
     public NetworkPlayer Player { get; private set; }
-
     private Crosshair crosshair;
     private IInteractable currentInteractable;
 
-    private void Awake()
+    void Awake()
     {
         Player = GetComponent<NetworkPlayer>();
+
         if (Player == null)
         {
             Debug.LogError("Interactor: NetworkPlayer component not found");
@@ -48,27 +48,34 @@ public class Interactor : NetworkBehaviour
         }
     }
 
-    private void Update()
+    void Update()
     {
         if (!IsOwner) return;
 
         CheckForInteractable();
     }
 
-    private void CheckForInteractable()
+    void CheckForInteractable()
     {
         if (InteractSource == null) return;
 
         Ray ray = new Ray(InteractSource.position, InteractSource.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, InteractRange))
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, InteractRange))
         {
             IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+
             if (interactable != null && interactable.CanInteract())
             {
                 if (currentInteractable != interactable)
                 {
                     currentInteractable = interactable;
-                    crosshair?.ShowInteractPrompt();
+
+                    if (crosshair != null)
+                    {
+                        crosshair.ShowInteractPrompt();
+                    }
                 }
             }
             else
@@ -82,12 +89,16 @@ public class Interactor : NetworkBehaviour
         }
     }
 
-    private void ClearInteractable()
+    void ClearInteractable()
     {
         if (currentInteractable != null)
         {
             currentInteractable = null;
-            crosshair?.HideInteractPrompt();
+
+            if (crosshair != null)
+            {
+                crosshair.HideInteractPrompt();
+            }
         }
     }
 
