@@ -109,7 +109,7 @@ public class PlayerInventory : NetworkBehaviour
             item.transform.SetParent(handPosition);
             item.transform.localPosition = Vector3.zero;
             item.transform.localRotation = Quaternion.identity;
-            item.transform.localScale = Vector3.one * 2f;
+            item.transform.localScale = Vector3.one * 5f;
 
             // Disable colliders
             foreach (Collider col in item.GetComponentsInChildren<Collider>())
@@ -184,6 +184,16 @@ public class PlayerInventory : NetworkBehaviour
         // Re-enable colliders
         foreach (Collider col in item.GetComponentsInChildren<Collider>())
             col.enabled = true;
+
+        // add rigidbody for physics
+        item.AddComponent<Rigidbody>();
+
+        // adding collision so it doesnt fall through the floor
+        // item.AddComponent<MeshCollider>();
+        item.AddComponent<MeshCollider>().convex = true; // still not working
+
+        // add world pickup so its interactable
+        item.AddComponent<WorldPickup>();
 
         // Remove from inventory
         itemObjects[selectedSlot] = null;
