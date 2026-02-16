@@ -5,9 +5,8 @@ public class WorldPickup : MonoBehaviour, IInteractable
 {
     public Sprite itemIcon;
     public Material itemMaterial;
+    public GameObject itemPrefab; // Reference to itself for respawning
     
-    private bool isPickedUp = false;
-
     void Awake()
     {
         if (itemMaterial == null)
@@ -22,7 +21,7 @@ public class WorldPickup : MonoBehaviour, IInteractable
 
     public bool CanInteract()
     {
-        return !isPickedUp;
+        return true; // Always interactable
     }
 
     public bool Interact(Interactor interactor)
@@ -34,12 +33,13 @@ public class WorldPickup : MonoBehaviour, IInteractable
             return false;
         }
 
-        bool success = inventory.AddItem(itemIcon, itemMaterial, this.gameObject);
+        // Store reference to this prefab before adding to inventory
+        bool success = inventory.AddItem(itemIcon, itemMaterial, gameObject);
         
         if (success)
         {
-            isPickedUp = true;
-            // DON'T hide it - let inventory move it to hand
+            // Hide the world object (but don't destroy it - inventory manages it now)
+            gameObject.SetActive(false);
         }
         
         return success;

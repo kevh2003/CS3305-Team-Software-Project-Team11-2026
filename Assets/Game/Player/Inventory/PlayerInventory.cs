@@ -92,7 +92,7 @@ public class PlayerInventory : NetworkBehaviour
 
     void UpdateHandDisplay()
     {
-        // Hide all items
+        // Hide all items (they stay in world, just hidden)
         for (int i = 0; i < hotbarSlots; i++)
         {
             if (itemObjects[i] != null)
@@ -101,22 +101,8 @@ public class PlayerInventory : NetworkBehaviour
             }
         }
 
-        // Show selected item in hand
-        if (handPosition != null && selectedSlot < hotbarSlots && itemObjects[selectedSlot] != null)
-        {
-            GameObject item = itemObjects[selectedSlot];
-            item.SetActive(true);
-            item.transform.SetParent(handPosition);
-            item.transform.localPosition = Vector3.zero;
-            item.transform.localRotation = Quaternion.identity;
-            item.transform.localScale = Vector3.one * 5f;
-
-            // Disable colliders
-            foreach (Collider col in item.GetComponentsInChildren<Collider>())
-            {
-                col.enabled = false;
-            }
-        }
+        // For now, im not showing items in hand
+        // Just keeping them hidden when in inventory
     }
 
     public bool AddItem(Sprite icon, Material mat, GameObject itemObject)
@@ -125,9 +111,22 @@ public class PlayerInventory : NetworkBehaviour
         {
             if (itemIcons[i] == null)
             {
+                // Store the original scale before we modify anything
+                Vector3 originalScale = itemObject.transform.localScale;
+
                 itemIcons[i] = icon;
                 itemMaterials[i] = mat;
                 itemObjects[i] = itemObject;
+
+                // Store original scale in a component so we can retrieve it later
+                ItemData data = itemObject.GetComponent<ItemData>();
+                if (data == null)
+                {
+                    data = itemObject.AddComponent<ItemData>();
+                }
+                data.originalScale = originalScale;
+                data.originalIcon = icon;
+                data.originalMaterial = mat;
 
                 if (hotbarSlotImages[i] != null)
                 {
@@ -169,40 +168,73 @@ public class PlayerInventory : NetworkBehaviour
 
     void DropItem(int index)
     {
-        if (selectedSlot >= hotbarSlots) return;
+        if (index < 0 || index >= hotbarSlots) return;
 
-        GameObject item = itemObjects[selectedSlot];
+        GameObject item = itemObjects[index];
         if (item == null) return;
 
-        // Unparent
+        // Get stored data
+        ItemData data = item.GetComponent<ItemData>();
+
+        // Unparent from hand
         item.transform.SetParent(null);
 
-        // Position in front of player
-        item.transform.position = transform.position + transform.forward * 1.5f;
+        // Position in front of player, slightly up so it doesn't clip through floor
+        Vector3 dropPos = transform.position + (transform.forward * 1.5f);
+        dropPos.y = transform.position.y + 0.5f; // Waist height
+        item.transform.position = dropPos;
         item.transform.rotation = Quaternion.identity;
 
-        // Enable colliders
+        // CRITICAL: Restore original scale
+        if (data != null)
+        {
+            item.transform.localScale = data.originalScale;
+        }
+
+        // Re-enable colliders
         foreach (Collider col in item.GetComponentsInChildren<Collider>())
         {
             col.enabled = true;
             col.isTrigger = false;
         }
 
-        // Add Rigidbody if it doesn't exist
+        // Ensure Rigidbody exists and is configured
         Rigidbody rb = item.GetComponent<Rigidbody>();
         if (rb == null)
+        {
             rb = item.AddComponent<Rigidbody>();
-
+        }
         rb.isKinematic = false;
         rb.useGravity = true;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-        // Add pickup script
-        if (!item.GetComponent<WorldPickup>())
-            item.AddComponent<WorldPickup>();
+        // Ensure WorldPickup exists and has correct data
+        WorldPickup pickup = item.GetComponent<WorldPickup>();
+        if (pickup == null)
+        {
+            pickup = item.AddComponent<WorldPickup>();
+        }
+        // Restore the data
+        if (data != null)
+        {
+            pickup.itemIcon = data.originalIcon;
+            pickup.itemMaterial = data.originalMaterial;
+        }
+
+        // Make item visible again
+        item.SetActive(true);
 
         // Remove from inventory
-        itemObjects[selectedSlot] = null;
+        itemObjects[index] = null;
+        itemIcons[index] = null;
+        itemMaterials[index] = null;
+
+        // Update UI
+        if (hotbarSlotImages[index] != null)
+        {
+            hotbarSlotImages[index].sprite = null;
+            hotbarSlotImages[index].color = new Color(1, 1, 1, 0.3f);
+        }
 
         UpdateHandDisplay();
     }
