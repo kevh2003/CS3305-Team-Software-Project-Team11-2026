@@ -6,7 +6,8 @@ public class PlayerHealth : MonoBehaviour
     public float currentHealth = 0f;
 
     private PlayerMovement playerMovement;
-    private Renderer[] playerVisuals; // multiple renderers
+    private Renderer[] playerVisuals;
+    private Interactor interactor;
     private bool isDead = false;
 
     public bool IsDead => isDead; // public read-only property for other scripts
@@ -16,6 +17,7 @@ public class PlayerHealth : MonoBehaviour
         currentHealth = maxHealth;
         playerMovement = GetComponent<PlayerMovement>();
         playerVisuals = GetComponentsInChildren<Renderer>();
+        interactor = GetComponent<Interactor>();
     }
 
     public void TakeDamage(float damageAmount)
@@ -36,9 +38,11 @@ public class PlayerHealth : MonoBehaviour
         isDead = true;
         Debug.Log("Player has died!");
 
-        // Disable movement
-        if (playerMovement != null)
-            playerMovement.enabled = false;
+        if (interactor != null)
+        {
+            interactor.enabled = false;
+            Debug.Log("Player interactor disabled.");
+        }
 
         // Hide all visuals
         foreach (Renderer render in playerVisuals)
