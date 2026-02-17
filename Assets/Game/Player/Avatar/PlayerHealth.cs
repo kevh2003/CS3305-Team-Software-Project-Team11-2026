@@ -1,9 +1,11 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerHealth : MonoBehaviour
 {
     public float maxHealth = 3f;
     public float currentHealth = 0f;
+    private PlayerInput playerInput;
 
     private PlayerMovement playerMovement;
     private Renderer[] playerVisuals;
@@ -14,6 +16,7 @@ public class PlayerHealth : MonoBehaviour
 
     void Awake()
     {
+        playerInput = GetComponent<PlayerInput>();
         currentHealth = maxHealth;
         playerMovement = GetComponent<PlayerMovement>();
         playerVisuals = GetComponentsInChildren<Renderer>();
@@ -34,20 +37,19 @@ public class PlayerHealth : MonoBehaviour
     }
 
     private void Die()
-    {
-        isDead = true;
-        Debug.Log("Player has died!");
+{
+    isDead = true;
+    Debug.Log("Player has died!");
 
-        if (interactor != null)
-        {
-            interactor.enabled = false;
-            Debug.Log("Player interactor disabled.");
-        }
+    if (interactor != null)
+        interactor.enabled = false;
 
-        // Hide all visuals
-        foreach (Renderer render in playerVisuals)
-        {
-            render.enabled = false;
-        }
-    }
+    // Disable only the Interact action
+    playerInput.actions["Interact"].Disable();
+
+    //Removes player visuals
+    foreach (Renderer render in playerVisuals)
+        render.enabled = false;
+}
+
 }
