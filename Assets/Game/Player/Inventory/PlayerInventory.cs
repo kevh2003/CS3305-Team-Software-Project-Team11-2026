@@ -185,11 +185,8 @@ public class PlayerInventory : NetworkBehaviour
         item.transform.position = dropPos;
         item.transform.rotation = Quaternion.identity;
 
-        // CRITICAL: Restore original scale
-        if (data != null)
-        {
-            item.transform.localScale = data.originalScale;
-        }
+        // Restore original scale
+        item.transform.localScale = Vector3.one * 10f;
 
         // Re-enable colliders
         foreach (Collider col in item.GetComponentsInChildren<Collider>())
