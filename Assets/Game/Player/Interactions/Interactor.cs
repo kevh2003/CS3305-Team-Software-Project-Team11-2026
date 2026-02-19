@@ -25,10 +25,10 @@ public class Interactor : NetworkBehaviour
         
         if (Player == null)
         {
-            Debug.LogError("❌ Interactor: NetworkPlayer component not found on this GameObject!");
+            Debug.LogError("Interactor: NetworkPlayer component not found on this GameObject!");
         }
         
-        Debug.Log("✅ Interactor: Initialized in Awake");
+        Debug.Log("Interactor: Initialized in Awake");
     }
 
     public override void OnNetworkSpawn()
@@ -48,15 +48,15 @@ public class Interactor : NetworkBehaviour
             if (cam != null)
             {
                 InteractSource = cam.transform;
-                Debug.Log("✅ Interactor: Auto-assigned camera");
+                Debug.Log("Interactor: Auto-assigned camera");
             }
             else
             {
-                Debug.LogError("❌ Interactor: No camera found!");
+                Debug.LogError("Interactor: No camera found!");
             }
         }
 
-        Debug.Log("✅ Interactor fully initialized");
+        Debug.Log("Interactor fully initialized");
     }
 
     // This method is called by Unity's PlayerInput component when the "Interact" action is triggered
@@ -77,7 +77,7 @@ public class Interactor : NetworkBehaviour
     {
         if (InteractSource == null)
         {
-            Debug.LogError("❌ Interactor: InteractSource is null!");
+            Debug.LogError("Interactor: InteractSource is null!");
             return;
         }
 
@@ -94,7 +94,7 @@ public class Interactor : NetworkBehaviour
                 bool success = interactable.Interact(this);
                 if (success)
                 {
-                    Debug.Log($"✅ Interacted with: {hit.collider.name}");
+                    Debug.Log($"Interacted with: {hit.collider.name}");
                 }
             }
         }
