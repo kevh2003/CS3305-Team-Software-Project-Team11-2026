@@ -55,7 +55,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1350446368
+  GlobalObjectIdHash: 934990576
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -238,16 +238,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  scriptsToDisable: []
-  cameraController: {fileID: 0}
   hotbarSlots: 3
-  inventorySlots: 2
-  canvas: {fileID: 0}
+  keyWorldPrefab: {fileID: 7508955532144942879, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
+  keyHandPrefab: {fileID: 7170372633719823343, guid: e6afc0580509a42649f2416070957cdc, type: 3}
+  keyIcon: {fileID: 0}
   hotbarPanel: {fileID: 0}
-  inventoryPanel: {fileID: 0}
   hotbarSlotImages: []
-  inventorySlotImages: []
-  playerMovement: {fileID: 0}
   handPosition: {fileID: 0}
   dropPosition: {fileID: 0}
 --- !u!114 &2109150516459380103
@@ -263,9 +259,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Crosshair
   ShowTopMostFoldoutHeaderGroup: 1
-  crosshairColor: {r: 0, g: 0, b: 0, a: 1}
-  crosshairSize: 10
-  crosshairThickness: 2
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0

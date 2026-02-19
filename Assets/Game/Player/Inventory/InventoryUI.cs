@@ -139,8 +139,8 @@ public class InventoryUI : NetworkBehaviour
         {
             hand = new GameObject("HandPosition").transform;
             hand.SetParent(cam.transform);
-            // FIXED: Position in front of camera, to the right, slightly down
-            hand.localPosition = new Vector3(0.5f, -0.3f, 0.8f);
+            hand.localPosition = new Vector3(1.5f, -0.6f, 0.6f); // Right, down, forward
+            hand.localRotation = Quaternion.Euler(0, -30f, 0); // Slight angle
         }
         inventory.handPosition = hand;
     }

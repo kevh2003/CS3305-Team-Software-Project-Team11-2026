@@ -64,7 +64,7 @@ public class Interactor : NetworkBehaviour
 
         if (Physics.Raycast(ray, out hit, InteractRange))
         {
-            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
             if (interactable != null && interactable.CanInteract())
             {
@@ -106,11 +106,16 @@ public class Interactor : NetworkBehaviour
     {
         if (!IsOwner) return;
 
+        Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
+
         if (value.isPressed && currentInteractable != null)
         {
+            Debug.Log($"[Interactor] Trying Interact() on {currentInteractable}");
             if (currentInteractable.CanInteract())
             {
                 bool success = currentInteractable.Interact(this);
+                Debug.Log($"[Interactor] Interact() returned {success}");
+
                 if (success)
                 {
                     ClearInteractable();
@@ -118,6 +123,7 @@ public class Interactor : NetworkBehaviour
             }
         }
     }
+
 
     private void OnDrawGizmosSelected()
     {

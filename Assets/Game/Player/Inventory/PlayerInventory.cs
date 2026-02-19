@@ -8,10 +8,10 @@ public class PlayerInventory : NetworkBehaviour
     [Header("Hotbar Settings")]
     public int hotbarSlots = 2;
 
-    private Sprite[] itemIcons;
-    private Material[] itemMaterials;
-    private GameObject[] itemObjects;
-    private int selectedSlot = 0;
+    [Header("Key Item Setup (ASSIGN ON PLAYER PREFAB)")]
+    public GameObject keyWorldPrefab;   // world key prefab: must have NetworkObject + Collider + WorldPickup
+    public GameObject keyHandPrefab;    // hand-only prefab
+    public Sprite keyIcon;              // UI icon
 
     [HideInInspector] public GameObject hotbarPanel;
     [HideInInspector] public Image[] hotbarSlotImages;
@@ -20,11 +20,22 @@ public class PlayerInventory : NetworkBehaviour
 
     private PlayerInputActions inputActions;
 
+    private const int EMPTY = -1;
+    private const int KEY_ID = 1;
+
+    // Server authoritative inventory state 
+    private int[] itemIds;
+
+    // Local-only hand visuals
+    private GameObject[] handItems;
+    private int selectedSlot = 0;
+
     void Awake()
     {
-        itemIcons = new Sprite[hotbarSlots];
-        itemMaterials = new Material[hotbarSlots];
-        itemObjects = new GameObject[hotbarSlots];
+        itemIds = new int[hotbarSlots];
+        for (int i = 0; i < hotbarSlots; i++) itemIds[i] = EMPTY;
+
+        handItems = new GameObject[hotbarSlots];
         inputActions = new PlayerInputActions();
     }
 
@@ -32,40 +43,40 @@ public class PlayerInventory : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
-        if (!IsOwner)
+        // Keep enabled on server.
+        // Disable only on remote clients (not owner AND not server).
+        if (!IsOwner && !IsServer)
         {
             enabled = false;
             return;
         }
 
-        inputActions.Enable();
-        SetupInputCallbacks();
+        if (IsOwner)
+        {
+            inputActions.Enable();
+            SetupInputCallbacks();
+        }
     }
 
     void SetupInputCallbacks()
     {
-        if (inputActions == null) return;
-
-        inputActions.Player.HotbarSlot0.performed += ctx => SelectSlot(0);
-        inputActions.Player.HotbarSlot1.performed += ctx => SelectSlot(1);
-        inputActions.Player.DropItem.performed += ctx => DropItem(selectedSlot);
+        inputActions.Player.HotbarSlot0.performed += _ => SelectSlot(0);
+        inputActions.Player.HotbarSlot1.performed += _ => SelectSlot(1);
+        inputActions.Player.DropItem.performed += _ => DropSelectedItem();
     }
 
     void Update()
     {
         if (!IsOwner) return;
 
-        // Fallback Q key
+        // fallback Q
         if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
-        {
-            DropItem(selectedSlot);
-        }
+            DropSelectedItem();
     }
 
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= hotbarSlots) return;
-
         selectedSlot = index;
         UpdateHotbarOutlines();
         UpdateHandDisplay();
@@ -92,156 +103,189 @@ public class PlayerInventory : NetworkBehaviour
 
     void UpdateHandDisplay()
     {
-        // Hide all items (they stay in world, just hidden)
         for (int i = 0; i < hotbarSlots; i++)
         {
-            if (itemObjects[i] != null)
-            {
-                itemObjects[i].SetActive(false);
-            }
+            if (handItems[i] != null)
+                handItems[i].SetActive(false);
         }
 
-        // For now, im not showing items in hand
-        // Just keeping them hidden when in inventory
+        if (handPosition != null && handItems[selectedSlot] != null)
+        {
+            var handItem = handItems[selectedSlot];
+            handItem.SetActive(true);
+            handItem.transform.SetParent(handPosition);
+            handItem.transform.localPosition = Vector3.zero;
+            handItem.transform.localRotation = Quaternion.identity;
+            handItem.transform.localScale = Vector3.one;
+        }
     }
 
-    public bool AddItem(Sprite icon, Material mat, GameObject itemObject)
+    bool ServerHasKey()
     {
         for (int i = 0; i < hotbarSlots; i++)
-        {
-            if (itemIcons[i] == null)
-            {
-                // Store the original scale before we modify anything
-                Vector3 originalScale = itemObject.transform.localScale;
-
-                itemIcons[i] = icon;
-                itemMaterials[i] = mat;
-                itemObjects[i] = itemObject;
-
-                // Store original scale in a component so we can retrieve it later
-                ItemData data = itemObject.GetComponent<ItemData>();
-                if (data == null)
-                {
-                    data = itemObject.AddComponent<ItemData>();
-                }
-                data.originalScale = originalScale;
-                data.originalIcon = icon;
-                data.originalMaterial = mat;
-
-                if (hotbarSlotImages[i] != null)
-                {
-                    hotbarSlotImages[i].sprite = icon;
-                    hotbarSlotImages[i].color = Color.white;
-                }
-
-                if (i == selectedSlot)
-                {
-                    UpdateHandDisplay();
-                }
-
+            if (itemIds[i] == KEY_ID)
                 return true;
-            }
-        }
-
         return false;
     }
 
-    public void RemoveItem(int index)
+    int FindFirstEmptySlot()
     {
-        if (index < 0 || index >= hotbarSlots) return;
-
-        itemIcons[index] = null;
-        itemMaterials[index] = null;
-        itemObjects[index] = null;
-
-        if (hotbarSlotImages[index] != null)
-        {
-            hotbarSlotImages[index].sprite = null;
-            hotbarSlotImages[index].color = new Color(1, 1, 1, 0.3f);
-        }
-
-        if (index == selectedSlot)
-        {
-            UpdateHandDisplay();
-        }
+        for (int i = 0; i < hotbarSlots; i++)
+            if (itemIds[i] == EMPTY)
+                return i;
+        return -1;
     }
 
-    void DropItem(int index)
+    [ServerRpc(RequireOwnership = false)]
+    public void PickupKeyServerRpc(NetworkObjectReference keyRef, ServerRpcParams rpcParams = default)
     {
-        if (index < 0 || index >= hotbarSlots) return;
+        if (!keyRef.TryGet(out NetworkObject keyNo)) return;
+        if (!keyNo.IsSpawned) return;
 
-        GameObject item = itemObjects[index];
-        if (item == null) return;
+        // prevent duplication
+        if (ServerHasKey()) return;
 
-        // Get stored data
-        ItemData data = item.GetComponent<ItemData>();
+        int slot = FindFirstEmptySlot();
+        if (slot == -1) return;
 
-        // Unparent from hand
-        item.transform.SetParent(null);
+        // record on server
+        itemIds[slot] = KEY_ID;
 
-        // Position in front of player, slightly up so it doesn't clip through floor
-        Vector3 dropPos = transform.position + (transform.forward * 1.5f);
-        dropPos.y = transform.position.y + 0.5f; // Waist height
-        item.transform.position = dropPos;
-        item.transform.rotation = Quaternion.identity;
+        // despawn the world key for everyone
+        keyNo.Despawn();
 
-        // Restore original scale
-        item.transform.localScale = Vector3.one * 10f;
-
-        // Re-enable colliders
-        foreach (Collider col in item.GetComponentsInChildren<Collider>())
+        // tell ONLY this client to show UI/hand item
+        ulong clientId = rpcParams.Receive.SenderClientId;
+        GiveKeyClientRpc(slot, new ClientRpcParams
         {
-            col.enabled = true;
-            col.isTrigger = false;
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
+        });
+    }
+
+    [ClientRpc]
+    void GiveKeyClientRpc(int slot, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        if (slot < 0 || slot >= hotbarSlots) return;
+
+        itemIds[slot] = KEY_ID;
+
+        // UI icon
+        if (hotbarSlotImages != null && hotbarSlotImages.Length > slot && hotbarSlotImages[slot] != null)
+        {
+            hotbarSlotImages[slot].sprite = keyIcon;
+            hotbarSlotImages[slot].color = Color.white;
         }
 
-        // Ensure Rigidbody exists and is configured
-        Rigidbody rb = item.GetComponent<Rigidbody>();
-        if (rb == null)
+        // hand visual
+        if (handItems[slot] != null)
         {
-            rb = item.AddComponent<Rigidbody>();
-        }
-        rb.isKinematic = false;
-        rb.useGravity = true;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-
-        // Ensure WorldPickup exists and has correct data
-        WorldPickup pickup = item.GetComponent<WorldPickup>();
-        if (pickup == null)
-        {
-            pickup = item.AddComponent<WorldPickup>();
-        }
-        // Restore the data
-        if (data != null)
-        {
-            pickup.itemIcon = data.originalIcon;
-            pickup.itemMaterial = data.originalMaterial;
+            Destroy(handItems[slot]);
+            handItems[slot] = null;
         }
 
-        // Make item visible again
-        item.SetActive(true);
-
-        // Remove from inventory
-        itemObjects[index] = null;
-        itemIcons[index] = null;
-        itemMaterials[index] = null;
-
-        // Update UI
-        if (hotbarSlotImages[index] != null)
+        if (keyHandPrefab != null)
         {
-            hotbarSlotImages[index].sprite = null;
-            hotbarSlotImages[index].color = new Color(1, 1, 1, 0.3f);
+            handItems[slot] = Instantiate(keyHandPrefab);
+            handItems[slot].SetActive(false);
         }
 
         UpdateHandDisplay();
     }
 
+    public void DropSelectedItem()
+    {
+        if (!IsOwner) return;
+        if (selectedSlot < 0 || selectedSlot >= hotbarSlots) return;
+        if (itemIds[selectedSlot] != KEY_ID) return;
+
+        DropKeyFromSlotServerRpc(selectedSlot);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    void DropKeyFromSlotServerRpc(int slot, ServerRpcParams rpcParams = default)
+    {
+        if (slot < 0 || slot >= hotbarSlots) return;
+        if (itemIds[slot] != KEY_ID) return;
+
+        if (keyWorldPrefab == null)
+        {
+            Debug.LogError("PlayerInventory: keyWorldPrefab is NOT assigned on PLAYER prefab.");
+            return;
+        }
+
+        Vector3 dropPos = (dropPosition != null)
+            ? dropPosition.position
+            : (transform.position + transform.forward * 1.5f + Vector3.up * 0.5f);
+
+        GameObject worldItem = Instantiate(keyWorldPrefab, dropPos, Quaternion.identity);
+
+        var no = worldItem.GetComponent<NetworkObject>();
+        if (no == null)
+        {
+            Debug.LogError("Key world prefab missing NetworkObject on ROOT.");
+            Destroy(worldItem);
+            return;
+        }
+
+        EnsureWorldPhysics(worldItem);
+
+        no.Spawn();
+
+        // clear server slot
+        itemIds[slot] = EMPTY;
+
+        // clear only dropping client's UI/hand
+        ulong clientId = rpcParams.Receive.SenderClientId;
+        ClearSlotClientRpc(slot, new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
+        });
+    }
+
+    [ClientRpc]
+    void ClearSlotClientRpc(int slot, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        if (slot < 0 || slot >= hotbarSlots) return;
+
+        itemIds[slot] = EMPTY;
+
+        if (handItems[slot] != null)
+        {
+            Destroy(handItems[slot]);
+            handItems[slot] = null;
+        }
+
+        if (hotbarSlotImages != null && hotbarSlotImages.Length > slot && hotbarSlotImages[slot] != null)
+        {
+            hotbarSlotImages[slot].sprite = null;
+            hotbarSlotImages[slot].color = new Color(1, 1, 1, 0.3f);
+        }
+
+        UpdateHandDisplay();
+    }
+
+    static void EnsureWorldPhysics(GameObject worldItem)
+    {
+        // colliders on
+        foreach (var col in worldItem.GetComponentsInChildren<Collider>())
+        {
+            col.enabled = true;
+            col.isTrigger = false;
+        }
+
+        // make sure it falls
+        var rb = worldItem.GetComponent<Rigidbody>();
+        if (rb == null) rb = worldItem.AddComponent<Rigidbody>();
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+    }
 
     void OnDestroy()
     {
         if (inputActions != null)
-        {
             inputActions.Disable();
-        }
     }
 }

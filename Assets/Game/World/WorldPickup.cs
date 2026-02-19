@@ -3,45 +3,23 @@ using Unity.Netcode;
 
 public class WorldPickup : MonoBehaviour, IInteractable
 {
-    public Sprite itemIcon;
-    public Material itemMaterial;
-    public GameObject itemPrefab; // Reference to itself for respawning
-    
-    void Awake()
-    {
-        if (itemMaterial == null)
-        {
-            Renderer rend = GetComponentInChildren<Renderer>();
-            if (rend != null)
-            {
-                itemMaterial = rend.material;
-            }
-        }
-    }
-
-    public bool CanInteract()
-    {
-        return true; // Always interactable
-    }
+    public bool CanInteract() => true;
 
     public bool Interact(Interactor interactor)
     {
-        PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
-        
-        if (inventory == null)
+        if (interactor == null) return false;
+
+        var inv = interactor.GetComponent<PlayerInventory>();
+        if (inv == null) return false;
+
+        var no = GetComponent<NetworkObject>();
+        if (no == null)
         {
+            Debug.LogError("WorldPickup: missing NetworkObject on key world prefab root.");
             return false;
         }
 
-        // Store reference to this prefab before adding to inventory
-        bool success = inventory.AddItem(itemIcon, itemMaterial, gameObject);
-        
-        if (success)
-        {
-            // Hide the world object (but don't destroy it - inventory manages it now)
-            gameObject.SetActive(false);
-        }
-        
-        return success;
+        inv.PickupKeyServerRpc(no);
+        return true;
     }
 }

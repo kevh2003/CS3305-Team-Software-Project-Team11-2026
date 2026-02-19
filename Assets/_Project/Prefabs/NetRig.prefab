@@ -120,3 +120,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NgoNetSession
   networkManager: {fileID: 1842932614857895165}
   transport: {fileID: 156461222816470975}
+  basePort: 7777
+  maxAttempts: 15
