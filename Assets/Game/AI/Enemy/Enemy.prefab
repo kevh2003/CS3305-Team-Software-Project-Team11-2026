@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 1758213158113905958}
   - component: {fileID: 1354475477447838215}
   - component: {fileID: 4709322435873796446}
+  - component: {fileID: -4437023057597631294}
   m_Layer: 8
   m_Name: Enemy
   m_TagString: Untagged
@@ -159,7 +160,6 @@ MonoBehaviour:
   alertedDetectionMultiplier: 1.5
   alertedViewAngle: 270
   searchDuration: 10
-  searchOvershootDistance: 10
   whatIsPlayer:
     serializedVersion: 2
     m_Bits: 128
@@ -181,6 +181,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttack
   damage: 1
   attackCooldown: 5
+--- !u!114 &-4437023057597631294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 306099623663631016}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bea09adc3e0182045b1f67016f55a96f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPatrol
+  patrolPoints: []
+  waitTimeAtPoint: 3
+  loopPatrol: 1
 --- !u!1 &7256575124343991735
 GameObject:
   m_ObjectHideFlags: 0
