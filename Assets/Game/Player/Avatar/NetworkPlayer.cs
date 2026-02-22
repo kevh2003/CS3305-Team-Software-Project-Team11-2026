@@ -30,6 +30,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [SerializeField] private float gravity = -25f;
         
     private InputAction _jump;
+    private float _jumpCooldown = 0.05f;
+    private float _jumpTimer;
+
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
@@ -119,11 +122,20 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (grounded && _verticalVelocity < 0f)
             _verticalVelocity = -2f;
 
-        if (_jump != null && _jump.WasPressedThisFrame() && grounded)
+        // if (_jump != null && _jump.IsPressed() && grounded)
+        // {
+        //     // v = sqrt(h * -2g)
+        //     _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        // }
+
+        _jumpTimer -= Time.deltaTime;
+
+        if (_jump != null && _jump.IsPressed() && grounded && _jumpTimer <= 0f)
         {
-            // v = sqrt(h * -2g)
             _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            _jumpTimer = _jumpCooldown;
         }
+
 
         _verticalVelocity += gravity * Time.deltaTime;
 
