@@ -122,11 +122,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (grounded && _verticalVelocity < 0f)
             _verticalVelocity = -2f;
 
-        // if (_jump != null && _jump.IsPressed() && grounded)
-        // {
-        //     // v = sqrt(h * -2g)
-        //     _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        // }
 
         _jumpTimer -= Time.deltaTime;
 
