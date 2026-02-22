@@ -1,84 +1,139 @@
 fileFormatVersion: 2
-guid: 0ba9481e2317049638f69ad74d671bb4
+guid: 4a235fac5db6a6e4aa37179ef131c6cb
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
   externalObjects:
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Keyboard_MAT
-    second: {fileID: 2100000, guid: fb6ebf2bb3ee74154a7a95924790c505, type: 2}
+      name: Bin
+    second: {fileID: 2800000, guid: 5d7bd1c167369e345b43ab1afb0c492f, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Material
-    second: {fileID: 2100000, guid: 63fae190b2f2841318fd042f3f43ad4f, type: 2}
+      name: Clock
+    second: {fileID: 2800000, guid: b64f7ba0a7fd7f84b824815c41ed7143, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Material.003
-    second: {fileID: 2100000, guid: b9a103c8071734e56ad7049d2cf40caa, type: 2}
+      name: Fire
+    second: {fileID: 2800000, guid: da7b9e1026dcf104fb136eec3ceb1e40, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Material.004
-    second: {fileID: 2100000, guid: 8c601271f062d4df58e7968b2e9d2d69, type: 2}
+      name: Map
+    second: {fileID: 2800000, guid: d3be2d08f0e41de439099b463a6591af, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Material.005
-    second: {fileID: 2100000, guid: 81fe2f7a096d143619da2b382f99366e, type: 2}
+      name: PC
+    second: {fileID: 2800000, guid: 440ac63dad21c7942bdefffa775001aa, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Material_Sheet1
-    second: {fileID: 2100000, guid: a4138b9d9023b467a955a3a580d27f07, type: 2}
+      name: black
+    second: {fileID: 2800000, guid: 867e50fb3cfe5854fb1793f9d68593cb, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Monitor
-    second: {fileID: 2100000, guid: b6e29f89718084ac78421602e5a36c5a, type: 2}
+      name: black_white
+    second: {fileID: 2800000, guid: 1b9cea32700b96b4698d660f89764ce9, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Mouse_MAT
-    second: {fileID: 2100000, guid: a9976761f33eb41738f8953059a60bf3, type: 2}
+      name: carpet
+    second: {fileID: 2800000, guid: aac749f5b8629b04da5d732c59842c7e, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Red_MAT
-    second: {fileID: 2100000, guid: f4a7d093aee164bd3b811c18fc37e1d0, type: 2}
+      name: competition_poster
+    second: {fileID: 2800000, guid: 0c5cbe5593b9cd9489d0b64f7aa27078, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: Window_MAT
-    second: {fileID: 2100000, guid: ad84516c58c934552b1824d6ac9c7af9, type: 2}
+      name: covid_poster
+    second: {fileID: 2800000, guid: 4ed16eeff616af946b28a22639f7af7f, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: poster1_MAT
-    second: {fileID: 2100000, guid: 7e0792cfa599b4fa9b19324e12133e6b, type: 2}
+      name: flower_colours
+    second: {fileID: 2800000, guid: 52882b328e9e5474290e203fab34b640, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: poster2_MAT
-    second: {fileID: 2100000, guid: 2f1199fdc005f44e19ab9f101b9f4854, type: 2}
+      name: grey
+    second: {fileID: 2800000, guid: da434206083d1f245a2368391812edb2, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: poster3_MAT
-    second: {fileID: 2100000, guid: f7aa592f5888f4c55b9d14015152ac14, type: 2}
+      name: grey2
+    second: {fileID: 2800000, guid: e94c486cacd974c41a2cf9e6a89feefc, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: tmp_floor_MAT
-    second: {fileID: 2100000, guid: ab605fa059fd34815a21efcb9b32c7fc, type: 2}
+      name: hand_san
+    second: {fileID: 2800000, guid: b0539bcdc78cfc04b9751921a05a8994, type: 3}
   - first:
-      type: UnityEngine:Material
+      type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
-      name: whiteboard_MAT
-    second: {fileID: 2100000, guid: 683c6cd0b232e467f9633a13ddb8c7a3, type: 2}
+      name: keyboard_text
+    second: {fileID: 2800000, guid: a1bc4491c630f354e919c61fc056bfd9, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: lab_sign
+    second: {fileID: 2800000, guid: 7ef88a611964648469f8c9981cb34c9b, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: mouse_text
+    second: {fileID: 2800000, guid: e3b82cedbc153f048817c07a45281d99, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: no_food_poster
+    second: {fileID: 2800000, guid: 5e5cebf29c93e3d41978857041466d9d, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: poaster1
+    second: {fileID: 2800000, guid: 9c6ec56238f37b34a8f2a02088b9616d, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: poster2
+    second: {fileID: 2800000, guid: 80f3f3f5641490140b913503d27d6aca, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: red
+    second: {fileID: 2800000, guid: 0aab2158aba372d4aae0f5a4b9ab9ffe, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: roof
+    second: {fileID: 2800000, guid: cd9fbe94167bd6843b6ffc3fec7850e3, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: speaker
+    second: {fileID: 2800000, guid: 53c8fe15f37b6e64dbdd22e87324d52e, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: white_wall
+    second: {fileID: 2800000, guid: 80651b7c88eaa7d4099b11ee54b0adea, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: whiteboard
+    second: {fileID: 2800000, guid: ca26fe0ad458801438976b1be66f9fc0, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: wood
+    second: {fileID: 2800000, guid: 5302f1a289ebe9e45ae1b51a3cfa0aff, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
