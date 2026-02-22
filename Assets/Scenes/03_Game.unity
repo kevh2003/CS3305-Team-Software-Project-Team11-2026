@@ -2290,17 +2290,21 @@ PrefabInstance:
       propertyPath: InScenePlacedSourceGlobalObjectIdHash
       value: 363119123
       objectReference: {fileID: 0}
+    - target: {fileID: 6656250143058263011, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 18.35
+      objectReference: {fileID: 0}
     - target: {fileID: 7169444635721614757, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.2658793
+      value: 22.974
       objectReference: {fileID: 0}
     - target: {fileID: 7169444635721614757, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.0000001
+      value: 1.359
       objectReference: {fileID: 0}
     - target: {fileID: 7169444635721614757, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 2.932905
+      value: 46.368
       objectReference: {fileID: 0}
     - target: {fileID: 7169444635721614757, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
       propertyPath: m_LocalRotation.w
