@@ -137,16 +137,25 @@ public class PlayerInventory : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void PickupKeyServerRpc(NetworkObjectReference keyRef, ServerRpcParams rpcParams = default)
+    public void PickupKeyServerRpc(NetworkObjectReference keyRef, int preferredSlot, ServerRpcParams rpcParams = default)
     {
         if (!keyRef.TryGet(out NetworkObject keyNo)) return;
         if (!keyNo.IsSpawned) return;
 
-        // prevent duplication
-        if (ServerHasKey()) return;
+        int slot = -1;
 
-        int slot = FindFirstEmptySlot();
-        if (slot == -1) return;
+        // Try the selected slot first
+        if (preferredSlot >= 0 && preferredSlot < hotbarSlots && itemIds[preferredSlot] == EMPTY)
+        {
+            slot = preferredSlot;
+        }
+        else
+        {
+            // Fall back to first empty slot
+            slot = FindFirstEmptySlot();
+        }
+
+        if (slot == -1) return; // inventory full
 
         // record on server
         itemIds[slot] = KEY_ID;
@@ -154,7 +163,7 @@ public class PlayerInventory : NetworkBehaviour
         // despawn the world key for everyone
         keyNo.Despawn();
 
-        // tell ONLY this client to show UI/hand item
+        // tell only this client to show UI/hand item
         ulong clientId = rpcParams.Receive.SenderClientId;
         GiveKeyClientRpc(slot, new ClientRpcParams
         {
@@ -264,6 +273,11 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+    }
+
+    public int GetSelectedSlot()
+    {
+        return selectedSlot;
     }
 
     static void EnsureWorldPhysics(GameObject worldItem)

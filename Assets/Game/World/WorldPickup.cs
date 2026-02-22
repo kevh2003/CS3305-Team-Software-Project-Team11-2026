@@ -19,7 +19,7 @@ public class WorldPickup : MonoBehaviour, IInteractable
             return false;
         }
 
-        inv.PickupKeyServerRpc(no);
+        inv.PickupKeyServerRpc(new NetworkObjectReference(no), inv.GetSelectedSlot());
         return true;
     }
 }
