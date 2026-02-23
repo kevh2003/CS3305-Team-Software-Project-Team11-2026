@@ -221,6 +221,53 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &97643893 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1081639896985640265, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &97643894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97643893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 2389731098
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &97643895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97643893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: 23.75, y: -2.05, z: -122.25}
+  FallenRotation: {x: 0, y: 90, z: -40}
+  PromptText: Knock over
+  SingleUse: 1
 --- !u!1 &187976559
 GameObject:
   m_ObjectHideFlags: 0
@@ -1026,6 +1073,53 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &506342298 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -5041459838462940087, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &506342299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 506342298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 1512297522
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &506342300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 506342298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: -12.84, y: 8.16, z: -109.28}
+  FallenRotation: {x: 0, y: 0, z: -32057}
+  PromptText: Knock over
+  SingleUse: 1
 --- !u!1001 &553112404
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1093,8 +1187,138 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -5041459838462940087, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 506342299}
+    - targetCorrespondingSourceObject: {fileID: -5041459838462940087, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 506342300}
+    - targetCorrespondingSourceObject: {fileID: -2329076922637645774, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 553112410}
+    - targetCorrespondingSourceObject: {fileID: -2329076922637645774, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 553112406}
+    - targetCorrespondingSourceObject: {fileID: 5278119647978768165, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 553112409}
+    - targetCorrespondingSourceObject: {fileID: 5278119647978768165, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 553112408}
+    - targetCorrespondingSourceObject: {fileID: 1081639896985640265, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 97643894}
+    - targetCorrespondingSourceObject: {fileID: 1081639896985640265, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 97643895}
+    - targetCorrespondingSourceObject: {fileID: 1288310698437739460, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1336424995}
+    - targetCorrespondingSourceObject: {fileID: 1288310698437739460, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1336424996}
+    - targetCorrespondingSourceObject: {fileID: -8336543717155976950, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 765780860}
+    - targetCorrespondingSourceObject: {fileID: -8336543717155976950, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 765780861}
   m_SourcePrefab: {fileID: 100100000, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+--- !u!1 &553112405 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -2329076922637645774, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &553112406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553112405}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: 23.75, y: -2.51, z: -61.54}
+  FallenRotation: {x: -81.382, y: 0, z: 0}
+  PromptText: Knock over
+  SingleUse: 1
+--- !u!1 &553112407 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5278119647978768165, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &553112408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553112407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: 19.205, y: 2.45, z: -65}
+  FallenRotation: {x: -90, y: 0, z: 0}
+  PromptText: Knock over
+  SingleUse: 1
+--- !u!114 &553112409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553112407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 2859846052
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &553112410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553112405}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 738199998
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &554618427
 GameObject:
   m_ObjectHideFlags: 0
@@ -1717,6 +1941,53 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.000001, y: 2.0000005, z: 2.00001}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &765780859 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8336543717155976950, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &765780860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 765780859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 432207168
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &765780861
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 765780859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: 22.71, y: -0.55, z: -103.24}
+  FallenRotation: {x: 0, y: -180, z: 22.426}
+  PromptText: Knock over
+  SingleUse: 1
 --- !u!1001 &789311722
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2848,6 +3119,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241442813}
   m_CullTransparentMesh: 1
+--- !u!1 &1336424994 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1288310698437739460, guid: 8685b8636cb8f4b94b0bf7dbd648fc23, type: 3}
+  m_PrefabInstance: {fileID: 553112404}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1336424995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336424994}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 4132405079
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &1336424996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336424994}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27de083a2ca6ae3488e5e814dabe915f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KnockableObject
+  ShowTopMostFoldoutHeaderGroup: 1
+  FallenPosition: {x: 23.81, y: 6.78, z: -89.61}
+  FallenRotation: {x: -56.94, y: -180, z: 0}
+  PromptText: Knock over
+  SingleUse: 1
 --- !u!1 &1372240461
 GameObject:
   m_ObjectHideFlags: 0
