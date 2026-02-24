@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 /*
  * NetworkPlayer
@@ -109,6 +110,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (!IsOwner) return;
         if (!_inGameScene) return;
         if (_playerInput == null || !_playerInput.enabled) return;
+        if (_cc == null || !_cc.enabled) return;
 
         // WASD movement
         Vector2 move = _move.ReadValue<Vector2>();
@@ -144,5 +146,52 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _pitch = Mathf.Clamp(_pitch - look.y, -85f, 85f);
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = new Vector3(_pitch, 0f, 0f);
+    }
+
+    public void ServerResetForNewMatch(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer) return;
+
+        // Apply on server
+        ApplyReset(position, rotation);
+
+        // Tell the owning client to apply the same reset
+        var rpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        };
+
+        ResetForNewMatchClientRpc(position, rotation, rpcParams);
+    }
+
+    [ClientRpc]
+    private void ResetForNewMatchClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        ApplyReset(position, rotation);
+    }
+
+    private void ApplyReset(Vector3 position, Quaternion rotation)
+    {
+        if (_cc != null)
+            _cc.enabled = false;
+
+        transform.SetPositionAndRotation(position, rotation);
+
+        _verticalVelocity = 0f;
+        _pitch = 0f;
+
+        if (playerCamera != null)
+            playerCamera.transform.localEulerAngles = Vector3.zero;
+
+        StartCoroutine(ReenableController());
+    }
+
+    private IEnumerator ReenableController()
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        if (_cc != null)
+            _cc.enabled = true;
     }
 }
