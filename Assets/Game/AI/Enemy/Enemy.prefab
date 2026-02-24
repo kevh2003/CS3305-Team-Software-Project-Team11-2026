@@ -167,7 +167,7 @@ MonoBehaviour:
     m_Bits: 128
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 513
   currentTarget: {fileID: 0}
 --- !u!114 &4709322435873796446
 MonoBehaviour:
