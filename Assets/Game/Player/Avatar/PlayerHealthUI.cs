@@ -1,114 +1,143 @@
-using UnityEngine;
-using UnityEngine.UI;
 using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class PlayerHealthUI : NetworkBehaviour
 {
-    private PlayerHealth playerHealth;
-    private Canvas localCanvas;
+    [Header("Scene names")]
+    [SerializeField] private string gameSceneName = "03_Game";
 
-    private GameObject healthPanel;
-    private Image fillImage;
+    [Header("UI layout")]
+    [SerializeField] private Vector2 offset = new Vector2(20, 20);
+    [SerializeField] private Vector2 panelSize = new Vector2(240, 28);
+    [SerializeField] private float blockGap = 6f;
+    [SerializeField] private int sortingOrder = 500;
+
+    [Header("Colors")]
+    [SerializeField] private Color green = new Color(0.2f, 1f, 0.2f, 1f);
+    [SerializeField] private Color darkGrey = new Color(0.2f, 0.2f, 0.2f, 1f);
+
+    private PlayerHealth health;
+
+    private Canvas canvas;
+    private GameObject panel;
+    private Image[] blocks = new Image[3];
 
     public override void OnNetworkSpawn()
     {
-        base.OnNetworkSpawn();
-
         if (!IsOwner)
         {
             enabled = false;
             return;
         }
 
-        playerHealth = GetComponent<PlayerHealth>();
-        if (playerHealth == null)
+        health = GetComponent<PlayerHealth>();
+        if (health == null)
         {
-            Debug.LogError("HealthUI: No PlayerHealth found on player.");
+            Debug.LogError("PlayerHealthUI: PlayerHealth not found.");
+            enabled = false;
             return;
         }
 
-        CreateLocalUI();
+        BuildUI();
+
+        // Scene show/hide
         SceneManager.sceneLoaded += OnSceneLoaded;
-        UpdateUIVisibility(SceneManager.GetActiveScene().name);
+        UpdateVisibility(SceneManager.GetActiveScene().name);
+
+        // Update now + whenever networked health changes
+        UpdateBlocks(health.CurrentHealth.Value);
+        health.CurrentHealth.OnValueChanged += OnHealthChanged;
     }
 
-    void CreateLocalUI()
-    {
-        GameObject canvasObj = new GameObject($"PlayerHealth_{OwnerClientId}");
-        localCanvas = canvasObj.AddComponent<Canvas>();
-        localCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        localCanvas.sortingOrder = 101; // above hotbar if needed
-
-        canvasObj.AddComponent<CanvasScaler>();
-        canvasObj.AddComponent<GraphicRaycaster>();
-        DontDestroyOnLoad(canvasObj);
-
-        CreateHealthBar();
-    }
-
-    void CreateHealthBar()
-    {
-        // Panel (background)
-        healthPanel = new GameObject("HealthPanel");
-        healthPanel.transform.SetParent(localCanvas.transform, false);
-
-        RectTransform panelRect = healthPanel.AddComponent<RectTransform>();
-
-        panelRect.anchorMin = new Vector2(0f, 0f);
-        panelRect.anchorMax = new Vector2(0f, 0f);
-        panelRect.pivot = new Vector2(0f, 0f);
-        panelRect.anchoredPosition = new Vector2(20, 20);
-        panelRect.sizeDelta = new Vector2(200, 25);
-
-        Image bg = healthPanel.AddComponent<Image>();
-        bg.color = new Color(0, 0, 0, 0.5f);
-
-        GameObject fillObj = new GameObject("HealthFill");
-        fillObj.transform.SetParent(healthPanel.transform, false);
-
-        RectTransform fillRect = fillObj.AddComponent<RectTransform>();
-        fillRect.anchorMin = new Vector2(0f, 0f);
-        fillRect.anchorMax = new Vector2(1f, 1f);
-        fillRect.offsetMin = new Vector2(2, 2);
-        fillRect.offsetMax = new Vector2(-2, -2);
-
-        fillImage = fillObj.AddComponent<Image>();
-        fillImage.color = new Color(0.2f, 1f, 0.2f, 0.9f);
-
-        fillImage.type = Image.Type.Filled;
-        fillImage.fillMethod = Image.FillMethod.Horizontal;
-        fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
-        fillImage.fillAmount = 1f;
-    }
-
-    void Update()
+    private void OnDestroy()
     {
         if (!IsOwner) return;
-        if (fillImage == null || playerHealth == null) return;
 
-        // 3-hit system => bar drops by 1/3 each hit automatically
-        float percent = Mathf.Clamp01(playerHealth.currentHealth / playerHealth.maxHealth);
-        fillImage.fillAmount = percent;
-    }
-
-    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        UpdateUIVisibility(scene.name);
-    }
-
-    void UpdateUIVisibility(string sceneName)
-    {
-        bool showUI = (sceneName == "03_Game");
-        if (healthPanel != null)
-            healthPanel.SetActive(showUI);
-    }
-
-    void OnDestroy()
-    {
         SceneManager.sceneLoaded -= OnSceneLoaded;
 
-        if (localCanvas != null)
-            Destroy(localCanvas.gameObject);
+        if (health != null)
+            health.CurrentHealth.OnValueChanged -= OnHealthChanged;
+
+        if (canvas != null)
+            Destroy(canvas.gameObject);
+    }
+
+    private void OnHealthChanged(int oldValue, int newValue)
+    {
+        UpdateBlocks(newValue);
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        UpdateVisibility(scene.name);
+        if (health != null) UpdateBlocks(health.CurrentHealth.Value);
+    }
+
+    private void UpdateVisibility(string sceneName)
+    {
+        bool show = sceneName == gameSceneName;
+        if (panel != null) panel.SetActive(show);
+    }
+
+    private void UpdateBlocks(int hp)
+    {
+        // Right-to-left loss: block3 disappears first, then block2, then block1.
+        blocks[0].color = (hp >= 1) ? green : darkGrey;
+        blocks[1].color = (hp >= 2) ? green : darkGrey;
+        blocks[2].color = (hp >= 3) ? green : darkGrey;
+    }
+
+    private void BuildUI()
+    {
+        // Canvas that survives scene loads
+        var canvasGO = new GameObject($"PlayerHealthCanvas_{OwnerClientId}");
+        canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = sortingOrder;
+
+        var scaler = canvasGO.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+
+        canvasGO.AddComponent<GraphicRaycaster>();
+        DontDestroyOnLoad(canvasGO);
+
+        // Panel
+        panel = new GameObject("HealthPanel", typeof(RectTransform));
+        panel.transform.SetParent(canvasGO.transform, false);
+
+        var panelRT = panel.GetComponent<RectTransform>();
+        panelRT.anchorMin = new Vector2(0, 0);
+        panelRT.anchorMax = new Vector2(0, 0);
+        panelRT.pivot = new Vector2(0, 0);
+        panelRT.anchoredPosition = offset;
+        panelRT.sizeDelta = panelSize;
+
+        float totalGap = blockGap * 2f;
+        float blockWidth = (panelSize.x - totalGap) / 3f;
+        float blockHeight = panelSize.y;
+
+        for (int i = 0; i < 3; i++)
+        {
+            var blockGO = new GameObject($"Block{i + 1}", typeof(RectTransform));
+            blockGO.transform.SetParent(panel.transform, false);
+
+            var rt = blockGO.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(0, 0);
+            rt.pivot = new Vector2(0, 0);
+            rt.sizeDelta = new Vector2(blockWidth, blockHeight);
+            rt.anchoredPosition = new Vector2(i * (blockWidth + blockGap), 0);
+
+            var img = blockGO.AddComponent<Image>();
+            img.color = green; // start full
+            img.raycastTarget = false;
+
+            blocks[i] = img;
+        }
     }
 }
