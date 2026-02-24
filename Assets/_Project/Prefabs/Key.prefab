@@ -82,6 +82,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d29f676486d3472194b98a3b38cc888, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3468423993379287502}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d29f676486d3472194b98a3b38cc888, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7146529129780601094}
     - targetCorrespondingSourceObject: {fileID: -516098083770646512, guid: 1d29f676486d3472194b98a3b38cc888, type: 3}
       insertIndex: -1
       addedObject: {fileID: 765253005515390561}
@@ -203,3 +206,16 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 1
+--- !u!114 &7146529129780601094
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7508955532144942879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f1871064a779408b8e8ee0d63345fe1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldItem
+  definition: {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}

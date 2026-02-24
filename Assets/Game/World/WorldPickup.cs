@@ -15,11 +15,18 @@ public class WorldPickup : MonoBehaviour, IInteractable
         var no = GetComponent<NetworkObject>();
         if (no == null)
         {
-            Debug.LogError("WorldPickup: missing NetworkObject on key world prefab root.");
+            Debug.LogError("WorldPickup: missing NetworkObject on world prefab ROOT.");
             return false;
         }
 
-        inv.PickupKeyServerRpc(new NetworkObjectReference(no), inv.GetSelectedSlot());
+        var worldItem = GetComponent<WorldItem>();
+        if (worldItem == null || worldItem.definition == null)
+        {
+            Debug.LogError("WorldPickup: missing WorldItem or definition reference.");
+            return false;
+        }
+
+        inv.PickupItemServerRpc(new NetworkObjectReference(no), worldItem.definition.itemId, inv.GetSelectedSlot());
         return true;
     }
 }

@@ -241,9 +241,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
   hotbarSlots: 3
-  keyWorldPrefab: {fileID: 7508955532144942879, guid: 6a4a47f85ca6f4d398c8eabe0531f6a6, type: 3}
-  keyHandPrefab: {fileID: 7170372633719823343, guid: e6afc0580509a42649f2416070957cdc, type: 3}
-  keyIcon: {fileID: 0}
+  itemDatabase:
+  - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
+  - {fileID: 11400000, guid: f68ccc31ba76542d89cc68d2e0d7195c, type: 2}
   hotbarPanel: {fileID: 0}
   hotbarSlotImages: []
   handPosition: {fileID: 0}

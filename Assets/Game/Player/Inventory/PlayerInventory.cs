@@ -2,16 +2,15 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
+using System.Collections.Generic;
 
 public class PlayerInventory : NetworkBehaviour
 {
     [Header("Hotbar Settings")]
     public int hotbarSlots = 2;
 
-    [Header("Key Item Setup (ASSIGN ON PLAYER PREFAB)")]
-    public GameObject keyWorldPrefab;   // world key prefab: must have NetworkObject + Collider + WorldPickup
-    public GameObject keyHandPrefab;    // hand-only prefab
-    public Sprite keyIcon;              // UI icon
+    [Header("Item Database (assign all ItemDefinitions here)")]
+    public List<ItemDefinition> itemDatabase = new List<ItemDefinition>();
 
     [HideInInspector] public GameObject hotbarPanel;
     [HideInInspector] public Image[] hotbarSlotImages;
@@ -21,14 +20,16 @@ public class PlayerInventory : NetworkBehaviour
     private PlayerInputActions inputActions;
 
     private const int EMPTY = -1;
-    private const int KEY_ID = 1;
 
-    // Server authoritative inventory state 
+    // Server authoritative inventory state (IDs)
     private int[] itemIds;
 
     // Local-only hand visuals
     private GameObject[] handItems;
     private int selectedSlot = 0;
+
+    // Fast lookup
+    private Dictionary<int, ItemDefinition> byId;
 
     void Awake()
     {
@@ -37,6 +38,35 @@ public class PlayerInventory : NetworkBehaviour
 
         handItems = new GameObject[hotbarSlots];
         inputActions = new PlayerInputActions();
+
+        BuildDatabaseLookup();
+    }
+
+    void BuildDatabaseLookup()
+    {
+        byId = new Dictionary<int, ItemDefinition>();
+
+        foreach (var def in itemDatabase)
+        {
+            if (def == null) continue;
+
+            if (byId.ContainsKey(def.itemId))
+            {
+                Debug.LogError($"Duplicate itemId found in itemDatabase: {def.itemId} ({def.name}). Item IDs must be unique.");
+                continue;
+            }
+
+            byId.Add(def.itemId, def);
+        }
+    }
+
+    ItemDefinition GetDef(int itemId)
+    {
+        if (itemId == EMPTY) return null;
+        if (byId != null && byId.TryGetValue(itemId, out var def)) return def;
+
+        Debug.LogError($"PlayerInventory: itemId {itemId} not found in itemDatabase.");
+        return null;
     }
 
     public override void OnNetworkSpawn()
@@ -44,7 +74,7 @@ public class PlayerInventory : NetworkBehaviour
         base.OnNetworkSpawn();
 
         // Keep enabled on server.
-        // Disable only on remote clients (not owner AND not server).
+        // Disable only on remote clients.
         if (!IsOwner && !IsServer)
         {
             enabled = false;
@@ -120,14 +150,6 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    bool ServerHasKey()
-    {
-        for (int i = 0; i < hotbarSlots; i++)
-            if (itemIds[i] == KEY_ID)
-                return true;
-        return false;
-    }
-
     int FindFirstEmptySlot()
     {
         for (int i = 0; i < hotbarSlots; i++)
@@ -137,52 +159,54 @@ public class PlayerInventory : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void PickupKeyServerRpc(NetworkObjectReference keyRef, int preferredSlot, ServerRpcParams rpcParams = default)
+    public void PickupItemServerRpc(NetworkObjectReference itemRef, int itemId, int preferredSlot, ServerRpcParams rpcParams = default)
     {
-        if (!keyRef.TryGet(out NetworkObject keyNo)) return;
-        if (!keyNo.IsSpawned) return;
+        if (!itemRef.TryGet(out NetworkObject itemNo)) return;
+        if (!itemNo.IsSpawned) return;
+
+        // Validate item exists in database on server
+        var def = GetDef(itemId);
+        if (def == null) return;
 
         int slot = -1;
 
-        // Try the selected slot first
+        // Try selected slot first
         if (preferredSlot >= 0 && preferredSlot < hotbarSlots && itemIds[preferredSlot] == EMPTY)
-        {
             slot = preferredSlot;
-        }
         else
-        {
-            // Fall back to first empty slot
             slot = FindFirstEmptySlot();
-        }
 
         if (slot == -1) return; // inventory full
 
         // record on server
-        itemIds[slot] = KEY_ID;
+        itemIds[slot] = itemId;
 
-        // despawn the world key for everyone
-        keyNo.Despawn();
+        // despawn the world object for everyone
+        itemNo.Despawn();
 
         // tell only this client to show UI/hand item
         ulong clientId = rpcParams.Receive.SenderClientId;
-        GiveKeyClientRpc(slot, new ClientRpcParams
+        GiveItemClientRpc(slot, itemId, new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
         });
     }
 
     [ClientRpc]
-    void GiveKeyClientRpc(int slot, ClientRpcParams clientRpcParams = default)
+    void GiveItemClientRpc(int slot, int itemId, ClientRpcParams clientRpcParams = default)
     {
         if (!IsOwner) return;
         if (slot < 0 || slot >= hotbarSlots) return;
 
-        itemIds[slot] = KEY_ID;
+        itemIds[slot] = itemId;
+
+        var def = GetDef(itemId);
+        if (def == null) return;
 
         // UI icon
         if (hotbarSlotImages != null && hotbarSlotImages.Length > slot && hotbarSlotImages[slot] != null)
         {
-            hotbarSlotImages[slot].sprite = keyIcon;
+            hotbarSlotImages[slot].sprite = def.icon;
             hotbarSlotImages[slot].color = Color.white;
         }
 
@@ -193,9 +217,9 @@ public class PlayerInventory : NetworkBehaviour
             handItems[slot] = null;
         }
 
-        if (keyHandPrefab != null)
+        if (def.handPrefab != null)
         {
-            handItems[slot] = Instantiate(keyHandPrefab);
+            handItems[slot] = Instantiate(def.handPrefab);
             handItems[slot].SetActive(false);
         }
 
@@ -206,20 +230,25 @@ public class PlayerInventory : NetworkBehaviour
     {
         if (!IsOwner) return;
         if (selectedSlot < 0 || selectedSlot >= hotbarSlots) return;
-        if (itemIds[selectedSlot] != KEY_ID) return;
+        if (itemIds[selectedSlot] == EMPTY) return;
 
-        DropKeyFromSlotServerRpc(selectedSlot);
+        DropItemFromSlotServerRpc(selectedSlot);
     }
 
     [ServerRpc(RequireOwnership = false)]
-    void DropKeyFromSlotServerRpc(int slot, ServerRpcParams rpcParams = default)
+    void DropItemFromSlotServerRpc(int slot, ServerRpcParams rpcParams = default)
     {
         if (slot < 0 || slot >= hotbarSlots) return;
-        if (itemIds[slot] != KEY_ID) return;
 
-        if (keyWorldPrefab == null)
+        int itemId = itemIds[slot];
+        if (itemId == EMPTY) return;
+
+        var def = GetDef(itemId);
+        if (def == null) return;
+
+        if (def.worldPrefab == null)
         {
-            Debug.LogError("PlayerInventory: keyWorldPrefab is NOT assigned on PLAYER prefab.");
+            Debug.LogError($"PlayerInventory: worldPrefab not assigned for itemId {itemId} ({def.name}).");
             return;
         }
 
@@ -227,18 +256,17 @@ public class PlayerInventory : NetworkBehaviour
             ? dropPosition.position
             : (transform.position + transform.forward * 1.5f + Vector3.up * 0.5f);
 
-        GameObject worldItem = Instantiate(keyWorldPrefab, dropPos, Quaternion.identity);
+        GameObject worldItem = Instantiate(def.worldPrefab, dropPos, Quaternion.identity);
 
         var no = worldItem.GetComponent<NetworkObject>();
         if (no == null)
         {
-            Debug.LogError("Key world prefab missing NetworkObject on ROOT.");
+            Debug.LogError("Dropped world prefab missing NetworkObject on ROOT.");
             Destroy(worldItem);
             return;
         }
 
         EnsureWorldPhysics(worldItem);
-
         no.Spawn();
 
         // clear server slot
@@ -275,21 +303,16 @@ public class PlayerInventory : NetworkBehaviour
         UpdateHandDisplay();
     }
 
-    public int GetSelectedSlot()
-    {
-        return selectedSlot;
-    }
+    public int GetSelectedSlot() => selectedSlot;
 
     static void EnsureWorldPhysics(GameObject worldItem)
     {
-        // colliders on
         foreach (var col in worldItem.GetComponentsInChildren<Collider>())
         {
             col.enabled = true;
             col.isTrigger = false;
         }
 
-        // make sure it falls
         var rb = worldItem.GetComponent<Rigidbody>();
         if (rb == null) rb = worldItem.AddComponent<Rigidbody>();
         rb.isKinematic = false;
