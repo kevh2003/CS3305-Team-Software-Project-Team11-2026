@@ -33,6 +33,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private InputAction _jump;
     private float _jumpCooldown = 0.05f;
     private float _jumpTimer;
+    private float _verticalVelocity;
 
 
     private CharacterController _cc;
