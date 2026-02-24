@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 4810334441170347845}
   - component: {fileID: 2109150516459380103}
   - component: {fileID: 2081193615646083021}
+  - component: {fileID: 7747814521922435929}
   m_Layer: 3
   m_Name: Player
   m_TagString: Player
@@ -278,8 +279,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a08219fe86f521a40a96ea327adde154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
+  ShowTopMostFoldoutHeaderGroup: 1
   maxHealth: 3
-  currentHealth: 0
+  CurrentHealth:
+    m_InternalValue: 0
+  IsDead:
+    m_InternalValue: 0
+--- !u!114 &7747814521922435929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7d17b0be7e824c08a809c99c88fab3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthUI
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameSceneName: 03_Game
+  offset: {x: 20, y: 20}
+  panelSize: {x: 240, y: 28}
+  blockGap: 6
+  sortingOrder: 500
+  green: {r: 0.2, g: 1, b: 0.2, a: 1}
+  darkGrey: {r: 0.2, g: 0.2, b: 0.2, a: 1}
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0

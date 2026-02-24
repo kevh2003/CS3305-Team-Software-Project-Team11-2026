@@ -1,55 +1,53 @@
+using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : NetworkBehaviour
 {
-    public float maxHealth = 3f;
-    public float currentHealth = 0f;
-    private PlayerInput playerInput;
+    [SerializeField] private int maxHealth = 3;
 
-    private PlayerMovement playerMovement;
-    private Renderer[] playerVisuals;
-    private Interactor interactor;
-    private bool isDead = false;
+    public NetworkVariable<int> CurrentHealth = new NetworkVariable<int>(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
-    public bool IsDead => isDead; // public read-only property for other scripts
+    public NetworkVariable<bool> IsDead = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
-    void Awake()
+    public int MaxHealth => maxHealth;
+
+    public override void OnNetworkSpawn()
     {
-        playerInput = GetComponent<PlayerInput>();
-        currentHealth = maxHealth;
-        playerMovement = GetComponent<PlayerMovement>();
-        playerVisuals = GetComponentsInChildren<Renderer>();
-        interactor = GetComponent<Interactor>();
-    }
-
-    public void TakeDamage(float damageAmount)
-    {
-        if (isDead) return;
-
-        currentHealth -= damageAmount;
-        Debug.Log("Player health: " + currentHealth);
-
-        if (currentHealth <= 0)
+        if (IsServer)
         {
-            Die();
+            CurrentHealth.Value = maxHealth;
+            IsDead.Value = false;
         }
     }
 
-    private void Die()
-{
-    isDead = true;
-    Debug.Log("Player has died!");
+    // Keep this signature so your EnemyAttack can call it.
+    public void TakeDamage(int amount)
+    {
+        if (amount <= 0) return;
 
-    if (interactor != null)
-        interactor.enabled = false;
+        if (IsServer) ApplyDamage(amount);
+        else TakeDamageServerRpc(amount);
+    }
 
-    // Disable only the Interact action
-    playerInput.actions["Interact"].Disable();
+    [ServerRpc(RequireOwnership = false)]
+    private void TakeDamageServerRpc(int amount)
+    {
+        ApplyDamage(amount);
+    }
 
-    //Removes player visuals
-    foreach (Renderer render in playerVisuals)
-        render.enabled = false;
-}
+    private void ApplyDamage(int amount)
+    {
+        if (IsDead.Value) return;
 
+        CurrentHealth.Value = Mathf.Clamp(CurrentHealth.Value - amount, 0, maxHealth);
+        if (CurrentHealth.Value <= 0) IsDead.Value = true;
+    }
 }

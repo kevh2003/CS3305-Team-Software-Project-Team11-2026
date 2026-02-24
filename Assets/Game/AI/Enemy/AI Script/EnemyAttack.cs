@@ -20,10 +20,10 @@ public class EnemyAttack : MonoBehaviour
         if (enemyAI.currentTarget == null) return;
 
         // Skip dead targets
-        PlayerHealth targetHealth = enemyAI.currentTarget.GetComponent<PlayerHealth>();
-        if (targetHealth != null && targetHealth.IsDead)
+        PlayerHealth targetHealth = enemyAI.currentTarget.GetComponentInParent<PlayerHealth>();
+        if (targetHealth != null && targetHealth.IsDead.Value)
         {
-            enemyAI.currentTarget = null; // stop targeting dead player
+            enemyAI.currentTarget = null;
             return;
         }
 
@@ -42,16 +42,13 @@ public class EnemyAttack : MonoBehaviour
     {
         isAttacking = true;
 
-        // Deal damage
-        PlayerHealth health = target.GetComponent<PlayerHealth>();
-        if (health != null && !health.IsDead)
+        PlayerHealth health = target.GetComponentInParent<PlayerHealth>();
+        if (health != null && !health.IsDead.Value)
         {
-            health.TakeDamage(damage);
+            health.TakeDamage(1);
         }
 
-        // Pause the AI
         yield return StartCoroutine(enemyAI.PauseAI(attackCooldown));
-
         isAttacking = false;
     }
 }
