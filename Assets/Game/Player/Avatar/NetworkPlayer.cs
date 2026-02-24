@@ -145,4 +145,20 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = new Vector3(_pitch, 0f, 0f);
     }
+
+    public void ServerResetForNewMatch(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer) return;
+
+        transform.SetPositionAndRotation(position, rotation);
+
+        // Safety for CharacterController (helps avoid odd "stuck" states), might remove in future -kev
+        var cc = GetComponent<CharacterController>();
+        if (cc != null)
+        {
+            cc.enabled = false;
+            transform.SetPositionAndRotation(position, rotation);
+            cc.enabled = true;
+        }
+    }
 }
