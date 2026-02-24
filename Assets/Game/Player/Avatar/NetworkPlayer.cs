@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 /*
  * NetworkPlayer
@@ -24,6 +25,15 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     [Header("Refs")]
     [SerializeField] private Camera playerCamera;
+
+    [Header("Jump / Gravity")]
+    [SerializeField] private float jumpHeight = 1.6f;
+    [SerializeField] private float gravity = -25f;
+        
+    private InputAction _jump;
+    private float _jumpCooldown = 0.05f;
+    private float _jumpTimer;
+
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
@@ -97,11 +107,34 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (!IsOwner) return;
         if (!_inGameScene) return;
         if (_playerInput == null || !_playerInput.enabled) return;
+        if (_cc == null || !_cc.enabled) return;
 
         // WASD movement
         Vector2 move = _move.ReadValue<Vector2>();
-        Vector3 moveWorld = (transform.right * move.x + transform.forward * move.y).normalized;
-        _cc.SimpleMove(moveWorld * moveSpeed);
+        Vector3 moveWorld = (transform.right * move.x + transform.forward * move.y);
+
+        // _cc.SimpleMove(moveWorld * moveSpeed);
+        if (moveWorld.sqrMagnitude > 1f) moveWorld.Normalize();
+
+        bool grounded = _cc.isGrounded;
+
+        if (grounded && _verticalVelocity < 0f)
+            _verticalVelocity = -2f;
+
+
+        _jumpTimer -= Time.deltaTime;
+
+        if (_jump != null && _jump.IsPressed() && grounded && _jumpTimer <= 0f)
+        {
+            _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            _jumpTimer = _jumpCooldown;
+        }
+
+
+        _verticalVelocity += gravity * Time.deltaTime;
+
+        Vector3 velocity = (moveWorld * moveSpeed) + (Vector3.up * _verticalVelocity);
+        _cc.Move(velocity * Time.deltaTime);
 
         // Mouse look
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
@@ -110,5 +143,52 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _pitch = Mathf.Clamp(_pitch - look.y, -85f, 85f);
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = new Vector3(_pitch, 0f, 0f);
+    }
+
+    public void ServerResetForNewMatch(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer) return;
+
+        // Apply on server
+        ApplyReset(position, rotation);
+
+        // Tell the owning client to apply the same reset
+        var rpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        };
+
+        ResetForNewMatchClientRpc(position, rotation, rpcParams);
+    }
+
+    [ClientRpc]
+    private void ResetForNewMatchClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        ApplyReset(position, rotation);
+    }
+
+    private void ApplyReset(Vector3 position, Quaternion rotation)
+    {
+        if (_cc != null)
+            _cc.enabled = false;
+
+        transform.SetPositionAndRotation(position, rotation);
+
+        _verticalVelocity = 0f;
+        _pitch = 0f;
+
+        if (playerCamera != null)
+            playerCamera.transform.localEulerAngles = Vector3.zero;
+
+        StartCoroutine(ReenableController());
+    }
+
+    private IEnumerator ReenableController()
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        if (_cc != null)
+            _cc.enabled = true;
     }
 }

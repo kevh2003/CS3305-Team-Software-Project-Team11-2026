@@ -40,3 +40,8 @@ sysinfo.txt
 # [Aa]ssets/AddressableAssetsData/*/*.bin*
 # [Aa]ssets/StreamingAssets/aa.meta
 # [Aa]ssets/StreamingAssets/aa/*
+
+# ParrelSync clones (for if someone creates them inside repo by mistake) - kev
+**/*_ParrelSyncClone*/
+**/*_ParrelSyncClones*/
+**/.parrelsync*

@@ -187,6 +187,8 @@ MonoBehaviour:
   moveSpeed: 5
   lookSensitivity: 0.12
   playerCamera: {fileID: 0}
+  jumpHeight: 1.6
+  gravity: -25
 --- !u!114 &1745521175803550177
 MonoBehaviour:
   m_ObjectHideFlags: 0
