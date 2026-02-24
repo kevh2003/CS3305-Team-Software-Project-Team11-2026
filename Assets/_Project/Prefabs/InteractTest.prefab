@@ -13,8 +13,8 @@ GameObject:
   - component: {fileID: 5318464193672445139}
   - component: {fileID: 1584886649786573264}
   - component: {fileID: 8638287932276128592}
-  - component: {fileID: 3959448295682685200}
-  - component: {fileID: 4945379595901981483}
+  - component: {fileID: -591073346802394970}
+  - component: {fileID: -6361791283208163163}
   m_Layer: 0
   m_Name: InteractTest
   m_TagString: Untagged
@@ -140,7 +140,7 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
---- !u!114 &3959448295682685200
+--- !u!114 &-591073346802394970
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7e4f9897cbac4e959be0f4e6f280143, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldPickup
---- !u!114 &4945379595901981483
+--- !u!114 &-6361791283208163163
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -161,7 +161,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 3324912687387885633}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f1871064a779408b8e8ee0d63345fe1, type: 3}
+  m_Script: {fileID: 11500000, guid: 3a5c2b329e34d403ca78bf8dbf68e64c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldItem
-  definition: {fileID: 11400000, guid: f68ccc31ba76542d89cc68d2e0d7195c, type: 2}
+  definition: {fileID: 11400000, guid: 6076501a4b48b444a9fc80faf71629e0, type: 2}

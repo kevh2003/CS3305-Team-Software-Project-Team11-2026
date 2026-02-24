@@ -20,7 +20,7 @@ GameObject:
   - component: {fileID: 4810334441170347845}
   - component: {fileID: 2109150516459380103}
   - component: {fileID: 2081193615646083021}
-  - component: {fileID: -5067977191425626196}
+  - component: {fileID: 7747814521922435929}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -242,16 +242,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  scriptsToDisable: []
-  cameraController: {fileID: 0}
   hotbarSlots: 2
-  inventorySlots: 3
-  canvas: {fileID: 0}
+  itemDatabase:
+  - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
+  - {fileID: 11400000, guid: 6076501a4b48b444a9fc80faf71629e0, type: 2}
   hotbarPanel: {fileID: 0}
-  inventoryPanel: {fileID: 0}
   hotbarSlotImages: []
-  inventorySlotImages: []
-  playerMovement: {fileID: 0}
   handPosition: {fileID: 0}
   dropPosition: {fileID: 0}
 --- !u!114 &2109150516459380103
