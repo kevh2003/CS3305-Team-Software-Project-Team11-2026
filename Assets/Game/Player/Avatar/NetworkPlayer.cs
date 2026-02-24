@@ -150,15 +150,37 @@ public sealed class NetworkPlayer : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        // Apply on server
+        ApplyReset(position, rotation);
+
+        // Tell the owning client to apply the same reset
+        var rpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        };
+
+        ResetForNewMatchClientRpc(position, rotation, rpcParams);
+    }
+
+    [ClientRpc]
+    private void ResetForNewMatchClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        ApplyReset(position, rotation);
+    }
+
+    private void ApplyReset(Vector3 position, Quaternion rotation)
+    {
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
         transform.SetPositionAndRotation(position, rotation);
 
-        // Safety for CharacterController (helps avoid odd "stuck" states), might remove in future -kev
-        var cc = GetComponent<CharacterController>();
-        if (cc != null)
-        {
-            cc.enabled = false;
-            transform.SetPositionAndRotation(position, rotation);
-            cc.enabled = true;
-        }
+        _verticalVelocity = 0f;
+        _pitch = 0f;
+        if (playerCamera != null)
+            playerCamera.transform.localEulerAngles = Vector3.zero;
+
+        if (cc != null) cc.enabled = true;
     }
 }

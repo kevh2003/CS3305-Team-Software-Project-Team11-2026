@@ -16,7 +16,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
     private IEnumerator ResetPlayersNextFrame()
     {
-        yield return null;
+        yield return new WaitForSeconds(0.1f);
 
         var players = FindObjectsByType<NetworkPlayer>(FindObjectsSortMode.None);
         if (players == null || players.Length == 0)
