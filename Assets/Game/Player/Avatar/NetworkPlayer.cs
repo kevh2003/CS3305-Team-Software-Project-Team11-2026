@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 /*
  * NetworkPlayer
@@ -109,6 +110,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (!IsOwner) return;
         if (!_inGameScene) return;
         if (_playerInput == null || !_playerInput.enabled) return;
+        if (_cc == null || !_cc.enabled) return;
 
         // WASD movement
         Vector2 move = _move.ReadValue<Vector2>();
@@ -171,16 +173,25 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private void ApplyReset(Vector3 position, Quaternion rotation)
     {
-        var cc = GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
+        if (_cc != null)
+            _cc.enabled = false;
 
         transform.SetPositionAndRotation(position, rotation);
 
         _verticalVelocity = 0f;
         _pitch = 0f;
+
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = Vector3.zero;
 
-        if (cc != null) cc.enabled = true;
+        StartCoroutine(ReenableController());
+    }
+
+    private IEnumerator ReenableController()
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        if (_cc != null)
+            _cc.enabled = true;
     }
 }
