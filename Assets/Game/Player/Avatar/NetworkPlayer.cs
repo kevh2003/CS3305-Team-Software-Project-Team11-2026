@@ -57,9 +57,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Scene gate: player exists across scenes but only "plays" in 03_Game scene (currently)
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Cache actions by name (must match InputActions asset)
+        // Cache actions by name (must match InputActions asset)    
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
+        _jump = _playerInput.actions["Jump"];  
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }

@@ -77,16 +77,8 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
-                },
-                {
-                    "name": "Jump",
-                    "type": "Button",
-                    "id": "75751568-8fef-4900-8d4c-9be58a67f4f9",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 }
+                
             ],
             "bindings": [
                 {
