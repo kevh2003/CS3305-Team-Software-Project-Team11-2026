@@ -33,13 +33,13 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private InputAction _jump;
     private float _jumpCooldown = 0.05f;
     private float _jumpTimer;
+    private float _verticalVelocity;
 
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
 
     private InputAction _move;
-    private float _verticalVelocity;
     private InputAction _look;
 
     private float _pitch;
@@ -57,11 +57,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Scene gate: player exists across scenes but only "plays" in 03_Game scene (currently)
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Cache actions by name (must match InputActions asset)
+        // Cache actions by name (must match InputActions asset)    
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"];
-
+        _jump = _playerInput.actions["Jump"];  
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }
