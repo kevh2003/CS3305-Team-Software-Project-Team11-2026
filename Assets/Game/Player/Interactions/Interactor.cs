@@ -88,24 +88,11 @@ public class Interactor : NetworkBehaviour
         {
             IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
-
             if (interactable != null && interactable.CanInteract())
             {
-                bool success = interactable.Interact(this);
-                if (success)
-                {
-                    Debug.Log($"✅ Interacted with: {hit.collider.name}");
-                }
+                interactable.Interact(this);
             }
-        }
-    }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (InteractSource != null)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawRay(InteractSource.position, InteractSource.forward * InteractRange);
         }
     }
 }
