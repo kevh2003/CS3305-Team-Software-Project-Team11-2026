@@ -39,7 +39,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private PlayerInput _playerInput;
 
     private InputAction _move;
-    private float _verticalVelocity;
     private InputAction _look;
 
     private float _pitch;
@@ -60,8 +59,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Cache actions by name (must match InputActions asset)
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"];
-
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }

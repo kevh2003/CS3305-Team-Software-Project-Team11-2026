@@ -242,16 +242,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  scriptsToDisable: []
-  cameraController: {fileID: 0}
   hotbarSlots: 3
-  inventorySlots: 2
-  canvas: {fileID: 0}
+  itemDatabase:
+  - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
+  - {fileID: 11400000, guid: f68ccc31ba76542d89cc68d2e0d7195c, type: 2}
   hotbarPanel: {fileID: 0}
-  inventoryPanel: {fileID: 0}
   hotbarSlotImages: []
-  inventorySlotImages: []
-  playerMovement: {fileID: 0}
   handPosition: {fileID: 0}
   dropPosition: {fileID: 0}
 --- !u!114 &2109150516459380103
@@ -267,11 +263,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Crosshair
   ShowTopMostFoldoutHeaderGroup: 1
-  crosshairColor: {r: 0, g: 0, b: 0, a: 1}
-  crosshairSize: 10
-  crosshairThickness: 2
+--- !u!114 &2081193615646083021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a08219fe86f521a40a96ea327adde154, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
   maxHealth: 3
   currentHealth: 0
+--- !u!114 &-5067977191425626196
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6d99ca335de14142ba7c2ac169b7cbe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthUI
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0

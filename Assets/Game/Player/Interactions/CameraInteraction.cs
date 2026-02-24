@@ -36,6 +36,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         if (cctvCamera != null)
             cctvCamera.enabled = false;
 
+
         if (cctvCameraLook != null)
             cctvCameraLook.enabled = false;
 
@@ -183,6 +184,3 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         Gizmos.DrawWireSphere(cctvCamera.transform.position, lureRadius);
     }
 }
-
-
-
