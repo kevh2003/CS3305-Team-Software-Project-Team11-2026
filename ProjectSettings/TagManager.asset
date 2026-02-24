@@ -11,10 +11,10 @@ TagManager:
   - Player
   - Water
   - UI
-  - 
-  - 
-  - 
-  - 
+  - WhatIsGround
+  - WhatIsPlayer
+  - WhatIsEnemy
+  - Obstacle
   - 
   - 
   - 
