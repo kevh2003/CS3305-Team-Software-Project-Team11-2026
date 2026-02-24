@@ -29,11 +29,19 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [Header("Jump / Gravity")]
     [SerializeField] private float jumpHeight = 1.6f;
     [SerializeField] private float gravity = -25f;
+
+    [Header("Sprint Settings")]
+    [SerializeField] private float sprintMultiplier = 1.8f;
+    [SerializeField] private float maxSprintTime = 3f;
+    [SerializeField] private float sprintRegenRate = 1f;
         
     private InputAction _jump;
     private float _jumpCooldown = 0.05f;
     private float _jumpTimer;
 
+    private InputAction _sprint;
+    private float _currentSprintTime;
+    private bool _isSprinting;
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
@@ -50,6 +58,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _cc = GetComponent<CharacterController>();
         _playerInput = GetComponent<PlayerInput>();
         if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
+        _currentSprintTime = maxSprintTime;
     }
 
     public override void OnNetworkSpawn()
@@ -61,6 +70,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
         _jump = _playerInput.actions["Jump"];
+        _sprint = _playerInput.actions["Sprint"];
+
 
 
         ApplySceneState(SceneManager.GetActiveScene().name);
@@ -136,7 +147,30 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
         _verticalVelocity += gravity * Time.deltaTime;
 
-        Vector3 velocity = (moveWorld * moveSpeed) + (Vector3.up * _verticalVelocity);
+        bool sprintHeld = _sprint != null && _sprint.IsPressed();
+
+        if (sprintHeld)
+        {
+            Debug.Log("SPRINT HELD");
+        }
+
+        if (sprintHeld && _currentSprintTime > 0f && moveWorld.sqrMagnitude > 0.1f)
+        {
+            _isSprinting = true;
+            _currentSprintTime -= Time.deltaTime;
+        }
+        else
+        {
+            _isSprinting = false;
+            _currentSprintTime += sprintRegenRate * Time.deltaTime;
+        }
+
+        _currentSprintTime = Mathf.Clamp(_currentSprintTime, 0f, maxSprintTime);
+
+        float finalSpeed = _isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
+
+
+        Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
 
         // Mouse look
