@@ -1,55 +1,128 @@
+using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : NetworkBehaviour
 {
-    public float maxHealth = 3f;
-    public float currentHealth = 0f;
-    private PlayerInput playerInput;
+    [Header("Health")]
+    [SerializeField] private int maxHealth = 3;
 
-    private PlayerMovement playerMovement;
-    private Renderer[] playerVisuals;
-    private Interactor interactor;
-    private bool isDead = false;
+    public NetworkVariable<int> CurrentHealth = new NetworkVariable<int>(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
-    public bool IsDead => isDead; // public read-only property for other scripts
+    public NetworkVariable<bool> IsDead = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
 
-    void Awake()
+    public int MaxHealth => maxHealth;
+
+    [Header("Death Behaviour")]
+    [SerializeField] private string aliveLayer = "WhatsIsPlayer";
+    [SerializeField] private string deadLayer = "DeadPlayer";
+
+    [Tooltip("Scripts to disable when dead (Interactor etc).")]
+    [SerializeField] private Behaviour[] disableOnDeath;
+
+    [Tooltip("Optional root object containing meshes.")]
+    [SerializeField] private GameObject visualsRoot;
+
+    public override void OnNetworkSpawn()
     {
-        playerInput = GetComponent<PlayerInput>();
-        currentHealth = maxHealth;
-        playerMovement = GetComponent<PlayerMovement>();
-        playerVisuals = GetComponentsInChildren<Renderer>();
-        interactor = GetComponent<Interactor>();
+        if (IsServer)
+        {
+            CurrentHealth.Value = maxHealth;
+            IsDead.Value = false;
+        }
+
+        // React to death changes on ALL clients
+        IsDead.OnValueChanged += OnDeadChanged;
+
+        ApplyDeathState(IsDead.Value);
     }
 
-    public void TakeDamage(float damageAmount)
+    public override void OnNetworkDespawn()
     {
-        if (isDead) return;
+        IsDead.OnValueChanged -= OnDeadChanged;
+    }
 
-        currentHealth -= damageAmount;
-        Debug.Log("Player health: " + currentHealth);
+    private void OnDeadChanged(bool previous, bool current)
+    {
+        ApplyDeathState(current);
+    }
 
-        if (currentHealth <= 0)
+    private void ApplyDeathState(bool dead)
+    {
+        // Layer swap
+        int alive = LayerMask.NameToLayer(aliveLayer);
+        int deadL = LayerMask.NameToLayer(deadLayer);
+
+        if (alive != -1 && deadL != -1)
+            gameObject.layer = dead ? deadL : alive;
+
+        // Disable interaction scripts
+        if (disableOnDeath != null)
         {
-            Die();
+            foreach (var script in disableOnDeath)
+            {
+                if (script != null)
+                    script.enabled = !dead;
+            }
+        }
+
+        // Hide visuals
+        if (visualsRoot != null)
+        {
+            visualsRoot.SetActive(!dead);
+        }
+        else
+        {
+            // fallback
+            foreach (var r in GetComponentsInChildren<Renderer>())
+                r.enabled = !dead;
         }
     }
 
-    private void Die()
-{
-    isDead = true;
-    Debug.Log("Player has died!");
+    public void TakeDamage(int amount)
+    {
+        if (amount <= 0) return;
 
-    if (interactor != null)
-        interactor.enabled = false;
+        if (IsServer) ApplyDamage(amount);
+        else TakeDamageServerRpc(amount);
+    }
 
-    // Disable only the Interact action
-    playerInput.actions["Interact"].Disable();
+    [ServerRpc(RequireOwnership = false)]
+    private void TakeDamageServerRpc(int amount)
+    {
+        ApplyDamage(amount);
+    }
 
-    //Removes player visuals
-    foreach (Renderer render in playerVisuals)
-        render.enabled = false;
-}
+    private void ApplyDamage(int amount)
+    {
+        if (IsDead.Value) return;
 
+        CurrentHealth.Value = Mathf.Clamp(CurrentHealth.Value - amount, 0, maxHealth);
+
+        if (CurrentHealth.Value <= 0)
+        {
+            IsDead.Value = true;
+
+            // Drop all inventory items on death
+            var inv = GetComponent<PlayerInventory>();
+            if (inv != null)
+            {
+                inv.DropAllItemsOnDeathServer();
+            }
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void ResetHealthServerRpc()
+    {
+        CurrentHealth.Value = maxHealth;
+        IsDead.Value = false;
+    }
 }

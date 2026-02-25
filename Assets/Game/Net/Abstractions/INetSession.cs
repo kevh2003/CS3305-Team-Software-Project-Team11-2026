@@ -56,8 +56,6 @@ public interface INetSession
     event Action OnConnected;
     event Action<string> OnDisconnected;
 
-    // put objective event here if needed.
-
     // Online (Relay)
     Task<(NetStartResult result, string joinCode)> HostOnlineAsync(int maxPlayers);
     Task<NetStartResult> JoinOnlineAsync(string joinCode);

@@ -134,7 +134,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (grounded && _verticalVelocity < 0f)
             _verticalVelocity = -2f;
 
-
         _jumpTimer -= Time.deltaTime;
 
         if (_jump != null && _jump.IsPressed() && grounded && _jumpTimer <= 0f)
@@ -143,13 +142,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
             _jumpTimer = _jumpCooldown;
         }
 
-
         bool sprintHeld = _sprint != null && _sprint.IsPressed();
-
-        if (sprintHeld)
-        {
-            Debug.Log("SPRINT HELD");
-        }
 
         if (sprintHeld && _currentSprintTime > 0f && moveWorld.sqrMagnitude > 0.1f)
         {
@@ -170,7 +163,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
         Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
-
 
         // Mouse look
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
