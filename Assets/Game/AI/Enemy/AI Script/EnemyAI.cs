@@ -31,6 +31,15 @@ public class EnemyAI : MonoBehaviour
     private float glanceTimer = 0f;
     private int glanceDirection = 1;               // 1 = right, -1 = left
 
+    [Header("Lure Settings")]
+    public float investigateDuration = 4f;         // How long the enemy investigates the lure point
+
+    // Lure state
+    private bool isLured;                          // Whether the enemy is currently lured
+    private Vector3 lureDestination;               // World position the enemy is lured to
+    private Vector3 preLurePosition;               // Position enemy was at before being lured
+    private float lureEndTime;                     // When the investigation ends
+
     [Header("References")]
     [SerializeField] private LayerMask whatIsPlayer;   // Player layer
     [SerializeField] private LayerMask obstacleMask;   // Obstacle layer blocking line of sight
@@ -57,6 +66,13 @@ public class EnemyAI : MonoBehaviour
     {
         if (isPaused)
             return;
+
+        // Lure takes priority over patrol but not over direct player sighting
+        if (isLured && currentTarget == null)
+        {
+            HandleLureBehaviour();
+            return;
+        }
 
         if (currentTarget != null)
         {
@@ -135,6 +151,8 @@ public class EnemyAI : MonoBehaviour
                     closestPlayer = playerCollider.transform;
 
                     isSearching = false;
+                    isLured = false;      // cancel lure if player spotted
+                    lureEndTime = 0f;
                     detectionRange = originalDetectionRange;
                     viewAngle = originalViewAngle;
                     isGlancing = false;
@@ -194,6 +212,70 @@ public class EnemyAI : MonoBehaviour
 
         agent.isStopped = false;
         isPaused = false;
+    }
+
+    /// <summary>
+    /// Called by CameraLure when the player clicks through the CCTV camera.
+    /// Interrupts patrol/idle and sends the enemy to investigate the given world position.
+    /// After investigating, the enemy returns to its pre-lure position.
+    /// </summary>
+    public void Lure(Vector3 worldPosition)
+    {
+        // Don't lure an enemy that is already chasing the player
+        if (currentTarget != null || isPaused)
+            return;
+
+        preLurePosition = transform.position;
+        lureDestination = worldPosition;
+        lureEndTime = 0f; // reset; will be set once enemy arrives
+        isLured = true;
+        isSearching = false;
+        isGlancing = false;
+        agent.SetDestination(lureDestination);
+
+        Debug.Log($"{name} lured to {worldPosition}");
+    }
+
+    void HandleLureBehaviour()
+    {
+        float distToLure = Vector3.Distance(transform.position, lureDestination);
+
+        if (lureEndTime == 0f)
+        {
+            // Still travelling to lure point
+            agent.SetDestination(lureDestination);
+
+            if (!agent.pathPending && distToLure <= agent.stoppingDistance + 0.2f)
+            {
+                // Arrived – start investigating timer
+                lureEndTime = Time.time + investigateDuration;
+                agent.ResetPath();
+            }
+        }
+        else
+        {
+            // Investigating – look around a little
+            glanceTimer += Time.deltaTime;
+            float rotationSpeed = 90f;
+            transform.Rotate(Vector3.up, glanceDirection * rotationSpeed * Time.deltaTime);
+
+            if (glanceTimer >= glanceTime)
+            {
+                glanceDirection *= -1;
+                glanceTimer = 0f;
+            }
+
+            // Once investigate time is up, return to pre-lure position
+            if (Time.time >= lureEndTime)
+            {
+                isLured = false;
+                lureEndTime = 0f;
+                glanceDirection = 1;
+                glanceTimer = 0f;
+                agent.SetDestination(preLurePosition);
+                Debug.Log($"{name} finished investigating, returning to original position");
+            }
+        }
     }
 
     void OnDrawGizmosSelected()

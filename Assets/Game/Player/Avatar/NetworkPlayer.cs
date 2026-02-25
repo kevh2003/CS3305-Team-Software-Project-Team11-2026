@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 /*
  * NetworkPlayer
@@ -32,13 +33,13 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private InputAction _jump;
     private float _jumpCooldown = 0.05f;
     private float _jumpTimer;
+    private float _verticalVelocity;
 
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
 
     private InputAction _move;
-    private float _verticalVelocity;
     private InputAction _look;
 
     private float _pitch;
@@ -56,11 +57,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Scene gate: player exists across scenes but only "plays" in 03_Game scene (currently)
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Cache actions by name (must match InputActions asset)
+        // Cache actions by name (must match InputActions asset)    
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"];
-
+        _jump = _playerInput.actions["Jump"];  
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }
@@ -109,6 +109,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (!IsOwner) return;
         if (!_inGameScene) return;
         if (_playerInput == null || !_playerInput.enabled) return;
+        if (_cc == null || !_cc.enabled) return;
 
         // WASD movement
         Vector2 move = _move.ReadValue<Vector2>();
@@ -144,5 +145,52 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _pitch = Mathf.Clamp(_pitch - look.y, -85f, 85f);
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = new Vector3(_pitch, 0f, 0f);
+    }
+
+    public void ServerResetForNewMatch(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer) return;
+
+        // Apply on server
+        ApplyReset(position, rotation);
+
+        // Tell the owning client to apply the same reset
+        var rpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        };
+
+        ResetForNewMatchClientRpc(position, rotation, rpcParams);
+    }
+
+    [ClientRpc]
+    private void ResetForNewMatchClientRpc(Vector3 position, Quaternion rotation, ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+        ApplyReset(position, rotation);
+    }
+
+    private void ApplyReset(Vector3 position, Quaternion rotation)
+    {
+        if (_cc != null)
+            _cc.enabled = false;
+
+        transform.SetPositionAndRotation(position, rotation);
+
+        _verticalVelocity = 0f;
+        _pitch = 0f;
+
+        if (playerCamera != null)
+            playerCamera.transform.localEulerAngles = Vector3.zero;
+
+        StartCoroutine(ReenableController());
+    }
+
+    private IEnumerator ReenableController()
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        if (_cc != null)
+            _cc.enabled = true;
     }
 }

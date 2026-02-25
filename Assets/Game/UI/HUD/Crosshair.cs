@@ -1,115 +1,235 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Unity.Netcode;
+using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Creates a simple crosshair in the center of the screen.
-/// Only created for the local player.
-/// </summary>
 public class Crosshair : NetworkBehaviour
 {
-    [Header("Crosshair Settings")]
-    public Color crosshairColor = Color.white;
-    public float crosshairSize = 10f;
-    public float crosshairThickness = 2f;
-
     private GameObject crosshairObject;
+    private Text interactText;
+
+    private Coroutine createRoutine;
 
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
 
-        Debug.Log($"🎯 Crosshair.OnNetworkSpawn() - IsOwner: {IsOwner}");
-
         if (!IsOwner)
         {
-            Debug.Log("❌ Not owner, disabling Crosshair");
             enabled = false;
             return;
         }
 
-        Debug.Log("✅ Is owner, creating crosshair in 0.2s...");
-        Invoke(nameof(CreateCrosshair), 0.2f); // Changed from 0.1 to 0.2
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
+        StartCreateRoutine();
+    }
+
+    private void StartCreateRoutine()
+    {
+        if (createRoutine != null)
+            StopCoroutine(createRoutine);
+
+        createRoutine = StartCoroutine(EnsureCrosshairExistsRoutine());
+    }
+
+    private IEnumerator EnsureCrosshairExistsRoutine()
+    {
+        // Retry for a few seconds
+        for (int i = 0; i < 60; i++) // ~6 seconds
+        {
+            CleanupBrokenReferences();
+
+            if (crosshairObject == null || interactText == null)
+            {
+                Canvas canvas = FindCanvas();
+                if (canvas != null)
+                {
+                    CreateCrosshair(canvas);
+                }
+            }
+
+            if (crosshairObject != null && interactText != null)
+            {
+                UpdateVisibility(SceneManager.GetActiveScene().name);
+                createRoutine = null;
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogWarning("Crosshair: Could not create crosshair after retries.");
+        createRoutine = null;
+    }
+
+    private void CleanupBrokenReferences()
+    {
+        if (crosshairObject == null)
+            crosshairObject = null;
+
+        if (interactText == null)
+            interactText = null;
+    }
+
+    private void CreateCrosshair(Canvas canvas)
+    {
+        var existingCrosshair = canvas.transform.Find("Crosshair");
+        if (existingCrosshair != null)
+        {
+            crosshairObject = existingCrosshair.gameObject;
+        }
+        else
+        {
+            crosshairObject = new GameObject("Crosshair");
+            crosshairObject.transform.SetParent(canvas.transform, false);
+
+            RectTransform rect = crosshairObject.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(8, 8);
+
+            Image image = crosshairObject.AddComponent<Image>();
+            image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+            image.color = Color.white;
+            image.type = Image.Type.Simple;
+        }
+
+        // Prompt
+        var existingPrompt = canvas.transform.Find("InteractPrompt");
+        if (existingPrompt != null)
+        {
+            interactText = existingPrompt.GetComponent<Text>();
+        }
+        else
+        {
+            CreateInteractPrompt(canvas);
+        }
+
+        Debug.Log("Crosshair created / reattached");
+        UpdateVisibility(SceneManager.GetActiveScene().name);
+    }
+
+    private void CreateInteractPrompt(Canvas canvas)
+    {
+        GameObject textObj = new GameObject("InteractPrompt");
+        textObj.transform.SetParent(canvas.transform, false);
+
+        RectTransform textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.pivot = new Vector2(0.5f, 1f);
+        textRect.anchoredPosition = new Vector2(0, -15);
+        textRect.sizeDelta = new Vector2(200, 30);
+
+        interactText = textObj.AddComponent<Text>();
+        interactText.text = "Press E";
+        interactText.fontSize = 16;
+        interactText.color = Color.white;
+        interactText.alignment = TextAnchor.MiddleCenter;
+        interactText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        interactText.enabled = false;
+
+        Debug.Log("Interact prompt created");
+    }
+
+    public void ShowInteractPrompt()
+    {
+        CleanupBrokenReferences();
+
+        if (interactText != null && SceneManager.GetActiveScene().name == "03_Game")
+            interactText.enabled = true;
+    }
+
+    public void HideInteractPrompt()
+    {
+        CleanupBrokenReferences();
+
+        if (interactText != null)
+            interactText.enabled = false;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        StartCreateRoutine();
+        UpdateVisibility(scene.name);
+    }
+
+    private void UpdateVisibility(string sceneName)
+    {
+        bool showCrosshair = (sceneName == "03_Game");
+
+        CleanupBrokenReferences();
+
+        if (crosshairObject != null)
+            crosshairObject.SetActive(showCrosshair);
+
+        if (interactText != null)
+        {
+            interactText.gameObject.SetActive(showCrosshair);
+            if (!showCrosshair) interactText.enabled = false;
+        }
+    }
+
+    public void Show()
+    {
+        CleanupBrokenReferences();
+
+        if (crosshairObject != null && SceneManager.GetActiveScene().name == "03_Game")
+            crosshairObject.SetActive(true);
+    }
+
+    public void Hide()
+    {
+        CleanupBrokenReferences();
+
+        if (crosshairObject != null)
+            crosshairObject.SetActive(false);
+
+        HideInteractPrompt();
+    }
+
+    private Canvas FindCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+
+        // Prefer persistent/game canvas if present
+        foreach (Canvas c in canvases)
+        {
+            if (c == null) continue;
+            if (!c.gameObject.activeInHierarchy) continue;
+
+            if (c.name == "GameCanvas" || c.GetComponent<PersistentCanvas>() != null)
+                return c;
+        }
+
+        // Fallback to any active canvas
+        foreach (Canvas c in canvases)
+        {
+            if (c != null && c.gameObject.activeInHierarchy)
+                return c;
+        }
+
+        return null;
     }
 
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
-        if (crosshairObject != null)
-            Destroy(crosshairObject);
-    }
 
-    void CreateCrosshair()
-    {
-        Canvas canvas = FindCanvas();
-        if (canvas == null)
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+
+        if (createRoutine != null)
         {
-            Debug.LogError("Crosshair: No Canvas found!");
-            return;
-        }
-
-        crosshairObject = new GameObject("Crosshair");
-        crosshairObject.transform.SetParent(canvas.transform);
-
-        RectTransform rect = crosshairObject.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(30, 30);
-
-        CreateLine(crosshairObject, "Horizontal", new Vector2(crosshairSize, crosshairThickness));
-        CreateLine(crosshairObject, "Vertical", new Vector2(crosshairThickness, crosshairSize));
-
-        Debug.Log("✅ Crosshair created!");
-    }
-
-    void CreateLine(GameObject parent, string name, Vector2 size)
-    {
-        GameObject line = new GameObject(name);
-        line.transform.SetParent(parent.transform);
-
-        RectTransform rect = line.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = size;
-
-        Image img = line.AddComponent<Image>();
-        img.color = crosshairColor;
-    }
-
-    Canvas FindCanvas()
-    {
-        // Try to find the persistent GameCanvas first
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-
-        foreach (Canvas c in canvases)
-        {
-            if (c.name == "GameCanvas" || c.GetComponent<PersistentCanvas>() != null)
-            {
-                Debug.Log($"✅ Crosshair found GameCanvas: {c.name}");
-                return c;
-            }
-        }
-
-        // Fallback
-        Debug.LogWarning("⚠️ Crosshair: GameCanvas not found, using first available canvas");
-        return canvases.Length > 0 ? canvases[0] : null;
-    }
-
-    public void Show()
-    {
-        if (crosshairObject != null)
-        {
-            crosshairObject.SetActive(true);
+            StopCoroutine(createRoutine);
+            createRoutine = null;
         }
     }
 
-    public void Hide()
+    private void OnDestroy()
     {
-        if (crosshairObject != null)
-        {
-            crosshairObject.SetActive(false);
-        }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 }

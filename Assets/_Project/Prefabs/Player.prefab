@@ -19,10 +19,11 @@ GameObject:
   - component: {fileID: 7429976440764419550}
   - component: {fileID: 4810334441170347845}
   - component: {fileID: 2109150516459380103}
-  - component: {fileID: 4082888317924032720}
+  - component: {fileID: 2081193615646083021}
+  - component: {fileID: 7747814521922435929}
   m_Layer: 7
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -36,7 +37,7 @@ Transform:
   m_GameObject: {fileID: 3510778963214601395}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -56,7 +57,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 934990576
+  GlobalObjectIdHash: 1350446368
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -241,16 +242,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
-  scriptsToDisable: []
-  cameraController: {fileID: 0}
-  hotbarSlots: 3
-  inventorySlots: 2
-  canvas: {fileID: 0}
+  hotbarSlots: 2
+  itemDatabase:
+  - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
+  - {fileID: 11400000, guid: 6076501a4b48b444a9fc80faf71629e0, type: 2}
   hotbarPanel: {fileID: 0}
-  inventoryPanel: {fileID: 0}
   hotbarSlotImages: []
-  inventorySlotImages: []
-  playerMovement: {fileID: 0}
   handPosition: {fileID: 0}
   dropPosition: {fileID: 0}
 --- !u!114 &2109150516459380103
@@ -266,10 +263,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Crosshair
   ShowTopMostFoldoutHeaderGroup: 1
-  crosshairColor: {r: 0, g: 0, b: 0, a: 1}
-  crosshairSize: 10
-  crosshairThickness: 2
---- !u!114 &4082888317924032720
+--- !u!114 &2081193615646083021
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -281,6 +275,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a08219fe86f521a40a96ea327adde154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxHealth: 3
+  CurrentHealth:
+    m_InternalValue: 0
+  IsDead:
+    m_InternalValue: 0
+  aliveLayer: WhatsIsPlayer
+  deadLayer: DeadPlayer
+  disableOnDeath:
+  - {fileID: 1745521175803550177}
+  visualsRoot: {fileID: 0}
+--- !u!114 &7747814521922435929
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7d17b0be7e824c08a809c99c88fab3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealthUI
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameSceneName: 03_Game
+  offset: {x: 20, y: 20}
+  panelSize: {x: 240, y: 28}
+  blockGap: 6
+  sortingOrder: 500
+  green: {r: 0.2, g: 1, b: 0.2, a: 1}
+  darkGrey: {r: 0.2, g: 0.2, b: 0.2, a: 1}
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0
@@ -293,9 +318,9 @@ GameObject:
   - component: {fileID: 4163608982920735280}
   - component: {fileID: 5413095556117878663}
   - component: {fileID: 321327978304659596}
-  m_Layer: 3
+  m_Layer: 7
   m_Name: Capsule
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -407,7 +432,7 @@ GameObject:
   - component: {fileID: 6299705925954022843}
   - component: {fileID: 3210587018479394077}
   - component: {fileID: 4308428547729549912}
-  m_Layer: 3
+  m_Layer: 7
   m_Name: MainCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}

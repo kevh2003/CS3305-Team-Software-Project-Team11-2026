@@ -1,31 +1,36 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class DuckInteractable : MonoBehaviour, IInteractable
+[RequireComponent(typeof(NetworkObject))]
+public class DuckInteractable : NetworkBehaviour, IInteractable
 {
-    private bool collected = false;
-    private ObjectiveUI objectiveUI;
+    private bool collectedServerSide;
 
-    private void Start()
-    {
-        objectiveUI = FindObjectOfType<ObjectiveUI>();
-    }
-
-    public bool CanInteract()
-    {
-        return !collected;
-    }
+    public bool CanInteract() => true;
 
     public bool Interact(Interactor interactor)
     {
-        if (collected) return false;
+        // Local player sends the request
+        if (interactor == null || !interactor.IsOwner)
+            return false;
 
-        collected = true;
-
-        if (objectiveUI != null)
-            objectiveUI.AddDuck();
-
-        Destroy(gameObject);
-
+        CollectServerRpc();
         return true;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void CollectServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (collectedServerSide) return;
+        collectedServerSide = true;
+
+        if (ObjectiveState.Instance != null)
+            ObjectiveState.Instance.RegisterDuckServerRpc();
+
+        // Despawns for everyone
+        if (NetworkObject != null && NetworkObject.IsSpawned)
+            NetworkObject.Despawn(true);
+        else
+            Destroy(gameObject);
     }
 }
