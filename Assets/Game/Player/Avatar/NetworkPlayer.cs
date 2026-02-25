@@ -9,7 +9,7 @@ using System.Collections;
 public sealed class NetworkPlayer : NetworkBehaviour
 {
     [Header("Tuning")]
-    [SerializeField] private float moveSpeed = 4.5f;
+    [SerializeField] private float moveSpeed = 4f;
     [SerializeField] private float lookSensitivity = 0.12f;
 
     [Header("Refs")]
