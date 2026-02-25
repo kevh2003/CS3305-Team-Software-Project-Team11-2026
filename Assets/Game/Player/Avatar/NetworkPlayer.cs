@@ -34,21 +34,21 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [SerializeField] private float sprintMultiplier = 1.8f;
     [SerializeField] private float maxSprintTime = 3f;
     [SerializeField] private float sprintRegenRate = 1f;
+
+    private float _currentSprintTime;
+    private bool _isSprinting;
         
     private InputAction _jump;
     private float _jumpCooldown = 0.05f;
     private float _jumpTimer;
-
-    private InputAction _sprint;
-    private float _currentSprintTime;
-    private bool _isSprinting;
+    private float _verticalVelocity;
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
 
     private InputAction _move;
-    private float _verticalVelocity;
     private InputAction _look;
+    private InputAction _sprint;
 
     private float _pitch;
     private bool _inGameScene;
@@ -57,8 +57,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
     {
         _cc = GetComponent<CharacterController>();
         _playerInput = GetComponent<PlayerInput>();
-        if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
         _currentSprintTime = maxSprintTime;
+        if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
     }
 
     public override void OnNetworkSpawn()
@@ -66,13 +66,12 @@ public sealed class NetworkPlayer : NetworkBehaviour
         // Scene gate: player exists across scenes but only "plays" in 03_Game scene (currently)
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Cache actions by name (must match InputActions asset)
+        // Cache actions by name (must match InputActions asset)    
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"];
+        _jump = _playerInput.actions["Jump"]; 
         _sprint = _playerInput.actions["Sprint"];
-
-
+ 
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }
@@ -145,8 +144,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         }
 
 
-        _verticalVelocity += gravity * Time.deltaTime;
-
         bool sprintHeld = _sprint != null && _sprint.IsPressed();
 
         if (sprintHeld)
@@ -169,9 +166,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
         float finalSpeed = _isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
 
+        _verticalVelocity += gravity * Time.deltaTime;
 
         Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
+
 
         // Mouse look
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
