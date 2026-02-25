@@ -320,6 +320,99 @@ public class PlayerInventory : NetworkBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
+    // Drop all items on death logic (SERVER ONLY) - Called by PlayerHealth when a player dies - kev
+    public void DropAllItemsOnDeathServer()
+    {
+        if (!IsServer) return;
+
+        // Drop every occupied hotbar slot
+        for (int slot = 0; slot < hotbarSlots; slot++)
+        {
+            if (slot < 0 || slot >= itemIds.Length) continue;
+            if (itemIds[slot] == EMPTY) continue;
+
+            DropItemFromSlotServer_Internal(slot);
+        }
+
+        // Clear the dead player's local UI + hand visuals
+        if (OwnerClientId != NetworkManager.ServerClientId)
+        {
+            ClearAllSlotsClientRpc(new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+            });
+        }
+        else
+        {
+            ClearAllSlotsClientRpc();
+        }
+    }
+
+    // Internal server-side drop
+    private void DropItemFromSlotServer_Internal(int slot)
+    {
+        if (slot < 0 || slot >= hotbarSlots) return;
+
+        int itemId = itemIds[slot];
+        if (itemId == EMPTY) return;
+
+        var def = GetDef(itemId);
+        if (def == null) return;
+
+        if (def.worldPrefab == null)
+        {
+            Debug.LogError($"PlayerInventory: worldPrefab not assigned for itemId {itemId} ({def.name}).");
+            return;
+        }
+
+        Vector3 dropPos = (dropPosition != null)
+            ? dropPosition.position
+            : (transform.position + transform.forward * 1.5f + Vector3.up * 0.5f);
+
+        GameObject worldItem = Instantiate(def.worldPrefab, dropPos, Quaternion.identity);
+
+        var no = worldItem.GetComponent<NetworkObject>();
+        if (no == null)
+        {
+            Debug.LogError("Dropped world prefab missing NetworkObject on ROOT.");
+            Destroy(worldItem);
+            return;
+        }
+
+        EnsureWorldPhysics(worldItem);
+        no.Spawn();
+
+        // Clear server slot
+        itemIds[slot] = EMPTY;
+    }
+
+    [ClientRpc]
+    private void ClearAllSlotsClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        if (!IsOwner) return;
+
+        for (int slot = 0; slot < hotbarSlots; slot++)
+        {
+            if (slot < 0 || slot >= itemIds.Length) continue;
+
+            itemIds[slot] = EMPTY;
+
+            if (handItems[slot] != null)
+            {
+                Destroy(handItems[slot]);
+                handItems[slot] = null;
+            }
+
+            if (hotbarSlotImages != null && hotbarSlotImages.Length > slot && hotbarSlotImages[slot] != null)
+            {
+                hotbarSlotImages[slot].sprite = null;
+                hotbarSlotImages[slot].color = new Color(1, 1, 1, 0.3f);
+            }
+        }
+
+        UpdateHandDisplay();
+    }
+
     void OnDestroy()
     {
         if (inputActions != null)

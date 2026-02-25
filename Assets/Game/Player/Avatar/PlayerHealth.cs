@@ -107,7 +107,16 @@ public class PlayerHealth : NetworkBehaviour
         CurrentHealth.Value = Mathf.Clamp(CurrentHealth.Value - amount, 0, maxHealth);
 
         if (CurrentHealth.Value <= 0)
+        {
             IsDead.Value = true;
+
+            // Drop all inventory items on death
+            var inv = GetComponent<PlayerInventory>();
+            if (inv != null)
+            {
+                inv.DropAllItemsOnDeathServer();
+            }
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
