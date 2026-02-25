@@ -11,15 +11,16 @@ public class Crosshair : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        
+
         if (!IsOwner)
         {
             enabled = false;
             return;
         }
 
-        Invoke(nameof(CreateCrosshair), 0.2f);
         SceneManager.sceneLoaded += OnSceneLoaded;
+
+        StartCoroutine(TryCreateCrosshairRepeated());
     }
 
     void CreateCrosshair()
@@ -158,5 +159,29 @@ public class Crosshair : NetworkBehaviour
     void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private System.Collections.IEnumerator TryCreateCrosshairRepeated()
+    {
+        // retry for ~2 seconds
+        for (int i = 0; i < 20; i++)
+        {
+            if (crosshairObject == null)
+            {
+                Canvas canvas = FindCanvas();
+                if (canvas != null)
+                {
+                    CreateCrosshair();
+                }
+            }
+
+            // If created, stop retrying
+            if (crosshairObject != null)
+                yield break;
+
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogError("Crosshair: Failed to create crosshair (no canvas found after retries).");
     }
 }
