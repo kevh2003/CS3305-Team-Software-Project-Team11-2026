@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using Unity.Netcode;
 
 public class ObjectiveUI : MonoBehaviour
 {
@@ -14,17 +15,11 @@ public class ObjectiveUI : MonoBehaviour
     [SerializeField] private Toggle assignmentToggle;
     [SerializeField] private TMP_Text assignmentLabel;
 
-
-    [Header("Ducks Settings")]
-    [SerializeField] private int ducksTotal = 6;
-
-    private int ducksFound = 0;
-    private bool completed = false;
-    private bool assignmentComplete = false;
-
     [SerializeField] private GameObject ducksObjectiveRoot;
     [SerializeField] private GameObject assignmentObjectiveRoot;
 
+    private ObjectiveState state;
+    private bool ducksCompleted;
 
     private void Awake()
     {
@@ -33,41 +28,44 @@ public class ObjectiveUI : MonoBehaviour
 
         if (assignmentToggle) assignmentToggle.interactable = false;
         if (assignmentLabel) assignmentLabel.text = "Submit an Assignment in the correct lab";
-
-
-        Refresh();
     }
 
-    private void Refresh()
+    private void Start()
     {
-        bool ducksComplete = ducksFound >= ducksTotal;
+        // Find the ObjectiveState in scene (NetworkObject scene-spawned)
+        state = ObjectiveState.Instance != null ? ObjectiveState.Instance : FindFirstObjectByType<ObjectiveState>();
 
-        if (ducksToggle)
-            ducksToggle.isOn = ducksComplete;
-
-        if (ducksCountText)
-            ducksCountText.text = ducksComplete ? $"{ducksTotal}/{ducksTotal}" : $"{ducksFound}/{ducksTotal}";
-
-        if (assignmentToggle)
-            assignmentToggle.isOn = assignmentComplete;
-
-    }
-
-    public void AddDuck()
-    {
-        if (completed) return;
-
-        ducksFound++;
-        Refresh();
-
-        if (ducksFound >= ducksTotal)
+        if (state != null)
         {
-            completed = true;
-            StartCoroutine(HideAfterDelay());
+            state.DucksFound.OnValueChanged += OnDucksChanged;
+            // force initial refresh
+            OnDucksChanged(0, state.DucksFound.Value);
         }
     }
 
-    private IEnumerator HideAfterDelay()
+    private void OnDestroy()
+    {
+        if (state != null)
+            state.DucksFound.OnValueChanged -= OnDucksChanged;
+    }
+
+    private void OnDucksChanged(int oldValue, int newValue)
+    {
+        int total = state != null ? state.DucksTotal : 6;
+
+        bool complete = newValue >= total;
+
+        if (ducksToggle) ducksToggle.isOn = complete;
+        if (ducksCountText) ducksCountText.text = complete ? $"{total}/{total}" : $"{newValue}/{total}";
+
+        if (!ducksCompleted && complete)
+        {
+            ducksCompleted = true;
+            StartCoroutine(HideDucksAfterDelay());
+        }
+    }
+
+    private IEnumerator HideDucksAfterDelay()
     {
         yield return new WaitForSeconds(2f);
 
@@ -77,10 +75,10 @@ public class ObjectiveUI : MonoBehaviour
         CheckHidePanel();
     }
 
+    // Left assignment logic as is (this needs to be networked later) - kev
     public void CompleteAssignment()
     {
-        assignmentComplete = true;
-        Refresh();
+        if (assignmentToggle) assignmentToggle.isOn = true;
         StartCoroutine(HideAssignmentRoutine());
     }
 
@@ -92,7 +90,6 @@ public class ObjectiveUI : MonoBehaviour
             assignmentObjectiveRoot.SetActive(false);
 
         CheckHidePanel();
-
     }
 
     private void CheckHidePanel()
@@ -101,11 +98,6 @@ public class ObjectiveUI : MonoBehaviour
         bool assignmentHidden = assignmentObjectiveRoot == null || !assignmentObjectiveRoot.activeSelf;
 
         if (ducksHidden && assignmentHidden)
-        {
             gameObject.SetActive(false);
-        }
     }
-
-
-
 }
