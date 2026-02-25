@@ -1002,7 +1002,6 @@ MonoBehaviour:
   ducksCountText: {fileID: 1241442816}
   assignmentToggle: {fileID: 968917973}
   assignmentLabel: {fileID: 480452850}
-  ducksTotal: 6
   ducksObjectiveRoot: {fileID: 407076092}
   assignmentObjectiveRoot: {fileID: 968917969}
 --- !u!114 &261274293
