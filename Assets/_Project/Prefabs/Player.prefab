@@ -281,6 +281,11 @@ MonoBehaviour:
     m_InternalValue: 0
   IsDead:
     m_InternalValue: 0
+  aliveLayer: WhatsIsPlayer
+  deadLayer: DeadPlayer
+  disableOnDeath:
+  - {fileID: 1745521175803550177}
+  visualsRoot: {fileID: 0}
 --- !u!114 &7747814521922435929
 MonoBehaviour:
   m_ObjectHideFlags: 0
