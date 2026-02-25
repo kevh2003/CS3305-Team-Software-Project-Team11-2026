@@ -46,12 +46,16 @@ public class EnemyAI : MonoBehaviour
     public Transform currentTarget;                    // Current target player
     private NavMeshAgent agent;                        // Reference to NavMeshAgent component
 
+    [Header("Movement Speed")]
+    [SerializeField] private float chaseSpeed = 5.5f;   // should be faster than player walk (4.5) - kev
+
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.stoppingDistance = attackRange * 0.9f;
         agent.updateRotation = true;
         agent.angularSpeed = 1080f;
+        agent.speed = chaseSpeed;
 
         originalDetectionRange = detectionRange;
         originalViewAngle = viewAngle;
