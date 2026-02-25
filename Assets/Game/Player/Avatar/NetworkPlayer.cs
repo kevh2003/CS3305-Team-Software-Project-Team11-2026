@@ -4,23 +4,12 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-/*
- * NetworkPlayer
- * 
- * Networked player avatar controller
- * - Uses the New Input System via PlayerInput actions (Move/Look)
- * - Enables input + camera only for the owning client
- * - Keeps the player "inactive" outside the Game scene (03_Game)
- *
- * Note: This is intentionally minimal; movement/system teams should expand on it
- */
-
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInput))]
 public sealed class NetworkPlayer : NetworkBehaviour
 {
     [Header("Tuning")]
-    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float moveSpeed = 4.5f;
     [SerializeField] private float lookSensitivity = 0.12f;
 
     [Header("Refs")]
@@ -30,48 +19,53 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [SerializeField] private float jumpHeight = 1.6f;
     [SerializeField] private float gravity = -25f;
 
-    [Header("Sprint Settings")]
-    [SerializeField] private float sprintMultiplier = 1.8f;
-    [SerializeField] private float maxSprintTime = 3f;
-    [SerializeField] private float sprintRegenRate = 1f;
+    [Header("Sprint / Stamina")]
+    [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed here
+    [SerializeField] private float maxStaminaSeconds = 4f;      // sprint time : 4 seconds
+    [SerializeField] private float staminaRegenPerSecond = 1.0f; // sprint regen regen time : 4 seconds
+    [SerializeField] private float minMoveToSprint = 0.1f;       // prevents sprinting on the spot
 
-    private float _currentSprintTime;
+    // Exposed for UI later (0..1)
+    public float Stamina01 => (maxStaminaSeconds <= 0f) ? 0f : Mathf.Clamp01(_staminaSeconds / maxStaminaSeconds);
+
+    private float _staminaSeconds;
     private bool _isSprinting;
-        
+
     private InputAction _jump;
-    private float _jumpCooldown = 0.05f;
-    private float _jumpTimer;
-    private float _verticalVelocity;
-
-    private CharacterController _cc;
-    private PlayerInput _playerInput;
-
     private InputAction _move;
     private InputAction _look;
     private InputAction _sprint;
 
+    private float _jumpCooldown = 0.05f;
+    private float _jumpTimer;
+    private float _verticalVelocity;
     private float _pitch;
     private bool _inGameScene;
+
+    private CharacterController _cc;
+    private PlayerInput _playerInput;
 
     private void Awake()
     {
         _cc = GetComponent<CharacterController>();
         _playerInput = GetComponent<PlayerInput>();
-        _currentSprintTime = maxSprintTime;
-        if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>(true);
+
+        _staminaSeconds = maxStaminaSeconds;
+
+        if (playerCamera == null)
+            playerCamera = GetComponentInChildren<Camera>(true);
     }
 
     public override void OnNetworkSpawn()
     {
-        // Scene gate: player exists across scenes but only "plays" in 03_Game scene (currently)
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        // Cache actions by name (must match InputActions asset)    
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
-        _jump = _playerInput.actions["Jump"]; 
-        _sprint = _playerInput.actions["Sprint"];
- 
+        _jump = _playerInput.actions["Jump"];
+
+        // Safer lookup (won't hard-crash if renamed)
+        _sprint = _playerInput.actions.FindAction("Sprint", throwIfNotFound: false);
 
         ApplySceneState(SceneManager.GetActiveScene().name);
     }
@@ -92,14 +86,12 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _inGameScene = sceneName == "03_Game";
         bool isOwner = IsOwner;
 
-        // Only local owner gets a camera + input, and only during gameplay i.e when in 03_Game scene 
         if (playerCamera != null)
             playerCamera.gameObject.SetActive(_inGameScene && isOwner);
 
         if (_playerInput != null)
             _playerInput.enabled = _inGameScene && isOwner;
 
-        // Hide's body visuals outside of gameplay scene e.g. when in 02_Lobby scene
         foreach (var r in GetComponentsInChildren<Renderer>(true))
             r.enabled = _inGameScene;
 
@@ -122,17 +114,16 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (_playerInput == null || !_playerInput.enabled) return;
         if (_cc == null || !_cc.enabled) return;
 
-        // WASD movement
+        // Movement input
         Vector2 move = _move.ReadValue<Vector2>();
         Vector3 moveWorld = (transform.right * move.x + transform.forward * move.y);
 
-        // _cc.SimpleMove(moveWorld * moveSpeed);
         if (moveWorld.sqrMagnitude > 1f) moveWorld.Normalize();
 
-        bool grounded = _cc.isGrounded;
+        bool isMoving = moveWorld.sqrMagnitude > (minMoveToSprint * minMoveToSprint);
 
-        if (grounded && _verticalVelocity < 0f)
-            _verticalVelocity = -2f;
+        bool grounded = _cc.isGrounded;
+        if (grounded && _verticalVelocity < 0f) _verticalVelocity = -2f;
 
         _jumpTimer -= Time.deltaTime;
 
@@ -142,25 +133,34 @@ public sealed class NetworkPlayer : NetworkBehaviour
             _jumpTimer = _jumpCooldown;
         }
 
+        // Sprint / stamina
         bool sprintHeld = _sprint != null && _sprint.IsPressed();
 
-        if (sprintHeld && _currentSprintTime > 0f && moveWorld.sqrMagnitude > 0.1f)
+        // Can sprint only if: holding sprint, moving, and have stamina
+        bool wantsSprint = sprintHeld && isMoving && _staminaSeconds > 0f;
+
+        if (wantsSprint)
         {
             _isSprinting = true;
-            _currentSprintTime -= Time.deltaTime;
+            _staminaSeconds -= Time.deltaTime;
         }
         else
         {
             _isSprinting = false;
-            _currentSprintTime += sprintRegenRate * Time.deltaTime;
+
+            // Regen only while walking and not holding sprint
+            if (isMoving && !sprintHeld)
+            {
+                _staminaSeconds += staminaRegenPerSecond * Time.deltaTime;
+            }
         }
 
-        _currentSprintTime = Mathf.Clamp(_currentSprintTime, 0f, maxSprintTime);
+        _staminaSeconds = Mathf.Clamp(_staminaSeconds, 0f, maxStaminaSeconds);
 
         float finalSpeed = _isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
 
+        // Gravity + move
         _verticalVelocity += gravity * Time.deltaTime;
-
         Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
 
@@ -177,10 +177,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Apply on server
         ApplyReset(position, rotation);
 
-        // Tell the owning client to apply the same reset
         var rpcParams = new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
@@ -198,13 +196,15 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private void ApplyReset(Vector3 position, Quaternion rotation)
     {
-        if (_cc != null)
-            _cc.enabled = false;
+        if (_cc != null) _cc.enabled = false;
 
         transform.SetPositionAndRotation(position, rotation);
 
         _verticalVelocity = 0f;
         _pitch = 0f;
+
+        _staminaSeconds = maxStaminaSeconds;
+        _isSprinting = false;
 
         if (playerCamera != null)
             playerCamera.transform.localEulerAngles = Vector3.zero;
@@ -215,8 +215,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private IEnumerator ReenableController()
     {
         yield return new WaitForSeconds(0.2f);
-
-        if (_cc != null)
-            _cc.enabled = true;
+        if (_cc != null) _cc.enabled = true;
     }
 }
