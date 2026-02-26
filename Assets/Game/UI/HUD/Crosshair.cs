@@ -11,6 +11,8 @@ public class Crosshair : NetworkBehaviour
 
     private Coroutine createRoutine;
 
+    private PlayerHealth health;
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -23,7 +25,18 @@ public class Crosshair : NetworkBehaviour
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
+        health = GetComponent<PlayerHealth>();
+        if (health != null)
+        {
+            health.IsDead.OnValueChanged += OnDeadChanged;
+        }
+
         StartCreateRoutine();
+    }
+
+    private void OnDeadChanged(bool oldValue, bool newValue)
+    {
+        UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
     private void StartCreateRoutine()
@@ -139,6 +152,8 @@ public class Crosshair : NetworkBehaviour
     {
         CleanupBrokenReferences();
 
+        if (health != null && health.IsDead.Value) return;
+
         if (interactText != null && SceneManager.GetActiveScene().name == "03_Game")
             interactText.enabled = true;
     }
@@ -159,7 +174,10 @@ public class Crosshair : NetworkBehaviour
 
     private void UpdateVisibility(string sceneName)
     {
-        bool showCrosshair = (sceneName == "03_Game");
+        bool inGame = (sceneName == "03_Game");
+        bool isDead = (health != null && health.IsDead.Value);
+
+        bool showCrosshair = inGame && !isDead;
 
         CleanupBrokenReferences();
 
@@ -231,5 +249,8 @@ public class Crosshair : NetworkBehaviour
     private void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+
+        if (health != null)
+            health.IsDead.OnValueChanged -= OnDeadChanged;
     }
 }

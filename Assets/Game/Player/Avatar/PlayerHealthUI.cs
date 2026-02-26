@@ -24,6 +24,13 @@ public class PlayerHealthUI : NetworkBehaviour
     private GameObject panel;
     private Image[] blocks = new Image[3];
 
+    [Header("Death message")]
+    [SerializeField] private string caughtMessage = "You got Caught";
+    [SerializeField] private int caughtFontSize = 72;
+
+    private GameObject caughtRoot;
+    private Text caughtLabel;
+
     public override void OnNetworkSpawn()
     {
         if (!IsOwner)
@@ -40,15 +47,13 @@ public class PlayerHealthUI : NetworkBehaviour
             return;
         }
 
-        BuildUI();
-
-        // Scene show/hide
         SceneManager.sceneLoaded += OnSceneLoaded;
-        UpdateVisibility(SceneManager.GetActiveScene().name);
 
-        // Update now + whenever networked health changes
-        UpdateBlocks(health.CurrentHealth.Value);
         health.CurrentHealth.OnValueChanged += OnHealthChanged;
+        health.IsDead.OnValueChanged += OnDeadChanged;
+
+        // Try to build/show if already in game scene
+        UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
     private void OnDestroy()
@@ -58,7 +63,10 @@ public class PlayerHealthUI : NetworkBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
 
         if (health != null)
+        {
             health.CurrentHealth.OnValueChanged -= OnHealthChanged;
+            health.IsDead.OnValueChanged -= OnDeadChanged;
+        }
 
         if (canvas != null)
             Destroy(canvas.gameObject);
@@ -69,21 +77,57 @@ public class PlayerHealthUI : NetworkBehaviour
         UpdateBlocks(newValue);
     }
 
+    private void OnDeadChanged(bool oldValue, bool newValue)
+    {
+        if (newValue)
+            ShowCaughtMessage(true);
+        else
+            ShowCaughtMessage(false);
+    }
+
+    private void ShowCaughtMessage(bool show)
+    {
+        if (caughtRoot == null) return;
+        caughtRoot.SetActive(show);
+        if (show && caughtLabel != null)
+            caughtLabel.text = caughtMessage;
+    }
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         UpdateVisibility(scene.name);
-        if (health != null) UpdateBlocks(health.CurrentHealth.Value);
+
+        // Only update blocks if the UI exists
+        if (canvas != null && health != null)
+            UpdateBlocks(health.CurrentHealth.Value);
     }
 
     private void UpdateVisibility(string sceneName)
     {
-        bool show = sceneName == gameSceneName;
-        if (panel != null) panel.SetActive(show);
+        bool inGame = sceneName == gameSceneName;
+        bool isDead = (health != null && health.IsDead.Value);
+
+        // Build once when entering game scene
+        if (inGame && canvas == null)
+        {
+            BuildUI();
+            UpdateBlocks(health.CurrentHealth.Value);
+        }
+
+        if (canvas == null) return;
+
+        // Health bar should be hidden when dead
+        if (panel != null) panel.SetActive(inGame && !isDead);
+
+        // "You got caught" only when dead, only in game
+        if (caughtRoot != null)
+            caughtRoot.SetActive(inGame && isDead);
     }
 
     private void UpdateBlocks(int hp)
     {
-        // Right-to-left loss: block3 disappears first, then block2, then block1.
+        if (blocks == null || blocks.Length < 3 || blocks[0] == null) return;
+
         blocks[0].color = (hp >= 1) ? green : darkGrey;
         blocks[1].color = (hp >= 2) ? green : darkGrey;
         blocks[2].color = (hp >= 3) ? green : darkGrey;
@@ -139,5 +183,35 @@ public class PlayerHealthUI : NetworkBehaviour
 
             blocks[i] = img;
         }
+
+        // "You got Caught" overlay (center screen)
+        caughtRoot = new GameObject("CaughtMessageRoot", typeof(RectTransform));
+        caughtRoot.transform.SetParent(canvasGO.transform, false);
+
+        var rootRT = caughtRoot.GetComponent<RectTransform>();
+        rootRT.anchorMin = new Vector2(0.5f, 0.5f);
+        rootRT.anchorMax = new Vector2(0.5f, 0.5f);
+        rootRT.pivot = new Vector2(0.5f, 0.5f);
+        rootRT.anchoredPosition = Vector2.zero;
+        rootRT.sizeDelta = new Vector2(1000, 220);
+
+        // Text
+        var txtGO = new GameObject("Text", typeof(RectTransform));
+        txtGO.transform.SetParent(caughtRoot.transform, false);
+        caughtLabel = txtGO.AddComponent<Text>();
+        caughtLabel.alignment = TextAnchor.MiddleCenter;
+        caughtLabel.fontSize = caughtFontSize;
+        caughtLabel.fontStyle = FontStyle.Bold;
+        caughtLabel.color = Color.white;
+        caughtLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        caughtLabel.text = caughtMessage;
+
+        var txtRT = txtGO.GetComponent<RectTransform>();
+        txtRT.anchorMin = Vector2.zero;
+        txtRT.anchorMax = Vector2.one;
+        txtRT.offsetMin = new Vector2(30, 30);
+        txtRT.offsetMax = new Vector2(-30, -30);
+
+        caughtRoot.SetActive(false);
     }
 }
