@@ -8,6 +8,7 @@ public class InventoryUI : NetworkBehaviour
 {
     private PlayerInventory inventory;
     private Canvas localCanvas;
+    private PlayerHealth health;
 
     public override void OnNetworkSpawn()
     {
@@ -26,8 +27,19 @@ public class InventoryUI : NetworkBehaviour
             return;
         }
 
+        health = GetComponent<PlayerHealth>();
+        if (health != null)
+        {
+            health.IsDead.OnValueChanged += OnDeadChanged;
+        }
+
         CreateLocalUI();
         SceneManager.sceneLoaded += OnSceneLoaded;
+        UpdateUIVisibility(SceneManager.GetActiveScene().name);
+    }
+
+    private void OnDeadChanged(bool oldValue, bool newValue)
+    {
         UpdateUIVisibility(SceneManager.GetActiveScene().name);
     }
 
@@ -96,19 +108,18 @@ public class InventoryUI : NetworkBehaviour
 
     void UpdateUIVisibility(string sceneName)
     {
-        bool showUI = (sceneName == "03_Game");
+        bool inGame = (sceneName == "03_Game");
+        bool isDead = (health != null && health.IsDead.Value);
+
+        bool showUI = inGame && !isDead;
 
         if (inventory.hotbarPanel != null)
-        {
             inventory.hotbarPanel.SetActive(showUI);
-        }
 
         if (inventory.handPosition != null)
         {
             foreach (Transform child in inventory.handPosition)
-            {
                 child.gameObject.SetActive(showUI);
-            }
         }
     }
 
@@ -165,5 +176,8 @@ public class InventoryUI : NetworkBehaviour
         {
             Destroy(localCanvas.gameObject);
         }
+
+        if (health != null)
+            health.IsDead.OnValueChanged -= OnDeadChanged;
     }
 }
