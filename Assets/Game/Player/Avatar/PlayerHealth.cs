@@ -30,12 +30,21 @@ public class PlayerHealth : NetworkBehaviour
     [Tooltip("Optional root object containing meshes.")]
     [SerializeField] private GameObject visualsRoot;
 
+    [Header("Game Over Flow")]
+    [SerializeField] private string lobbySceneName = "02_Lobby"; // change if your lobby scene name differs
+    [SerializeField] private float gameOverDelaySeconds = 3f;
+
+    private static bool s_gameOverTriggered;
+
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
             CurrentHealth.Value = maxHealth;
             IsDead.Value = false;
+
+            // reset for a new match when game scene spawns players
+            s_gameOverTriggered = false;
         }
 
         // React to death changes on ALL clients
@@ -116,6 +125,9 @@ public class PlayerHealth : NetworkBehaviour
             {
                 inv.DropAllItemsOnDeathServer();
             }
+
+            // NEW: after a player dies, check if that was the last one
+            TryTriggerGameOverServer();
         }
     }
 
@@ -124,5 +136,49 @@ public class PlayerHealth : NetworkBehaviour
     {
         CurrentHealth.Value = maxHealth;
         IsDead.Value = false;
+    }
+
+    private void TryTriggerGameOverServer()
+    {
+        if (!IsServer) return;
+        if (s_gameOverTriggered) return;
+
+        // Find all PlayerHealth in the scene (includes inactive)
+        var all = FindObjectsOfType<PlayerHealth>(true);
+        if (all == null || all.Length == 0) return;
+
+        // If any spawned player is still alive, don't trigger
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (!all[i].IsSpawned) continue;
+            if (!all[i].IsDead.Value) return;
+        }
+
+        // Everyone is dead
+        s_gameOverTriggered = true;
+
+        ShowGameOverClientRpc();
+        StartCoroutine(ReturnToLobbyAfterDelay());
+    }
+
+    private System.Collections.IEnumerator ReturnToLobbyAfterDelay()
+    {
+        yield return new WaitForSeconds(gameOverDelaySeconds);
+
+        if (NetworkManager.Singleton == null) yield break;
+        if (NetworkManager.Singleton.SceneManager == null)
+        {
+            Debug.LogError("[PlayerHealth] Network SceneManager not enabled on NetworkManager.");
+            yield break;
+        }
+
+        // Host drives the scene change for everyone
+        NetworkManager.Singleton.SceneManager.LoadScene(lobbySceneName, UnityEngine.SceneManagement.LoadSceneMode.Single);
+    }
+
+    [ClientRpc]
+    private void ShowGameOverClientRpc()
+    {
+        PlayerHealthUI.ShowGameOver();
     }
 }

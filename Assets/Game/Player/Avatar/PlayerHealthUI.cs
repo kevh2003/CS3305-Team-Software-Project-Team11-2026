@@ -30,6 +30,7 @@ public class PlayerHealthUI : NetworkBehaviour
 
     private GameObject caughtRoot;
     private Text caughtLabel;
+    private static PlayerHealthUI s_local;
 
     public override void OnNetworkSpawn()
     {
@@ -46,6 +47,8 @@ public class PlayerHealthUI : NetworkBehaviour
             enabled = false;
             return;
         }
+
+        s_local = this;
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
@@ -70,6 +73,8 @@ public class PlayerHealthUI : NetworkBehaviour
 
         if (canvas != null)
             Destroy(canvas.gameObject);
+
+        if (s_local == this) s_local = null;
     }
 
     private void OnHealthChanged(int oldValue, int newValue)
@@ -131,6 +136,18 @@ public class PlayerHealthUI : NetworkBehaviour
         blocks[0].color = (hp >= 1) ? green : darkGrey;
         blocks[1].color = (hp >= 2) ? green : darkGrey;
         blocks[2].color = (hp >= 3) ? green : darkGrey;
+    }
+
+    public static void ShowGameOver()
+    {
+        if (s_local == null) return;
+
+        // Ensure message shows even if "caught" message was already visible
+        if (s_local.caughtLabel != null)
+            s_local.caughtLabel.text = "GAME OVER";
+
+        if (s_local.caughtRoot != null)
+            s_local.caughtRoot.SetActive(true);
     }
 
     private void BuildUI()
