@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 2109150516459380103}
   - component: {fileID: 2081193615646083021}
   - component: {fileID: 7747814521922435929}
+  - component: {fileID: -6137645912884227439}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -189,6 +190,10 @@ MonoBehaviour:
   playerCamera: {fileID: 0}
   jumpHeight: 1.6
   gravity: -25
+  sprintMultiplier: 1.6
+  maxStaminaSeconds: 4
+  staminaRegenPerSecond: 1
+  minMoveToSprint: 0.1
 --- !u!114 &1745521175803550177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -286,6 +291,8 @@ MonoBehaviour:
   disableOnDeath:
   - {fileID: 1745521175803550177}
   visualsRoot: {fileID: 0}
+  lobbySceneName: 02_Lobby
+  gameOverDelaySeconds: 3
 --- !u!114 &7747814521922435929
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -306,6 +313,28 @@ MonoBehaviour:
   sortingOrder: 500
   green: {r: 0.2, g: 1, b: 0.2, a: 1}
   darkGrey: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+  caughtMessage: You got Caught
+  caughtFontSize: 72
+--- !u!114 &-6137645912884227439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56494df3809f741e2b17e9c92168c6f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimerUI
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameSceneName: 03_Game
+  lobbySceneName: 02_Lobby
+  matchSeconds: 600
+  gameOverDelaySeconds: 3
+  offset: {x: 20, y: 20}
+  fontSize: 36
+  sortingOrder: 600
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0
