@@ -12,9 +12,14 @@ public class Interactor : NetworkBehaviour
     private Crosshair crosshair;
     private IInteractable currentInteractable;
 
+    [Header("References")]
+    private AudioSource clickSound; //https://opengameart.org/content/click
+
     void Awake()
     {
+        clickSound = GetComponent<AudioSource>();
         Player = GetComponent<NetworkPlayer>();
+
 
         if (Player == null)
         {
@@ -106,6 +111,7 @@ public class Interactor : NetworkBehaviour
     {
         if (!IsOwner) return;
 
+        clickSound.Play();
         Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
 
         if (value.isPressed && currentInteractable != null)
