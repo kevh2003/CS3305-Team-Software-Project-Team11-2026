@@ -126,6 +126,7 @@ public class PlayerHealth : NetworkBehaviour
         if (CurrentHealth.Value <= 0)
         {
             IsDead.Value = true;
+            soundFX.PlayDeathSound();
 
             // Drop all inventory items on death
             var inv = GetComponent<PlayerInventory>();

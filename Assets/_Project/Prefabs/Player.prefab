@@ -332,7 +332,7 @@ MonoBehaviour:
   interactVolume: 1
   damageClip: {fileID: 8300000, guid: c61dbd321f80b194785ef8c3597a9fa8, type: 3}
   damageVolume: 1
-  deathClip: {fileID: 0}
+  deathClip: {fileID: 8300000, guid: edc4374f99678034f9e590e211d65d6d, type: 3}
   deathVolume: 1
 --- !u!1 &4389903812446203745
 GameObject:

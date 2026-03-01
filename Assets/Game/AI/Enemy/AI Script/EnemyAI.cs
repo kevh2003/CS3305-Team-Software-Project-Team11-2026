@@ -44,7 +44,7 @@ public class EnemyAI : NetworkBehaviour
 
     [Header("Alert Sound")]
     [Tooltip("Played once on all clients when this enemy first spots a player.")]
-    public AudioClip AlertClip;
+    public AudioClip AlertClip; //https://opengameart.org/content/alertnotification-sound
 
     [Tooltip("How far the alert sound carries in world units.")]
     public float HeardRadius = 30f;

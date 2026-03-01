@@ -7,15 +7,15 @@ public class PlayerSoundFX : NetworkBehaviour
     private bool isDead = false;
 
     [Header("Interact")]
-    public AudioClip interactClip;
+    public AudioClip interactClip;  //https://opengameart.org/content/click
     public float interactVolume = 1f;
 
     [Header("Damage")]
-    public AudioClip damageClip;
+    public AudioClip damageClip;    //https://opengameart.org/content/player-hit-damage
     public float damageVolume = 1f;
 
     [Header("Death")]
-    public AudioClip deathClip;
+    public AudioClip deathClip;     //https://opengameart.org/content/8bit-death-whirl
     public float deathVolume = 1f;
   
     [Header("Sources")]
