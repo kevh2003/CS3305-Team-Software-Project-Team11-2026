@@ -41,7 +41,7 @@ public class PlayerSoundFX : NetworkBehaviour
 
     public void PlayInteractSound()
     {   
-        if (!IsOWner) return;
+        if (!IsOwner) return;
         
         actionSource.PlayOneShot(interactClip, interactVolume);
     }
@@ -61,7 +61,7 @@ public class PlayerSoundFX : NetworkBehaviour
         bodySource.PlayOneShot(deathClip, deathVolume);
     }
 
-    CreateAudioSource CreateAudioSource(string name, bool loop)
+    private AudioSource CreateAudioSource(string name, bool loop)
     {
         GameObject sourceObject = new GameObject(name);
         sourceObject.transform.SetParent(transform);

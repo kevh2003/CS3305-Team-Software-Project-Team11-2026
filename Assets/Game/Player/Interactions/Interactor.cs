@@ -13,11 +13,11 @@ public class Interactor : NetworkBehaviour
     private IInteractable currentInteractable;
 
     [Header("References")]
-    private AudioSource clickSound; //https://opengameart.org/content/click
+    private PlayerSoundFX soundFX;
 
     void Awake()
     {
-        clickSound = GetComponent<AudioSource>();
+        soundFX = GetComponent<PlayerSoundFX>();
         Player = GetComponent<NetworkPlayer>();
 
 
@@ -110,8 +110,7 @@ public class Interactor : NetworkBehaviour
     public void OnInteract(InputValue value)
     {
         if (!IsOwner) return;
-
-        clickSound.Play();
+        soundFX.PlayInteractSound();
         Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
 
         if (value.isPressed && currentInteractable != null)
