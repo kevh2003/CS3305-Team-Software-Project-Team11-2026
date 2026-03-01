@@ -18,6 +18,7 @@ public class PlayerHealth : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    private PlayerSoundFX soundFX;
     public int MaxHealth => maxHealth;
 
     [Header("Death Behaviour")]
@@ -35,6 +36,11 @@ public class PlayerHealth : NetworkBehaviour
     [SerializeField] private float gameOverDelaySeconds = 3f;
 
     private static bool s_gameOverTriggered;
+
+    void Awake()
+    {
+        soundFX = GetComponent<PlayerSoundFX>();
+    }
 
     public override void OnNetworkSpawn()
     {
@@ -113,7 +119,9 @@ public class PlayerHealth : NetworkBehaviour
     {
         if (IsDead.Value) return;
 
+        
         CurrentHealth.Value = Mathf.Clamp(CurrentHealth.Value - amount, 0, maxHealth);
+        soundFX.PlayDamageSound();
 
         if (CurrentHealth.Value <= 0)
         {
