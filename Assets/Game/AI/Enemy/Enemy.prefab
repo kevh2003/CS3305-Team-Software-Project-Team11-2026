@@ -190,9 +190,11 @@ MonoBehaviour:
   alertedViewAngle: 270
   searchDuration: 10
   investigateDuration: 4
+  PatrolClip: {fileID: 8300000, guid: a6c06ccd9120d7543bc0c2832a8455ff, type: 3}
   AlertClip: {fileID: 8300000, guid: 9fa6aea33c3483b46aa5e79b367b23eb, type: 3}
-  HeardRadius: 30
+  PatrolVolume: 0.4
   AlertVolume: 1
+  HeardRadius: 30
   whatIsPlayer:
     serializedVersion: 2
     m_Bits: 128
@@ -291,7 +293,7 @@ AudioSource:
   m_Resource: {fileID: 8300000, guid: 9fa6aea33c3483b46aa5e79b367b23eb, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1
-  m_Pitch: 3
+  m_Pitch: 1
   Loop: 0
   Mute: 0
   Spatialize: 0

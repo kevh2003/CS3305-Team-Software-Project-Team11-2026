@@ -17,6 +17,10 @@ public class PlayerSoundFX : NetworkBehaviour
     [Header("Death")]
     public AudioClip deathClip;     //https://opengameart.org/content/8bit-death-whirl
     public float deathVolume = 1f;
+
+    [Header("Impact")]
+    public AudioClip impactClip; //https://opengameart.org/content/jump-landing-sound
+    public float impactVolume = 1f;
   
     [Header("Sources")]
     private AudioSource actionSource;   //Player actions
@@ -39,6 +43,7 @@ public class PlayerSoundFX : NetworkBehaviour
         }
     }
 
+    // Plays when player presses Interact button
     public void PlayInteractSound()
     {   
         if (!IsOwner) return;
@@ -46,12 +51,14 @@ public class PlayerSoundFX : NetworkBehaviour
         actionSource.PlayOneShot(interactClip, interactVolume);
     }
 
+    // Plays when player takes damage
     public void PlayDamageSound()
     {   
         if (!IsOwner || isDead) return;
         bodySource.PlayOneShot(damageClip, damageVolume);
     }
 
+    // Plays after death
     public void PlayDeathSound()
     {   
         if (!IsOwner || isDead) return;
@@ -59,6 +66,14 @@ public class PlayerSoundFX : NetworkBehaviour
         isDead = true;
 
         bodySource.PlayOneShot(deathClip, deathVolume);
+    }
+
+    // Plays after player falls vertically and hits the ground
+    public void PlayImpactSound()
+    {
+        if (!IsOwner || isDead) return;
+
+        bodySource.PlayOneShot(impactClip, impactVolume);
     }
 
     private AudioSource CreateAudioSource(string name, bool loop)

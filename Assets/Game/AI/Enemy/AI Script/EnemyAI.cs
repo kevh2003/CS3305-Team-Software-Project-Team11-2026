@@ -3,12 +3,6 @@ using UnityEngine;
 using UnityEngine.AI;
 using Unity.Netcode;
 
-/// <summary>
-/// Enemy AI that detects players using line of sight, chases visible players,
-/// and searches the player's last known position by glancing left and right when reaching it.
-/// Fully server-authoritative — AI logic runs only on the host.
-/// Alert sound is broadcast to all clients via ClientRpc when a player is first spotted.
-/// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class EnemyAI : NetworkBehaviour
 {
@@ -42,22 +36,32 @@ public class EnemyAI : NetworkBehaviour
     private Vector3 preLurePosition;
     private float lureEndTime;
 
-    [Header("Alert Sound")]
-    [Tooltip("Played once on all clients when this enemy first spots a player.")]
-    public AudioClip AlertClip; //https://opengameart.org/content/alertnotification-sound
+    [Header("Audio")]
+    [Tooltip("Looping clip played while the enemy is patrolling. Quieter and calmer.")]
+    public AudioClip PatrolClip;
 
-    [Tooltip("How far the alert sound carries in world units.")]
-    public float HeardRadius = 30f;
+    [Tooltip("Looping clip played while the enemy is chasing a player.")]
+    public AudioClip AlertClip;
 
+    [Tooltip("Volume used when playing the patrol clip.")]
+    [Range(0f, 1f)]
+    public float PatrolVolume = 0.4f;
+
+    [Tooltip("Volume used when playing the alert clip.")]
     [Range(0f, 1f)]
     public float AlertVolume = 1f;
+
+    [Tooltip("How far the sounds carry in world units.")]
+    public float HeardRadius = 30f;
 
     [Header("References")]
     [SerializeField] private LayerMask whatIsPlayer;
     [SerializeField] private LayerMask obstacleMask;
     public Transform currentTarget;
     private NavMeshAgent agent;
-    private AudioSource alertSound;
+
+    // Single shared AudioSource — clip and volume are swapped depending on state
+    private AudioSource enemyAudioSource;
 
     [Header("Movement Speed")]
     [SerializeField] private float chaseSpeed = 5.5f;
@@ -67,16 +71,16 @@ public class EnemyAI : NetworkBehaviour
 
     void Awake()
     {
-        agent = GetComponent<NavMeshAgent>();
-        alertSound = GetComponent<AudioSource>();
+        agent            = GetComponent<NavMeshAgent>();
+        enemyAudioSource = GetComponent<AudioSource>();
 
         agent.stoppingDistance = attackRange * 0.9f;
-        agent.updateRotation = true;
-        agent.angularSpeed = 1080f;
-        agent.speed = chaseSpeed;
+        agent.updateRotation   = true;
+        agent.angularSpeed     = 1080f;
+        agent.speed            = chaseSpeed;
 
         originalDetectionRange = detectionRange;
-        originalViewAngle = viewAngle;
+        originalViewAngle      = viewAngle;
 
         ConfigureAudioSource();
     }
@@ -90,6 +94,8 @@ public class EnemyAI : NetworkBehaviour
         if (!IsServer) return;
 
         InvokeRepeating(nameof(UpdateTarget), 0f, updateRate);
+
+        PlayClipClientRpc(true);
     }
 
     void Update()
@@ -118,8 +124,8 @@ public class EnemyAI : NetworkBehaviour
 
                 if (Vector3.Distance(transform.position, lastKnownPosition) <= agent.stoppingDistance)
                 {
-                    isGlancing = true;
-                    glanceTimer = 0f;
+                    isGlancing      = true;
+                    glanceTimer     = 0f;
                     glanceDirection = 1;
                 }
             }
@@ -134,7 +140,7 @@ public class EnemyAI : NetworkBehaviour
                 if (glanceTimer >= glanceTime)
                 {
                     glanceDirection *= -1;
-                    glanceTimer = 0f;
+                    glanceTimer      = 0f;
 
                     if (glanceDirection == 1)
                         StopSearching();
@@ -143,23 +149,19 @@ public class EnemyAI : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Finds the closest visible player using vision cone and line-of-sight checks.
-    /// Runs only on the server via InvokeRepeating.
-    /// </summary>
     void UpdateTarget()
     {
         if (isPaused) return;
 
         Collider[] playersInRange = Physics.OverlapSphere(transform.position, detectionRange, whatIsPlayer);
 
-        Transform closestPlayer = null;
-        float closestDistance = Mathf.Infinity;
+        Transform closestPlayer   = null;
+        float     closestDistance = Mathf.Infinity;
 
         foreach (Collider playerCollider in playersInRange)
         {
             Vector3 directionToPlayer = (playerCollider.transform.position - transform.position).normalized;
-            float distanceToPlayer = Vector3.Distance(transform.position, playerCollider.transform.position);
+            float   distanceToPlayer  = Vector3.Distance(transform.position, playerCollider.transform.position);
 
             float angleToPlayer = Vector3.Angle(transform.forward, directionToPlayer);
             if (angleToPlayer > viewAngle * 0.5f)
@@ -170,31 +172,28 @@ public class EnemyAI : NetworkBehaviour
                 if (distanceToPlayer < closestDistance)
                 {
                     closestDistance = distanceToPlayer;
-                    closestPlayer = playerCollider.transform;
+                    closestPlayer   = playerCollider.transform;
 
-                    isSearching = false;
-                    isLured = false;
-                    lureEndTime = 0f;
+                    isSearching    = false;
+                    isLured        = false;
+                    lureEndTime    = 0f;
                     detectionRange = originalDetectionRange;
-                    viewAngle = originalViewAngle;
-                    isGlancing = false;
+                    viewAngle      = originalViewAngle;
+                    isGlancing     = false;
                 }
             }
         }
 
         if (closestPlayer != null)
         {
-            // Detect the first-spot moment — only play sound when transitioning
-            // from no target to having a target, not every tick while chasing
             bool justSpotted = currentTarget == null && !wasChasing;
 
             currentTarget = closestPlayer;
-            wasChasing = true;
+            wasChasing    = true;
 
             if (justSpotted)
             {
-                // Tell all clients to play the sound at this enemy's position
-                PlayAlertSoundClientRpc();
+                PlayClipClientRpc(false);
             }
         }
         else if (currentTarget != null)
@@ -204,90 +203,106 @@ public class EnemyAI : NetworkBehaviour
         }
         else
         {
-            // No target and wasn't chasing — keep wasChasing false
             wasChasing = false;
         }
     }
 
-    /// <summary>
-    /// Executed on every connected client (including the host).
-    /// Each client plays the AudioSource locally so Unity's 3D spatial
-    /// falloff applies relative to that client's own AudioListener.
-    /// </summary>
     [ClientRpc]
-    private void PlayAlertSoundClientRpc()
+    private void PlayClipClientRpc(bool usePatrol)
     {
+        if (usePatrol)
+        {
+            if (PatrolClip == null)
+            {
+                Debug.LogWarning($"⚠️ EnemyAI: No PatrolClip assigned on {gameObject.name}!");
+                return;
+            }
 
-        // Assign the clip and loop it for the entire chase duration
-        alertSound.clip = AlertClip;
-        alertSound.Play();
+            enemyAudioSource.volume = PatrolVolume;
+            enemyAudioSource.clip   = PatrolClip;
+        }
+        else
+        {
+            if (AlertClip == null)
+            {
+                Debug.LogWarning($"⚠️ EnemyAI: No AlertClip assigned on {gameObject.name}!");
+                return;
+            }
 
+            enemyAudioSource.volume = AlertVolume;
+            enemyAudioSource.clip   = AlertClip;
+        }
+
+        // Play picks up the new clip from the beginning cleanly
+        enemyAudioSource.Play();
     }
 
     [ClientRpc]
-    private void StopAlertSoundClientRpc()
+    private void StopAudioClientRpc()
     {
-        alertSound.Stop();
+        enemyAudioSource.Stop();
     }
-
 
     private void ConfigureAudioSource()
     {
-        alertSound.spatialBlend = 1f;                       // Full 3D
-        alertSound.rolloffMode = AudioRolloffMode.Logarithmic;
-        alertSound.maxDistance = HeardRadius;
-        alertSound.minDistance = 1f;                       // Full volume within 1 unit
-        alertSound.playOnAwake = false;
-        alertSound.loop = true;
-        alertSound.dopplerLevel = 0f;
+        enemyAudioSource.spatialBlend = 1f;                     // Full 3D spatial audio
+        enemyAudioSource.rolloffMode  = AudioRolloffMode.Logarithmic;
+        enemyAudioSource.maxDistance  = HeardRadius;
+        enemyAudioSource.minDistance  = 1f;                     // Full volume within 1 unit
+        enemyAudioSource.playOnAwake  = false;
+        enemyAudioSource.loop         = true;                   // Both clips loop continuously
+        enemyAudioSource.dopplerLevel = 0f;
     }
+
 
     void StartSearching()
     {
-        
         if (currentTarget == null) return;
 
-        StopAlertSoundClientRpc();
+        StopAudioClientRpc();
 
         lastKnownPosition = currentTarget.position;
-        currentTarget = null;
+        currentTarget     = null;
 
-        isSearching = true;
-        searchEndTime = Time.time + searchDuration;
+        isSearching    = true;
+        searchEndTime  = Time.time + searchDuration;
         detectionRange = originalDetectionRange * alertedDetectionMultiplier;
-        viewAngle = alertedViewAngle;
-        isGlancing = false;
+        viewAngle      = alertedViewAngle;
+        isGlancing     = false;
     }
 
     void StopSearching()
     {
-        isSearching = false;
+        isSearching    = false;
         detectionRange = originalDetectionRange;
-        viewAngle = originalViewAngle;
+        viewAngle      = originalViewAngle;
         agent.ResetPath();
-        isGlancing = false;
+        isGlancing     = false;
+
+        // Enemy has fully calmed down — resume patrol sound
+        PlayClipClientRpc(true);
     }
 
     public IEnumerator PauseAI(float duration)
     {
-        isPaused = true;
-        currentTarget = null;
-        isSearching = false;
+        isPaused        = true;
+        currentTarget   = null;
+        isSearching     = false;
         agent.isStopped = true;
         agent.ResetPath();
 
-        StopAlertSoundClientRpc();
+        // Silence the enemy completely while paused
+        StopAudioClientRpc();
 
         yield return new WaitForSeconds(duration);
 
         agent.isStopped = false;
-        isPaused = false;
+        isPaused        = false;
+
+        // Resume patrol sound after pause ends
+        PlayClipClientRpc(true);
     }
 
-    /// <summary>
-    /// Called by CameraLure when the player clicks through the CCTV camera.
-    /// Only has effect when called on the server.
-    /// </summary>
     public void Lure(Vector3 worldPosition)
     {
         if (!IsServer) return;
@@ -295,11 +310,13 @@ public class EnemyAI : NetworkBehaviour
 
         preLurePosition = transform.position;
         lureDestination = worldPosition;
-        lureEndTime = 0f;
-        isLured = true;
-        isSearching = false;
-        isGlancing = false;
+        lureEndTime     = 0f;
+        isLured         = true;
+        isSearching     = false;
+        isGlancing      = false;
         agent.SetDestination(lureDestination);
+
+        StopAudioClientRpc();
 
         Debug.Log($"{name} lured to {worldPosition}");
     }
@@ -327,17 +344,19 @@ public class EnemyAI : NetworkBehaviour
             if (glanceTimer >= glanceTime)
             {
                 glanceDirection *= -1;
-                glanceTimer = 0f;
+                glanceTimer      = 0f;
             }
 
             if (Time.time >= lureEndTime)
             {
-                isLured = false;
-                lureEndTime = 0f;
+                isLured         = false;
+                lureEndTime     = 0f;
                 glanceDirection = 1;
-                glanceTimer = 0f;
+                glanceTimer     = 0f;
                 agent.SetDestination(preLurePosition);
-                Debug.Log($"{name} finished investigating, returning to original position");
+
+                PlayClipClientRpc(true);
+
             }
         }
     }
@@ -347,11 +366,11 @@ public class EnemyAI : NetworkBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
 
-        Vector3 leftBoundary = Quaternion.Euler(0, -viewAngle * 0.5f, 0) * transform.forward;
-        Vector3 rightBoundary = Quaternion.Euler(0, viewAngle * 0.5f, 0) * transform.forward;
+        Vector3 leftBoundary  = Quaternion.Euler(0, -viewAngle * 0.5f, 0) * transform.forward;
+        Vector3 rightBoundary = Quaternion.Euler(0,  viewAngle * 0.5f, 0) * transform.forward;
 
         Gizmos.color = Color.red;
-        Gizmos.DrawLine(transform.position, transform.position + leftBoundary * detectionRange);
+        Gizmos.DrawLine(transform.position, transform.position + leftBoundary  * detectionRange);
         Gizmos.DrawLine(transform.position, transform.position + rightBoundary * detectionRange);
 
         // Heard radius in blue
