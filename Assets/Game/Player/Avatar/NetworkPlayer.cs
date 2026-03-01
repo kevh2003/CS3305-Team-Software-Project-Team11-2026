@@ -14,10 +14,14 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     [Header("Refs")]
     [SerializeField] private Camera playerCamera;
+    private PlayerSoundFX soundFX;
 
     [Header("Jump / Gravity")]
     [SerializeField] private float jumpHeight = 1.6f;
     [SerializeField] private float gravity = -25f;
+    private bool _wasAirborne = false;
+    private float _airborneStartY = 0f;
+    private const float _minFallHeight = 3f;
 
     [Header("Sprint / Stamina")]
     [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed here
@@ -46,7 +50,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private PlayerInput _playerInput;
 
     private void Awake()
-    {
+    {   
+        soundFX = GetComponent<PlayerSoundFX>();
         _cc = GetComponent<CharacterController>();
         _playerInput = GetComponent<PlayerInput>();
 
@@ -125,6 +130,18 @@ public sealed class NetworkPlayer : NetworkBehaviour
         bool grounded = _cc.isGrounded;
         if (grounded && _verticalVelocity < 0f) _verticalVelocity = -2f;
 
+        if (!grounded && !_wasAirborne)
+            _airborneStartY = transform.position.y;
+
+        if (grounded && _wasAirborne)
+        {
+            float fallDistance = _airborneStartY - transform.position.y;
+
+            if (fallDistance >= _minFallHeight)
+                soundFX.PlayImpactSound();
+        }
+
+        _wasAirborne = !grounded;
         _jumpTimer -= Time.deltaTime;
 
         if (_jump != null && _jump.IsPressed() && grounded && _jumpTimer <= 0f)
