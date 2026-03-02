@@ -12,7 +12,7 @@ public class EnemyAI : NetworkBehaviour
 
     [Header("Detection Settings")]
     public float detectionRange = 24f;
-    public float updateRate = 0.3f;
+    public float updateRate = 0.5f;
     public float viewAngle = 175f;
 
     [Header("Search Settings")]
