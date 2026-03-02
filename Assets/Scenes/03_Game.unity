@@ -3148,7 +3148,7 @@ PrefabInstance:
       addedObject: {fileID: 659965685}
     - targetCorrespondingSourceObject: {fileID: -2043151255019820474, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 659965684}
+      addedObject: {fileID: 1896073826}
   m_SourcePrefab: {fileID: 100100000, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
 --- !u!4 &649654295 stripped
 Transform:
@@ -3249,24 +3249,6 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
---- !u!4 &659965683 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -6049108134171427146, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
-  m_PrefabInstance: {fileID: 649654294}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &659965684
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 649654296}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9137530d371b04765b8b0bc40f34a6aa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ElevatorRideZone
-  platformRoot: {fileID: 659965683}
 --- !u!65 &659965685
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -7371,6 +7353,24 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!4 &1896073825 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -6049108134171427146, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+  m_PrefabInstance: {fileID: 649654294}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1896073826
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 649654296}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7e535aea1fed4165a97a90ee314c780, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ElevatorRideTrigger
+  platformRoot: {fileID: 1896073825}
 --- !u!1 &2044371465
 GameObject:
   m_ObjectHideFlags: 0

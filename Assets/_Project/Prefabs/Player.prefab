@@ -23,6 +23,7 @@ GameObject:
   - component: {fileID: 7747814521922435929}
   - component: {fileID: -6562956486497159418}
   - component: {fileID: 4658505290043734610}
+  - component: {fileID: 9180789417156913684}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -354,6 +355,19 @@ MonoBehaviour:
   offset: {x: 20, y: 20}
   fontSize: 36
   sortingOrder: 600
+--- !u!114 &9180789417156913684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ab8a5aa1f2b3417397d3b92293b86e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ElevatorRider
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0
