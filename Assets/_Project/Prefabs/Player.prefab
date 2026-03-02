@@ -23,6 +23,8 @@ GameObject:
   - component: {fileID: 7747814521922435929}
   - component: {fileID: -6562956486497159418}
   - component: {fileID: 4658505290043734610}
+  - component: {fileID: 8603454882743663026}
+  - component: {fileID: -2178429323179781053}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -354,6 +356,50 @@ MonoBehaviour:
   offset: {x: 20, y: 20}
   fontSize: 36
   sortingOrder: 600
+--- !u!114 &8603454882743663026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 945b94197e9114731aed7432edc5d313, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStaminaUI
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameSceneName: 03_Game
+  offset: {x: 20, y: 54}
+  panelSize: {x: 240, y: 12}
+  sortingOrder: 510
+  blockCount: 8
+  gap: 6
+  backgroundColor: {r: 0, g: 0, b: 0, a: 0.45}
+  blockOnColor: {r: 1, g: 1, b: 1, a: 1}
+  blockOffColor: {r: 1, g: 1, b: 1, a: 0.12}
+--- !u!114 &-2178429323179781053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3510778963214601395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 945b94197e9114731aed7432edc5d313, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStaminaUI
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameSceneName: 03_Game
+  offset: {x: 20, y: 54}
+  panelSize: {x: 240, y: 16}
+  sortingOrder: 510
+  blockCount: 8
+  gap: 6
+  backgroundColor: {r: 0, g: 0, b: 0, a: 0.45}
+  blockOnColor: {r: 1, g: 1, b: 1, a: 1}
+  blockOffColor: {r: 1, g: 1, b: 1, a: 0.12}
 --- !u!1 &4389903812446203745
 GameObject:
   m_ObjectHideFlags: 0
