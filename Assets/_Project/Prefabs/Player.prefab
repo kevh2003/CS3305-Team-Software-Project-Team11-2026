@@ -21,6 +21,10 @@ GameObject:
   - component: {fileID: 2109150516459380103}
   - component: {fileID: 2081193615646083021}
   - component: {fileID: 7747814521922435929}
+  - component: {fileID: -6562956486497159418}
+  - component: {fileID: 4658505290043734610}
+  - component: {fileID: 8603454882743663026}
+  - component: {fileID: -2178429323179781053}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -189,6 +193,10 @@ MonoBehaviour:
   playerCamera: {fileID: 0}
   jumpHeight: 1.6
   gravity: -25
+  sprintMultiplier: 1.6
+  maxStaminaSeconds: 4
+  staminaRegenPerSecond: 1
+  minMoveToSprint: 0.1
 --- !u!114 &1745521175803550177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -286,6 +294,8 @@ MonoBehaviour:
   disableOnDeath:
   - {fileID: 1745521175803550177}
   visualsRoot: {fileID: 0}
+  lobbySceneName: 02_Lobby
+  gameOverDelaySeconds: 3
 --- !u!114 &7747814521922435929
 MonoBehaviour:
   m_ObjectHideFlags: 0

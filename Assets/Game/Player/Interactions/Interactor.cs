@@ -12,9 +12,14 @@ public class Interactor : NetworkBehaviour
     private Crosshair crosshair;
     private IInteractable currentInteractable;
 
+    [Header("References")]
+    private PlayerSoundFX soundFX;
+
     void Awake()
     {
+        soundFX = GetComponent<PlayerSoundFX>();
         Player = GetComponent<NetworkPlayer>();
+
 
         if (Player == null)
         {
@@ -105,7 +110,7 @@ public class Interactor : NetworkBehaviour
     public void OnInteract(InputValue value)
     {
         if (!IsOwner) return;
-
+        soundFX.PlayInteractSound();
         Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
 
         if (value.isPressed && currentInteractable != null)
