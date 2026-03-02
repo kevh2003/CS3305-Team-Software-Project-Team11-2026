@@ -66,8 +66,22 @@ public class EnemyAI : NetworkBehaviour
     [Header("Movement Speed")]
     [SerializeField] private float chaseSpeed = 5.5f;
 
+    // Performance : How often SetDestination gets updated while chasing
+    [Header("Chase Path Refresh")]
+    [SerializeField] private float chaseRepathRate = 0.2f; // 5 times/sec
+
     // Tracks whether the enemy had a target last update tick (server only)
     private bool wasChasing = false;
+
+    // Performance : Non-alloc buffer for overlap hits (avoid GC alloc every scan)
+    private const int MaxPlayersInRange = 16; // you have 6 players; 16 is generous
+    private readonly Collider[] _playerHits = new Collider[MaxPlayersInRange];
+
+    // Performance : precomputed cos(FOV/2) for dot-product check
+    private float _cosHalfFov;
+
+    // Performance : throttle chase destination updates
+    private float _nextRepathTime;
 
     void Awake()
     {
@@ -82,6 +96,9 @@ public class EnemyAI : NetworkBehaviour
         originalDetectionRange = detectionRange;
         originalViewAngle      = viewAngle;
 
+        // Precompute cosine threshold for the current FOV
+        _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+
         ConfigureAudioSource();
     }
 
@@ -93,7 +110,9 @@ public class EnemyAI : NetworkBehaviour
         // Clients have no business running pathfinding or detection.
         if (!IsServer) return;
 
-        InvokeRepeating(nameof(UpdateTarget), 0f, updateRate);
+        // Performance : stagger scans so all enemies don't spike on the same frame
+        float initialDelay = Random.Range(0f, updateRate);
+        InvokeRepeating(nameof(UpdateTarget), initialDelay, updateRate);
 
         PlayClipClientRpc(true);
     }
@@ -106,6 +125,7 @@ public class EnemyAI : NetworkBehaviour
 
         if (isPaused) return;
 
+        // Lure takes priority over patrol but not over direct player sighting
         if (isLured && currentTarget == null)
         {
             HandleLureBehaviour();
@@ -114,16 +134,24 @@ public class EnemyAI : NetworkBehaviour
 
         if (currentTarget != null)
         {
-            agent.SetDestination(currentTarget.position);
+            // Chase the player
+            // Performance : don't SetDestination every frame
+            if (Time.time >= _nextRepathTime)
+            {
+                _nextRepathTime = Time.time + chaseRepathRate;
+                agent.SetDestination(currentTarget.position);
+            }
         }
         else if (isSearching)
         {
             if (!isGlancing)
             {
+                // Move toward the last known position
                 agent.SetDestination(lastKnownPosition);
 
                 if (Vector3.Distance(transform.position, lastKnownPosition) <= agent.stoppingDistance)
                 {
+                    // Reached last known position → start glancing
                     isGlancing      = true;
                     glanceTimer     = 0f;
                     glanceDirection = 1;
@@ -131,17 +159,20 @@ public class EnemyAI : NetworkBehaviour
             }
             else
             {
-                agent.ResetPath();
+                // 90° glance left and right
+                agent.ResetPath(); // Stop moving while glancing
 
                 glanceTimer += Time.deltaTime;
-                float rotationSpeed = 180f;
+                float rotationSpeed = 180f; // degrees per second
                 transform.Rotate(Vector3.up, glanceDirection * rotationSpeed * Time.deltaTime);
 
                 if (glanceTimer >= glanceTime)
                 {
+                    // Switch direction
                     glanceDirection *= -1;
                     glanceTimer      = 0f;
 
+                    // After one full left-right cycle, end search
                     if (glanceDirection == 1)
                         StopSearching();
                 }
@@ -153,32 +184,50 @@ public class EnemyAI : NetworkBehaviour
     {
         if (isPaused) return;
 
-        Collider[] playersInRange = Physics.OverlapSphere(transform.position, detectionRange, whatIsPlayer);
+        // Performance : non-alloc overlap sphere (avoids GC every tick)
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _playerHits, whatIsPlayer);
 
         Transform closestPlayer   = null;
-        float     closestDistance = Mathf.Infinity;
+        float     closestDistSqr  = Mathf.Infinity;
 
-        foreach (Collider playerCollider in playersInRange)
+        float rangeSqr = detectionRange * detectionRange;
+
+        for (int i = 0; i < hitCount; i++)
         {
-            Vector3 directionToPlayer = (playerCollider.transform.position - transform.position).normalized;
-            float   distanceToPlayer  = Vector3.Distance(transform.position, playerCollider.transform.position);
+            Collider playerCollider = _playerHits[i];
+            if (playerCollider == null) continue;
 
-            float angleToPlayer = Vector3.Angle(transform.forward, directionToPlayer);
-            if (angleToPlayer > viewAngle * 0.5f)
-                continue;
+            // Vector to player
+            Vector3 toPlayer = playerCollider.transform.position - transform.position;
 
-            if (!Physics.Raycast(transform.position, directionToPlayer, distanceToPlayer, obstacleMask))
+            // Performance : use squared distance for cheap filtering
+            float distSqr = toPlayer.sqrMagnitude;
+            if (distSqr > rangeSqr) continue;
+
+            Vector3 dir = toPlayer.normalized;
+
+            // Performance : dot-product check instead of Angle()
+            // If dot < cos(FOV/2) then player is outside view cone
+            float dot = Vector3.Dot(transform.forward, dir);
+            if (dot < _cosHalfFov) continue;
+
+            // compute distance for raycast
+            float dist = Mathf.Sqrt(distSqr);
+
+            // if no obstacle hit, player is visible
+            if (!Physics.Raycast(transform.position, dir, dist, obstacleMask))
             {
-                if (distanceToPlayer < closestDistance)
+                if (distSqr < closestDistSqr)
                 {
-                    closestDistance = distanceToPlayer;
-                    closestPlayer   = playerCollider.transform;
+                    closestDistSqr = distSqr;
+                    closestPlayer  = playerCollider.transform;
 
                     isSearching    = false;
                     isLured        = false;
                     lureEndTime    = 0f;
                     detectionRange = originalDetectionRange;
                     viewAngle      = originalViewAngle;
+                    _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
                     isGlancing     = false;
                 }
             }
@@ -254,7 +303,6 @@ public class EnemyAI : NetworkBehaviour
         enemyAudioSource.dopplerLevel = 0f;
     }
 
-
     void StartSearching()
     {
         if (currentTarget == null) return;
@@ -268,6 +316,7 @@ public class EnemyAI : NetworkBehaviour
         searchEndTime  = Time.time + searchDuration;
         detectionRange = originalDetectionRange * alertedDetectionMultiplier;
         viewAngle      = alertedViewAngle;
+        _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
         isGlancing     = false;
     }
 
@@ -276,6 +325,7 @@ public class EnemyAI : NetworkBehaviour
         isSearching    = false;
         detectionRange = originalDetectionRange;
         viewAngle      = originalViewAngle;
+        _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
         agent.ResetPath();
         isGlancing     = false;
 
@@ -314,6 +364,8 @@ public class EnemyAI : NetworkBehaviour
         isLured         = true;
         isSearching     = false;
         isGlancing      = false;
+
+        // Lure: set destination immediately (not per-frame)
         agent.SetDestination(lureDestination);
 
         StopAudioClientRpc();
@@ -356,7 +408,6 @@ public class EnemyAI : NetworkBehaviour
                 agent.SetDestination(preLurePosition);
 
                 PlayClipClientRpc(true);
-
             }
         }
     }
