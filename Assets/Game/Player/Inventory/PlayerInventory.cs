@@ -31,6 +31,9 @@ public class PlayerInventory : NetworkBehaviour
     // Fast lookup
     private Dictionary<int, ItemDefinition> byId;
 
+    // Local-only UI prompt state
+    private bool _inventoryPromptVisible = false;
+
     void Awake()
     {
         itemIds = new int[hotbarSlots];
@@ -85,6 +88,9 @@ public class PlayerInventory : NetworkBehaviour
         {
             inputActions.Enable();
             SetupInputCallbacks();
+
+            // Ensure prompt matches current hand state
+            UpdateInventoryDropPrompt();
         }
     }
 
@@ -110,6 +116,7 @@ public class PlayerInventory : NetworkBehaviour
         selectedSlot = index;
         UpdateHotbarOutlines();
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     void UpdateHotbarOutlines()
@@ -148,6 +155,19 @@ public class PlayerInventory : NetworkBehaviour
             handItem.transform.localRotation = Quaternion.identity;
             handItem.transform.localScale = Vector3.one;
         }
+    }
+
+    private void UpdateInventoryDropPrompt()
+    {
+        if (!IsOwner) return;
+
+        bool holdingItemInSelectedSlot =
+            (selectedSlot >= 0 && selectedSlot < hotbarSlots && itemIds[selectedSlot] != EMPTY);
+
+        _inventoryPromptVisible = holdingItemInSelectedSlot;
+
+        // Safe: Instance can be null during shutdown
+        DropPromptUI.Instance?.SetInventoryVisible(holdingItemInSelectedSlot, "Press Q to drop");
     }
 
     int FindFirstEmptySlot()
@@ -224,6 +244,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     public void DropSelectedItem()
@@ -301,31 +322,14 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
-    public int GetSelectedSlot() => selectedSlot;
-
-    static void EnsureWorldPhysics(GameObject worldItem)
-    {
-        foreach (var col in worldItem.GetComponentsInChildren<Collider>())
-        {
-            col.enabled = true;
-            col.isTrigger = false;
-        }
-
-        var rb = worldItem.GetComponent<Rigidbody>();
-        if (rb == null) rb = worldItem.AddComponent<Rigidbody>();
-        rb.isKinematic = false;
-        rb.useGravity = true;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-    }
-
-    // Drop all items on death logic (SERVER ONLY) - Called by PlayerHealth when a player dies - kev
     public void DropAllItemsOnDeathServer()
     {
         if (!IsServer) return;
 
-        // Drop every occupied hotbar slot
+        // Drop every occupied hotbar slot on the server
         for (int slot = 0; slot < hotbarSlots; slot++)
         {
             if (slot < 0 || slot >= itemIds.Length) continue;
@@ -335,20 +339,14 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         // Clear the dead player's local UI + hand visuals
-        if (OwnerClientId != NetworkManager.ServerClientId)
+        // (only affects the dead player's client)
+        ClearAllSlotsClientRpc(new ClientRpcParams
         {
-            ClearAllSlotsClientRpc(new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
-            });
-        }
-        else
-        {
-            ClearAllSlotsClientRpc();
-        }
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        });
     }
 
-    // Internal server-side drop
+    // Internal server-side drop without RPC
     private void DropItemFromSlotServer_Internal(int slot)
     {
         if (slot < 0 || slot >= hotbarSlots) return;
@@ -411,10 +409,34 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt(); // keeps the "Press Q" prompt correct
+    }
+
+    public int GetSelectedSlot() => selectedSlot;
+
+    static void EnsureWorldPhysics(GameObject worldItem)
+    {
+        foreach (var col in worldItem.GetComponentsInChildren<Collider>())
+        {
+            col.enabled = true;
+            col.isTrigger = false;
+        }
+
+        var rb = worldItem.GetComponent<Rigidbody>();
+        if (rb == null) rb = worldItem.AddComponent<Rigidbody>();
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
     void OnDestroy()
     {
+        if (IsOwner)
+        {
+            // Hide prompt when this player object is destroyed
+            DropPromptUI.Instance.SetInventoryVisible(false);
+        }
+
         if (inputActions != null)
             inputActions.Disable();
     }

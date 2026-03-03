@@ -135,7 +135,7 @@ public class PlayerHealth : NetworkBehaviour
                 inv.DropAllItemsOnDeathServer();
             }
 
-            // NEW: after a player dies, check if that was the last one
+            // after a player dies, check if that was the last one
             TryTriggerGameOverServer();
         }
     }
