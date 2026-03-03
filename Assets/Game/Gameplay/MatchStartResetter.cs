@@ -17,6 +17,9 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
         }
     }
 
@@ -25,7 +28,10 @@ public sealed class MatchStartResetter : NetworkBehaviour
         if (!IsServer) return;
 
         if (NetworkManager.Singleton != null)
+        {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
     }
 
     private void OnClientConnected(ulong clientId)
@@ -34,6 +40,23 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
         // Wait for player object exist
         StartCoroutine(ResetSinglePlayerNextFrame(clientId));
+    }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        if (!IsServer) return;
+
+        // Try to drop their items before the player object disappears
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
+            client.PlayerObject != null)
+        {
+            var inv = client.PlayerObject.GetComponent<PlayerInventory>();
+            if (inv != null)
+            {
+                inv.DropAllItemsOnDeathServer();
+            }
+        }
     }
 
     private IEnumerator ResetPlayersNextFrame()

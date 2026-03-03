@@ -99,6 +99,28 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
+    public override void OnNetworkDespawn()
+    {
+        // If 'this' player disconnects, drop their items.
+        if (IsServer)
+        {
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.ShutdownInProgress)
+            {
+                // Only drop if they actually have items
+                bool hasAny = false;
+                for (int i = 0; i < hotbarSlots; i++)
+                {
+                    if (itemIds[i] != EMPTY) { hasAny = true; break; }
+                }
+
+                if (hasAny)
+                    DropAllItemsServer_NoClientUI();
+            }
+        }
+
+        base.OnNetworkDespawn();
+    }
+
     private System.Collections.IEnumerator OwnerLateInit()
     {
         // Wait a short time for InventoryUI to create/assign HandPosition/DropPosition
@@ -465,6 +487,20 @@ public class PlayerInventory : NetworkBehaviour
 
         // Clear server slot
         itemIds[slot] = EMPTY;
+    }
+
+    // Server: drops items when a player leaves/disconnects from session
+    private void DropAllItemsServer_NoClientUI()
+    {
+        if (!IsServer) return;
+
+        for (int slot = 0; slot < hotbarSlots; slot++)
+        {
+            if (slot < 0 || slot >= itemIds.Length) continue;
+            if (itemIds[slot] == EMPTY) continue;
+
+            DropItemFromSlotServer_Internal(slot);
+        }
     }
 
     // Server: wipes this player's inventory for a fresh match
