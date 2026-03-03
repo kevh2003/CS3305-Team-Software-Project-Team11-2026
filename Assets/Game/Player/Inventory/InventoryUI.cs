@@ -1,183 +1,73 @@
-using UnityEngine;
-using UnityEngine.UI;
-using Unity.Netcode;
-using UnityEngine.SceneManagement;
 using System.Collections;
+using UnityEngine;
 
-public class InventoryUI : NetworkBehaviour
+public class InventoryUI : MonoBehaviour
 {
+    [SerializeField] private GameObject[] slotHighlights;
+
     private PlayerInventory inventory;
-    private Canvas localCanvas;
-    private PlayerHealth health;
+    private Transform handPosition;
+    private Transform dropPosition;
 
-    public override void OnNetworkSpawn()
+    void Awake()
     {
-        base.OnNetworkSpawn();
-
-        if (!IsOwner)
-        {
-            enabled = false;
-            return;
-        }
-
         inventory = GetComponent<PlayerInventory>();
-        if (inventory == null)
-        {
-            Debug.LogError("InventoryUI: No PlayerInventory found");
-            return;
-        }
-
-        health = GetComponent<PlayerHealth>();
-        if (health != null)
-        {
-            health.IsDead.OnValueChanged += OnDeadChanged;
-        }
-
-        CreateLocalUI();
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        UpdateUIVisibility(SceneManager.GetActiveScene().name);
-    }
-
-    private void OnDeadChanged(bool oldValue, bool newValue)
-    {
-        UpdateUIVisibility(SceneManager.GetActiveScene().name);
-    }
-
-    void CreateLocalUI()
-    {
-        GameObject canvasObj = new GameObject($"PlayerHotbar_{OwnerClientId}");
-        localCanvas = canvasObj.AddComponent<Canvas>();
-        localCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        localCanvas.sortingOrder = 100;
-
-        canvasObj.AddComponent<CanvasScaler>();
-        canvasObj.AddComponent<GraphicRaycaster>();
-        DontDestroyOnLoad(canvasObj);
-
-        CreateHotbarPanel();
         StartCoroutine(SetupHandAndDropPositions());
-        inventory.SelectSlot(0);
-    }
-
-    void CreateHotbarPanel()
-    {
-        GameObject hotbarPanel = new GameObject("HotbarPanel");
-        hotbarPanel.transform.SetParent(localCanvas.transform, false);
-
-        RectTransform hotbarRect = hotbarPanel.AddComponent<RectTransform>();
-
-        // Anchor to bottom-right
-        hotbarRect.anchorMin = new Vector2(1f, 0f);
-        hotbarRect.anchorMax = new Vector2(1f, 0f);
-        hotbarRect.pivot = new Vector2(1f, 0f);
-
-        // Offset inward from the corner
-        hotbarRect.anchoredPosition = new Vector2(-20, 20);
-        hotbarRect.sizeDelta = new Vector2(150, 70);
-
-        Image hotbarImage = hotbarPanel.AddComponent<Image>();
-        hotbarImage.color = new Color(0, 0, 0, 0.5f);
-
-        inventory.hotbarPanel = hotbarPanel;
-
-        inventory.hotbarSlotImages = new Image[2];
-        for (int i = 0; i < 2; i++)
-        {
-            GameObject slot = new GameObject($"HotbarSlot_{i}");
-            slot.transform.SetParent(hotbarPanel.transform, false);
-
-            RectTransform slotRect = slot.AddComponent<RectTransform>();
-            slotRect.anchorMin = new Vector2(0f, 0f);
-            slotRect.anchorMax = new Vector2(0f, 0f);
-            slotRect.pivot = new Vector2(0f, 0f);
-
-            slotRect.sizeDelta = new Vector2(60, 60);
-            slotRect.anchoredPosition = new Vector2(10 + (i * 70), 5);
-
-            Image slotImage = slot.AddComponent<Image>();
-            slotImage.color = new Color(1, 1, 1, 0.3f);
-
-            inventory.hotbarSlotImages[i] = slotImage;
-        }
-    }
-
-    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        UpdateUIVisibility(scene.name);
-    }
-
-    void UpdateUIVisibility(string sceneName)
-    {
-        bool inGame = (sceneName == "03_Game");
-        bool isDead = (health != null && health.IsDead.Value);
-
-        bool showUI = inGame && !isDead;
-
-        if (inventory.hotbarPanel != null)
-            inventory.hotbarPanel.SetActive(showUI);
-
-        if (inventory.handPosition != null)
-        {
-            foreach (Transform child in inventory.handPosition)
-                child.gameObject.SetActive(showUI);
-        }
     }
 
     IEnumerator SetupHandAndDropPositions()
     {
-        int attempts = 0;
-        while (attempts < 50)
+        // IMPORTANT:
+        // Do NOT use Camera.main here (unreliable with multiple players / ParrelSync / builds).
+        // Always use THIS player's camera. - kev
+        Camera cam = null;
+
+        while (cam == null || !cam.gameObject.activeInHierarchy)
         {
-            Camera cam = GetComponentInChildren<Camera>(true);
-
-            if (cam != null && cam.gameObject.activeInHierarchy)
-            {
-                SetupHandPosition(cam);
-                break;
-            }
-
-            attempts++;
-            yield return new WaitForSeconds(0.1f);
+            cam = GetComponentInChildren<Camera>(true);
+            yield return null;
         }
 
-        SetupDropPosition();
+        // Hand anchor under this player's camera
+        var hp = cam.transform.Find("HandPosition");
+        if (hp == null)
+        {
+            var go = new GameObject("HandPosition");
+            hp = go.transform;
+            hp.SetParent(cam.transform, false);
+            hp.localPosition = new Vector3(0.25f, -0.25f, 0.5f);
+            hp.localRotation = Quaternion.identity;
+        }
+
+        // Drop anchor in front of this player's camera
+        var dp = cam.transform.Find("DropPosition");
+        if (dp == null)
+        {
+            var go = new GameObject("DropPosition");
+            dp = go.transform;
+            dp.SetParent(cam.transform, false);
+            dp.localPosition = new Vector3(0f, -0.2f, 1.5f);
+            dp.localRotation = Quaternion.identity;
+        }
+
+        handPosition = hp;
+        dropPosition = dp;
+
+        // Push anchors into PlayerInventory so it never falls back to player-root parenting
+        if (inventory != null)
+        {
+            inventory.SetAnchors(handPosition, dropPosition);
+        }
     }
 
-    void SetupHandPosition(Camera cam)
+    public void SetSelectedSlot(int index)
     {
-        Transform hand = cam.transform.Find("HandPosition");
-        if (hand == null)
+        if (slotHighlights == null) return;
+
+        for (int i = 0; i < slotHighlights.Length; i++)
         {
-            hand = new GameObject("HandPosition").transform;
-            hand.SetParent(cam.transform);
-            hand.localPosition = new Vector3(1f, -1f, -0.3f);
-            hand.localRotation = Quaternion.Euler(-45f, -20, 90f);
+            if (slotHighlights[i] != null)
+                slotHighlights[i].SetActive(i == index);
         }
-        inventory.handPosition = hand;
-    }
-
-    void SetupDropPosition()
-    {
-        Transform drop = transform.Find("DropPosition");
-        if (drop == null)
-        {
-            drop = new GameObject("DropPosition").transform;
-            drop.SetParent(transform);
-            drop.localPosition = new Vector3(0, 1, 1);
-        }
-        inventory.dropPosition = drop;
-    }
-
-    void OnDestroy()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-
-        if (localCanvas != null)
-        {
-            Destroy(localCanvas.gameObject);
-        }
-
-        if (health != null)
-            health.IsDead.OnValueChanged -= OnDeadChanged;
     }
 }

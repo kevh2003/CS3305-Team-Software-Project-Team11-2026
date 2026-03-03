@@ -3,6 +3,8 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
 using System.Collections.Generic;
+using System.Linq;
+using System.Collections;
 
 public class PlayerInventory : NetworkBehaviour
 {
@@ -73,28 +75,104 @@ public class PlayerInventory : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
-        // Keep enabled on server.
-        // Disable only on remote clients.
+        // IMPORTANT:
+        // - Server must keep this component enabled for ALL players (authoritative state / RPCs / spawning)
+        // - Only the owning client should read input + drive UI -kev
+
         if (!IsOwner && !IsServer)
         {
             enabled = false;
             return;
         }
 
+        // Owner: enable input + bind callbacks
         if (IsOwner)
         {
+            // Safety: avoid double-subscribing if something reinitializes
+            RemoveInputCallbacks();
+
             inputActions.Enable();
             SetupInputCallbacks();
+
+            StartCoroutine(OwnerLateInit());
+            StartCoroutine(OwnerEnsureAnchors());
         }
+    }
+
+    private System.Collections.IEnumerator OwnerLateInit()
+    {
+        // Wait a short time for InventoryUI to create/assign HandPosition/DropPosition
+        float timeout = 2f;
+        while (timeout > 0f && handPosition == null)
+        {
+            timeout -= UnityEngine.Time.deltaTime;
+            yield return null;
+        }
+
+        UpdateHandDisplay();
     }
 
     void SetupInputCallbacks()
     {
-        inputActions.Player.HotbarSlot0.performed += _ => SelectSlot(0);
-        inputActions.Player.HotbarSlot1.performed += _ => SelectSlot(1);
-        inputActions.Player.DropItem.performed += _ => DropSelectedItem();
+        inputActions.Player.HotbarSlot0.performed += OnHotbar0;
+        inputActions.Player.HotbarSlot1.performed += OnHotbar1;
+        inputActions.Player.DropItem.performed += OnDrop;
     }
 
+    void RemoveInputCallbacks()
+    {
+        if (inputActions == null) return;
+
+        inputActions.Player.HotbarSlot0.performed -= OnHotbar0;
+        inputActions.Player.HotbarSlot1.performed -= OnHotbar1;
+        inputActions.Player.DropItem.performed -= OnDrop;
+    }
+
+    private void OnHotbar0(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(0);
+    private void OnHotbar1(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(1);
+    private void OnDrop(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => DropSelectedItem();
+
+
+    public void SetAnchors(Transform hand, Transform drop)
+    {
+        if (hand != null) handPosition = hand;
+        if (drop != null) dropPosition = drop;
+    }
+
+    private IEnumerator OwnerEnsureAnchors()
+    {
+        // Wait a few frames for InventoryUI to create HandPosition/DropPosition
+        for (int i = 0; i < 30; i++)
+        {
+            if (handPosition != null && dropPosition != null)
+                yield break;
+
+            // Try to find them if InventoryUI already created them
+            if (handPosition == null)
+            {
+                var hp = transform.Find("HandPosition");
+                if (hp == null)
+                    hp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "HandPosition");
+                handPosition = hp;
+            }
+
+            if (dropPosition == null)
+            {
+                var dp = transform.Find("DropPosition");
+                if (dp == null)
+                    dp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "DropPosition");
+                dropPosition = dp;
+            }
+
+            yield return null;
+        }
+
+        if (handPosition == null)
+            Debug.LogError("PlayerInventory (Owner): HandPosition still missing after waiting. Held items may be invisible.");
+        if (dropPosition == null)
+            Debug.LogError("PlayerInventory (Owner): DropPosition still missing after waiting. Drops may appear at wrong position.");
+    }
+    
     void Update()
     {
         if (!IsOwner) return;
@@ -415,6 +493,8 @@ public class PlayerInventory : NetworkBehaviour
 
     void OnDestroy()
     {
+        RemoveInputCallbacks();
+
         if (inputActions != null)
             inputActions.Disable();
     }
