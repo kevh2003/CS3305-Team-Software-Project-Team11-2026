@@ -133,6 +133,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         if (player == null) return;
 
         _isViewingCCTV = true;
+        DropPromptUI.Instance?.SetCameraVisible(true, $"Press {exitKey} to exit");
 
         if (player.PlayerInput != null)
             player.PlayerInput.enabled = false;
@@ -158,6 +159,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         if (player == null) return;
 
         _isViewingCCTV = false;
+        DropPromptUI.Instance?.SetCameraVisible(false);
 
         if (cctvCameraLook != null)
             cctvCameraLook.enabled = false;
