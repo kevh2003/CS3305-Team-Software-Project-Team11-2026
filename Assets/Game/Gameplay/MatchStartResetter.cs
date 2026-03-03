@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public sealed class MatchStartResetter : NetworkBehaviour
 {
@@ -40,15 +41,49 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Wait for player object to exist, then spawn-reset just that player
+        // If the roster is already locked, exclude late joiners
+        if (ObjectiveState.Instance != null && ObjectiveState.Instance.MatchRosterLocked.Value)
+        {
+            StartCoroutine(KillLateJoinerNextFrame(clientId));
+            return;
+        }
+
+        // Normal: wait for player object to exist, then reset spawn/health/inventory
         StartCoroutine(ResetSinglePlayerNextFrame(clientId));
+    }
+
+    private IEnumerator KillLateJoinerNextFrame(ulong clientId)
+    {
+        // wait for player object to exist
+        for (int i = 0; i < 30; i++)
+        {
+            if (TryGetPlayer(clientId, out var player) && player != null)
+            {
+                var health = player.GetComponent<PlayerHealth>();
+                if (health != null)
+                {
+                    health.CurrentHealth.Value = 0;
+                    health.IsDead.Value = true;
+                }
+
+                // clear inventory
+                var inv = player.GetComponent<PlayerInventory>();
+                if (inv != null)
+                    inv.ResetInventoryForNewMatchServer();
+
+                yield break;
+            }
+            yield return null;
+        }
+
+        Debug.LogWarning($"[MatchStartResetter] Late joiner {clientId} could not be found to kill/exclude.");
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
         if (!IsServer) return;
 
-        // Drop their items before the player object disappears (best-effort)
+        // Drop items before player object disappears
         if (NetworkManager.Singleton != null &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
             client.PlayerObject != null)
@@ -68,6 +103,35 @@ public sealed class MatchStartResetter : NetworkBehaviour
         ResetAllPlayers();
         ResetAllDoors();
         ResetAllEnemies();
+
+        SetupObjectivesForScene();
+    }
+
+    private void SetupObjectivesForScene()
+    {
+        if (!IsServer) return;
+
+        var obj = ObjectiveState.Instance;
+        if (obj == null)
+        {
+            Debug.LogWarning("[MatchStartResetter] ObjectiveState.Instance is null (object may not be in this scene).");
+            return;
+        }
+
+        string sceneName = SceneManager.GetActiveScene().name;
+
+        if (sceneName == "03_Game")
+        {
+            // new round
+            obj.DucksFound.Value = 0; // - reset ducks count
+            obj.ServerBeginRoundRoster(); // - lock roster + reset assignment submission tracking
+        }
+        else
+        {
+            // lobby scene
+            obj.DucksFound.Value = 0; // - reset ducks
+            obj.ServerResetAssignmentForLobby(); // - unlock/reset assignment so late joiners can participate next round
+        }
     }
 
     private IEnumerator ResetSinglePlayerNextFrame(ulong clientId)

@@ -32,7 +32,7 @@ public class PlayerHealth : NetworkBehaviour
     [SerializeField] private GameObject visualsRoot;
 
     [Header("Game Over Flow")]
-    [SerializeField] private string lobbySceneName = "02_Lobby"; // change if your lobby scene name differs
+    [SerializeField] private string lobbySceneName = "02_Lobby";
     [SerializeField] private float gameOverDelaySeconds = 3f;
 
     private static bool s_gameOverTriggered;
@@ -135,7 +135,14 @@ public class PlayerHealth : NetworkBehaviour
                 inv.DropAllItemsOnDeathServer();
             }
 
-            // NEW: after a player dies, check if that was the last one
+            // Assignment requires every player, so a dead player that hasn't completed it shouldn't soft-lock it
+            // This reduces RequiredSubmitCount by 1 IF this player was required and not submitted yet. - kev
+            if (ObjectiveState.Instance != null)
+            {
+                ObjectiveState.Instance.ServerHandlePlayerDeath(OwnerClientId);
+            }
+
+            // after a player dies, check if that was the last one
             TryTriggerGameOverServer();
         }
     }
@@ -163,7 +170,7 @@ public class PlayerHealth : NetworkBehaviour
             if (!all[i].IsDead.Value) return;
         }
 
-        // Everyone is dead
+        // Everyone is dead :O
         s_gameOverTriggered = true;
 
         ShowGameOverClientRpc();

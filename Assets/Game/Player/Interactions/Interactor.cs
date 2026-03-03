@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
@@ -15,16 +16,17 @@ public class Interactor : NetworkBehaviour
     [Header("References")]
     private PlayerSoundFX soundFX;
 
+    [Header("Hold to interact")]
+    private Coroutine holdRoutine;
+    private PCInteractable holdingPc;
+
     void Awake()
     {
         soundFX = GetComponent<PlayerSoundFX>();
         Player = GetComponent<NetworkPlayer>();
 
-
         if (Player == null)
-        {
             Debug.LogError("Interactor: NetworkPlayer component not found");
-        }
     }
 
     public override void OnNetworkSpawn()
@@ -41,15 +43,9 @@ public class Interactor : NetworkBehaviour
 
         if (InteractSource == null)
         {
-            Camera cam = GetComponentInChildren<Camera>();
-            if (cam != null)
-            {
-                InteractSource = cam.transform;
-            }
-            else
-            {
-                Debug.LogError("Interactor: No camera found");
-            }
+            Camera cam = GetComponentInChildren<Camera>(true);
+            if (cam != null) InteractSource = cam.transform;
+            else Debug.LogError("Interactor: No camera found");
         }
     }
 
@@ -58,6 +54,17 @@ public class Interactor : NetworkBehaviour
         if (!IsOwner) return;
 
         CheckForInteractable();
+
+        // If currently holding a PC interaction, cancel the moment E is released
+        if (holdingPc != null)
+        {
+            bool eHeld = (Keyboard.current != null && Keyboard.current.eKey.isPressed);
+            if (!eHeld)
+            {
+                CancelHold(); // resets to 0 immediately
+                return;
+            }
+        }
     }
 
     void CheckForInteractable()
@@ -65,9 +72,8 @@ public class Interactor : NetworkBehaviour
         if (InteractSource == null) return;
 
         Ray ray = new Ray(InteractSource.position, InteractSource.forward);
-        RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, InteractRange))
+        if (Physics.Raycast(ray, out RaycastHit hit, InteractRange))
         {
             IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
@@ -75,12 +81,14 @@ public class Interactor : NetworkBehaviour
             {
                 if (currentInteractable != interactable)
                 {
+                    // If swapped targets mid-hold, cancel the hold instantly
+                    if (holdingPc != null)
+                        CancelHold();
+
                     currentInteractable = interactable;
 
                     if (crosshair != null)
-                    {
                         crosshair.ShowInteractPrompt();
-                    }
                 }
             }
             else
@@ -96,39 +104,149 @@ public class Interactor : NetworkBehaviour
 
     void ClearInteractable()
     {
+        if (holdingPc != null)
+            CancelHold();
+
         if (currentInteractable != null)
         {
             currentInteractable = null;
 
             if (crosshair != null)
-            {
                 crosshair.HideInteractPrompt();
-            }
         }
     }
 
     public void OnInteract(InputValue value)
     {
         if (!IsOwner) return;
-        soundFX.PlayInteractSound();
-        Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
 
-        if (value.isPressed && currentInteractable != null)
+        bool pressed = value.isPressed;
+
+        // release: cancel hold immediately
+        if (!pressed)
         {
-            Debug.Log($"[Interactor] Trying Interact() on {currentInteractable}");
-            if (currentInteractable.CanInteract())
-            {
-                bool success = currentInteractable.Interact(this);
-                Debug.Log($"[Interactor] Interact() returned {success}");
+            CancelHold();
+            return;
+        }
 
-                if (success)
-                {
-                    ClearInteractable();
-                }
+        // press:
+        soundFX?.PlayInteractSound();
+
+        if (currentInteractable == null) return;
+        if (!currentInteractable.CanInteract()) return;
+
+        // If this is a PC assignment, start holding logic instead of instant interact.
+        var pc = (currentInteractable as Component)?.GetComponentInParent<PCInteractable>();
+        if (pc != null)
+        {
+            StartHold(pc);
+            return;
+        }
+
+        // Normal interactables (ducks, pickups, doors, etc.)
+        bool success = currentInteractable.Interact(this);
+        if (success)
+            ClearInteractable();
+    }
+
+    private void StartHold(PCInteractable pc)
+    {
+        CancelHold();
+
+        // If already submitted this round, don't allow starting again
+        if (ObjectiveState.Instance != null &&
+            NetworkManager.Singleton != null &&
+            ObjectiveState.Instance.HasSubmittedClient(NetworkManager.Singleton.LocalClientId))
+        {
+            TrySetInteractPrompt("Already submitted.");
+            return;
+        }
+
+        holdingPc = pc;
+
+        // show starting prompt immediately
+        TrySetInteractPrompt("Submitting... 0% (hold E)");
+
+        holdRoutine = StartCoroutine(HoldToSubmitRoutine(pc));
+    }
+
+    private void CancelHold()
+    {
+        if (holdRoutine != null)
+        {
+            StopCoroutine(holdRoutine);
+            holdRoutine = null;
+        }
+
+        holdingPc = null;
+
+        if (crosshair != null)
+        {
+            // If still looking at something, show the default prompt again
+            if (currentInteractable != null)
+            {
+                // If it's a PC, show a "hold" message rather than plain "Press E"
+                var pc = (currentInteractable as Component)?.GetComponentInParent<PCInteractable>();
+                if (pc != null)
+                    crosshair.SetPromptText("Hold E to submit");
+                else
+                    crosshair.ShowInteractPrompt();
+            }
+            else
+            {
+                crosshair.HideInteractPrompt();
             }
         }
     }
 
+    private IEnumerator HoldToSubmitRoutine(PCInteractable pc)
+    {
+        if (pc == null || !pc.gameObject.activeInHierarchy)
+        {
+            CancelHold();
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.1f, pc.holdSeconds);
+        float t = 0f;
+
+        while (t < duration)
+        {
+            // Cancel if player looked away / lost the interactable / PC disabled
+            if (currentInteractable == null || pc == null || !pc.gameObject.activeInHierarchy)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            // Cancel if E released
+            if (Keyboard.current != null && !Keyboard.current.eKey.isPressed)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            t += Time.deltaTime;
+            float pct = Mathf.Clamp01(t / duration);
+
+            TrySetInteractPrompt($"Submitting... {Mathf.RoundToInt(pct * 100f)}% (hold E)");
+            yield return null;
+        }
+
+        TrySetInteractPrompt("Submitted!");
+
+        pc.SubmitAssignmentServerRpc();
+
+        // Prevent immediately restarting
+        ClearInteractable();
+        CancelHold();
+    }
+
+    private void TrySetInteractPrompt(string text)
+    {
+        if (crosshair != null)
+            crosshair.SetPromptText(text);
+    }
 
     private void OnDrawGizmosSelected()
     {

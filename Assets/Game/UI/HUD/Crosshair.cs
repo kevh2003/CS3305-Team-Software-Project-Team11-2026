@@ -253,4 +253,10 @@ public class Crosshair : NetworkBehaviour
         if (health != null)
             health.IsDead.OnValueChanged -= OnDeadChanged;
     }
+
+    public void SetPromptText(string t)
+    {
+        CleanupBrokenReferences();
+        if (interactText != null) interactText.text = t;
+    }
 }

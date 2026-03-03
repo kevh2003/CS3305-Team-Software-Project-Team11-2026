@@ -25,7 +25,7 @@ public class DuckInteractable : NetworkBehaviour, IInteractable
         collectedServerSide = true;
 
         if (ObjectiveState.Instance != null)
-            ObjectiveState.Instance.RegisterDuckServerRpc();
+            ObjectiveState.Instance.ServerRegisterDuck();
 
         HideDuckClientRpc();
 

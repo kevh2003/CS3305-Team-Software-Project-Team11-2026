@@ -1,31 +1,41 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class PCInteractable : MonoBehaviour, IInteractable
+public class PCInteractable : NetworkBehaviour, IInteractable
 {
-    private static bool assignmentSubmitted = false;
+    [Header("Assignment")]
+    public float holdSeconds = 10f;
+    public string taskLabel = "Submit an assignment in Room 1.10";
 
     public bool CanInteract()
     {
-    
-        return !assignmentSubmitted;
+        // If client already submitted this round, don't allow interacting again
+        if (ObjectiveState.Instance != null && NetworkManager.Singleton != null)
+        {
+            ulong me = NetworkManager.Singleton.LocalClientId;
+            if (ObjectiveState.Instance.HasSubmittedClient(me))
+                return false;
+        }
+        return true;
     }
 
     public bool Interact(Interactor interactor)
     {
-        if (assignmentSubmitted) 
-            return false;
+        // Interactor handles the hold; we just allow it if CanInteract is true
+        return CanInteract();
+    }
 
-        assignmentSubmitted = true;
+    [ServerRpc(RequireOwnership = false)]
+    public void SubmitAssignmentServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (ObjectiveState.Instance == null) return;
 
-        Debug.Log("Assignment submitted on correct PC!");
+        var senderId = rpcParams.Receive.SenderClientId;
 
-        ObjectiveUI ui = FindObjectOfType<ObjectiveUI>();
-        if (ui != null)
-        {
-            ui.CompleteAssignment();
-        }
+        // double-submit guard
+        if (ObjectiveState.Instance.ServerHasSubmitted(senderId))
+            return;
 
-        return true;
+        ObjectiveState.Instance.ServerRegisterAssignmentSubmit(senderId);
     }
 }
-
