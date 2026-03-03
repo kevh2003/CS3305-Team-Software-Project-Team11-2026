@@ -156,6 +156,10 @@ public sealed class MatchStartResetter : NetworkBehaviour
             if (d != null)
                 d.ServerResetToDefaults();
         }
+        // Reset all elevator doors (SERVER)
+        var elevatorDoors = FindObjectsByType<ElevatorDoorController>(FindObjectsSortMode.None);
+        foreach (var d in elevatorDoors)
+            d.ServerResetForNewMatch();
     }
 
     private bool TryGetPlayer(ulong clientId, out NetworkPlayer player)
