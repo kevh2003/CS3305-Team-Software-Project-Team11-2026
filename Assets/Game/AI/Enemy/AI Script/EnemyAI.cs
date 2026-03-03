@@ -349,6 +349,7 @@ public class EnemyAI : NetworkBehaviour
     [ClientRpc]
     private void StopAudioClientRpc()
     {
+        if (enemyAudioSource == null) return;
         enemyAudioSource.Stop();
     }
 
@@ -367,7 +368,7 @@ public class EnemyAI : NetworkBehaviour
     {
         if (currentTarget == null) return;
 
-        StopAudioClientRpc();
+        PlayClipClientRpc(false);
 
         lastKnownPosition = currentTarget.position;
         currentTarget     = null;
