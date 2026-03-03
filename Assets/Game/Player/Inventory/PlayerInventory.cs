@@ -167,10 +167,13 @@ public class PlayerInventory : NetworkBehaviour
             yield return null;
         }
 
-        if (handPosition == null)
-            Debug.LogError("PlayerInventory (Owner): HandPosition still missing after waiting. Held items may be invisible.");
-        if (dropPosition == null)
-            Debug.LogError("PlayerInventory (Owner): DropPosition still missing after waiting. Drops may appear at wrong position.");
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "03_Game")
+            {
+                if (handPosition == null)
+                    Debug.LogError("PlayerInventory (Owner): HandPosition still missing after waiting. Held items may be invisible.");
+                if (dropPosition == null)
+                    Debug.LogError("PlayerInventory (Owner): DropPosition still missing after waiting. Drops may appear at wrong position.");
+            }
     }
     
     void Update()
@@ -260,7 +263,7 @@ public class PlayerInventory : NetworkBehaviour
         itemIds[slot] = itemId;
 
         // despawn the world object for everyone
-        itemNo.Despawn();
+        itemNo.Despawn(false);
 
         // tell only this client to show UI/hand item
         ulong clientId = rpcParams.Receive.SenderClientId;
