@@ -32,7 +32,7 @@ public class EnemyAttack : NetworkBehaviour
         PlayerHealth targetHealth = enemyAI.currentTarget.GetComponentInParent<PlayerHealth>();
         if (targetHealth != null && targetHealth.IsDead.Value)
         {
-            enemyAI.currentTarget = null;
+            enemyAI.ServerClearTargetAndCalmDown();
             return;
         }
 

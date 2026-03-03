@@ -199,37 +199,48 @@ public class EnemyAI : NetworkBehaviour
     {
         if (isPaused) return;
 
+        // If current target dies, stop chasing
+        if (currentTarget != null)
+        {
+            var th = currentTarget.GetComponentInParent<PlayerHealth>();
+            if (th == null || th.IsDead.Value)
+            {
+                ServerClearTargetAndCalmDown();
+                return;
+            }
+        }
+
         // Performance : non-alloc overlap sphere (avoids GC every tick)
         int hitCount = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _playerHits, whatIsPlayer);
 
-        Transform closestPlayer   = null;
-        float     closestDistSqr  = Mathf.Infinity;
-
-        float rangeSqr = detectionRange * detectionRange;
+        Transform closestPlayer  = null;
+        float closestDistSqr     = Mathf.Infinity;
+        float rangeSqr           = detectionRange * detectionRange;
 
         for (int i = 0; i < hitCount; i++)
         {
             Collider playerCollider = _playerHits[i];
             if (playerCollider == null) continue;
 
+            // Skip dead players
+            var ph = playerCollider.GetComponentInParent<PlayerHealth>();
+            if (ph != null && ph.IsDead.Value)
+                continue;
+
             // Vector to player
             Vector3 toPlayer = playerCollider.transform.position - transform.position;
 
-            // Performance : use squared distance for cheap filtering
             float distSqr = toPlayer.sqrMagnitude;
             if (distSqr > rangeSqr) continue;
 
             Vector3 dir = toPlayer.normalized;
 
-            // Performance : dot-product check instead of Angle()
-            // If dot < cos(FOV/2) then player is outside view cone
+            // dot-product check instead of Angle()
             float dot = Vector3.Dot(transform.forward, dir);
             if (dot < _cosHalfFov) continue;
 
-            // compute distance for raycast
             float dist = Mathf.Sqrt(distSqr);
 
-            // if no obstacle hit, player is visible
             if (!Physics.Raycast(transform.position, dir, dist, obstacleMask))
             {
                 if (distSqr < closestDistSqr)
@@ -237,6 +248,7 @@ public class EnemyAI : NetworkBehaviour
                     closestDistSqr = distSqr;
                     closestPlayer  = playerCollider.transform;
 
+                    // reset any "alerted" state when sees a valid player
                     isSearching    = false;
                     isLured        = false;
                     lureEndTime    = 0f;
@@ -250,15 +262,14 @@ public class EnemyAI : NetworkBehaviour
 
         if (closestPlayer != null)
         {
-            bool justSpotted = currentTarget == null && !wasChasing;
+            // Treat as “just spotted” if wasn't currently chasing anyone
+            bool justSpotted = (currentTarget == null) || !wasChasing;
 
             currentTarget = closestPlayer;
-            wasChasing    = true;
+            wasChasing = true;
 
             if (justSpotted)
-            {
                 PlayClipClientRpc(false);
-            }
         }
         else if (currentTarget != null)
         {
@@ -269,6 +280,31 @@ public class EnemyAI : NetworkBehaviour
         {
             wasChasing = false;
         }
+    }
+
+    // Server-only: clears target & returns to calm state
+    public void ServerClearTargetAndCalmDown()
+    {
+        if (!IsServer) return;
+
+        currentTarget = null;
+        wasChasing = false;
+
+        isSearching = false;
+        isGlancing = false;
+
+        isLured = false;
+        lureEndTime = 0f;
+
+        detectionRange = originalDetectionRange;
+        viewAngle = originalViewAngle;
+        _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+
+        if (agent != null)
+            agent.ResetPath();
+
+        // Put audio back to patrol everywhere
+        PlayClipClientRpc(true);
     }
 
     [ClientRpc]
@@ -300,14 +336,13 @@ public class EnemyAI : NetworkBehaviour
             nextVol = AlertVolume;
         }
 
-        // if clip is already playing, don't restart it.
+        // If clip already playing, don't restart it
         if (enemyAudioSource.isPlaying && enemyAudioSource.clip == nextClip)
             return;
 
         enemyAudioSource.volume = nextVol;
         enemyAudioSource.clip = nextClip;
 
-        // Play picks up the new clip from the beginning cleanly
         enemyAudioSource.Play();
     }
 
