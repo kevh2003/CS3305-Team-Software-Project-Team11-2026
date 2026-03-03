@@ -110,11 +110,26 @@ public class EnemyAI : NetworkBehaviour
         // Clients have no business running pathfinding or detection.
         if (!IsServer) return;
 
-        // Performance : stagger scans so all enemies don't spike on the same frame
+        // Safety: avoid stacking UpdateTarget invokes if this NetworkObject respawns/match restarts
+        CancelInvoke(nameof(UpdateTarget));
+
+        // Performance: stagger scans so all enemies don't spike on the same frame
         float initialDelay = Random.Range(0f, updateRate);
         InvokeRepeating(nameof(UpdateTarget), initialDelay, updateRate);
 
         PlayClipClientRpc(true);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+
+        // Server: stop the repeating scan when the object despawns
+        if (IsServer)
+            CancelInvoke(nameof(UpdateTarget));
+
+        // Everyone: stop audio so it can't "stick" across scene/match transitions
+        StopAudioClientRpc();
     }
 
     void Update()
@@ -259,28 +274,38 @@ public class EnemyAI : NetworkBehaviour
     [ClientRpc]
     private void PlayClipClientRpc(bool usePatrol)
     {
+        if (enemyAudioSource == null) return;
+
+        AudioClip nextClip;
+        float nextVol;
+
         if (usePatrol)
         {
             if (PatrolClip == null)
             {
-                Debug.LogWarning($"⚠️ EnemyAI: No PatrolClip assigned on {gameObject.name}!");
+                Debug.LogWarning($"EnemyAI: No PatrolClip assigned on {gameObject.name}!");
                 return;
             }
-
-            enemyAudioSource.volume = PatrolVolume;
-            enemyAudioSource.clip   = PatrolClip;
+            nextClip = PatrolClip;
+            nextVol = PatrolVolume;
         }
         else
         {
             if (AlertClip == null)
             {
-                Debug.LogWarning($"⚠️ EnemyAI: No AlertClip assigned on {gameObject.name}!");
+                Debug.LogWarning($"EnemyAI: No AlertClip assigned on {gameObject.name}!");
                 return;
             }
-
-            enemyAudioSource.volume = AlertVolume;
-            enemyAudioSource.clip   = AlertClip;
+            nextClip = AlertClip;
+            nextVol = AlertVolume;
         }
+
+        // if clip is already playing, don't restart it.
+        if (enemyAudioSource.isPlaying && enemyAudioSource.clip == nextClip)
+            return;
+
+        enemyAudioSource.volume = nextVol;
+        enemyAudioSource.clip = nextClip;
 
         // Play picks up the new clip from the beginning cleanly
         enemyAudioSource.Play();
@@ -350,6 +375,37 @@ public class EnemyAI : NetworkBehaviour
         isPaused        = false;
 
         // Resume patrol sound after pause ends
+        PlayClipClientRpc(true);
+    }
+
+    // Server-only: reset this enemy to its calm patrol state for a new match
+    public void ServerResetForNewMatch()
+    {
+        if (!IsServer) return;
+
+        // Clear all state that could keep it in chase/search/lure
+        isPaused = false;
+        currentTarget = null;
+        wasChasing = false;
+
+        isSearching = false;
+        isGlancing = false;
+
+        isLured = false;
+        lureEndTime = 0f;
+        glanceTimer = 0f;
+        glanceDirection = 1;
+
+        detectionRange = originalDetectionRange;
+        viewAngle = originalViewAngle;
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+            agent.ResetPath();
+        }
+
+        // Make sure audio returns to patrol for everyone
         PlayClipClientRpc(true);
     }
 

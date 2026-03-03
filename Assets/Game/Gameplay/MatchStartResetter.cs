@@ -66,7 +66,8 @@ public sealed class MatchStartResetter : NetworkBehaviour
         yield return new WaitForSeconds(0.1f);
 
         ResetAllPlayers();
-        ResetAllDoors(); // <-- doors reset every round when 03_Game scene starts
+        ResetAllDoors();
+        ResetAllEnemies();
     }
 
     private IEnumerator ResetSinglePlayerNextFrame(ulong clientId)
@@ -172,5 +173,15 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
         player = client.PlayerObject.GetComponent<NetworkPlayer>();
         return player != null;
+    }
+
+    private void ResetAllEnemies()
+    {
+        var enemies = FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
+        foreach (var e in enemies)
+        {
+            if (e != null)
+                e.ServerResetForNewMatch();
+        }
     }
 }
