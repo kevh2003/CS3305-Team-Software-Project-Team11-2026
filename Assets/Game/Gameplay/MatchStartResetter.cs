@@ -110,6 +110,13 @@ public sealed class MatchStartResetter : NetworkBehaviour
             health.CurrentHealth.Value = health.MaxHealth;
             health.IsDead.Value = false;
         }
+
+        // Reset inventory on the server + clear UI/hand items on the owning client
+        var inv = p.GetComponent<PlayerInventory>();
+        if (inv != null)
+        {
+            inv.ResetInventoryForNewMatchServer();
+        }
     }
 
     private bool TryGetPlayer(ulong clientId, out NetworkPlayer player)

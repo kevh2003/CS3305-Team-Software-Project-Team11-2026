@@ -467,6 +467,22 @@ public class PlayerInventory : NetworkBehaviour
         itemIds[slot] = EMPTY;
     }
 
+    // Server: wipes this player's inventory for a fresh match
+    public void ResetInventoryForNewMatchServer()
+    {
+        if (!IsServer) return;
+
+        // Clear server-authoritative IDs
+        for (int i = 0; i < hotbarSlots; i++)
+            itemIds[i] = EMPTY;
+
+        // Tell ONLY the owning client to clear UI + destroy hand prefabs
+        ClearAllSlotsClientRpc(new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        });
+    }
+
     [ClientRpc]
     private void ClearAllSlotsClientRpc(ClientRpcParams clientRpcParams = default)
     {
@@ -490,7 +506,9 @@ public class PlayerInventory : NetworkBehaviour
                 hotbarSlotImages[slot].color = new Color(1, 1, 1, 0.3f);
             }
         }
-
+        // Reset selection to slot 0 after a match reset
+        selectedSlot = 0;
+        UpdateHotbarOutlines();
         UpdateHandDisplay();
     }
 
