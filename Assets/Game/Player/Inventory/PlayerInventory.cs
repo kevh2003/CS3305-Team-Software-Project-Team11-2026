@@ -555,4 +555,12 @@ public class PlayerInventory : NetworkBehaviour
         if (inputActions != null)
             inputActions.Disable();
     }
+
+    public bool HasItemId(int itemId) // used to check keys against locked doors
+    {
+        for (int i = 0; i < hotbarSlots; i++)
+            if (itemIds[i] == itemId)
+                return true;
+        return false;
+    }
 }

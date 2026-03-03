@@ -8,9 +8,10 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
         if (!IsServer) return;
 
-        // After scene load, place everyone once. Late joiners will also get moved to the nearest spawn point once they spawn.
+        // After scene load, place everyone once.
         StartCoroutine(ResetPlayersNextFrame());
 
         if (NetworkManager.Singleton != null)
@@ -25,6 +26,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        base.OnNetworkDespawn();
         if (!IsServer) return;
 
         if (NetworkManager.Singleton != null)
@@ -38,7 +40,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Wait for player object exist
+        // Wait for player object to exist, then spawn-reset just that player
         StartCoroutine(ResetSinglePlayerNextFrame(clientId));
     }
 
@@ -46,7 +48,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Try to drop their items before the player object disappears
+        // Drop their items before the player object disappears (best-effort)
         if (NetworkManager.Singleton != null &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
             client.PlayerObject != null)
@@ -62,7 +64,9 @@ public sealed class MatchStartResetter : NetworkBehaviour
     private IEnumerator ResetPlayersNextFrame()
     {
         yield return new WaitForSeconds(0.1f);
+
         ResetAllPlayers();
+        ResetAllDoors(); // <-- doors reset every round when 03_Game scene starts
     }
 
     private IEnumerator ResetSinglePlayerNextFrame(ulong clientId)
@@ -99,7 +103,6 @@ public sealed class MatchStartResetter : NetworkBehaviour
         int index = forcedIndex;
         if (index < 0)
         {
-            // stable index based on OwnerClientId ordering among current players
             var players = FindObjectsByType<NetworkPlayer>(FindObjectsSortMode.None);
             System.Array.Sort(players, (a, b) => a.OwnerClientId.CompareTo(b.OwnerClientId));
             for (int i = 0; i < players.Length; i++)
@@ -139,6 +142,19 @@ public sealed class MatchStartResetter : NetworkBehaviour
         if (inv != null)
         {
             inv.ResetInventoryForNewMatchServer();
+        }
+    }
+
+    private void ResetAllDoors()
+    {
+        // Any reset door in the scene with HingeDoorInteractable
+        var doors = FindObjectsByType<HingeDoorInteractable>(FindObjectsSortMode.None);
+        if (doors == null || doors.Length == 0) return;
+
+        foreach (var d in doors)
+        {
+            if (d != null)
+                d.ServerResetToDefaults();
         }
     }
 
