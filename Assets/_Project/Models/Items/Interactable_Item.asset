@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ebaccdf9b4094919b324ff8d64fe8ea, type: 3}
   m_Name: Interactable_Item
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  itemId: 2
+  itemId: 3
   displayName: cube
   worldPrefab: {fileID: 3324912687387885633, guid: 3e4e0fc1fdcfc465fb89e7c8d126dfef, type: 3}
   handPrefab: {fileID: 2003256410962394621, guid: 21f8efca5303143c8b4f4a155c27f100, type: 3}

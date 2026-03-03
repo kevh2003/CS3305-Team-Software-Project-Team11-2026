@@ -252,6 +252,7 @@ MonoBehaviour:
   hotbarSlots: 2
   itemDatabase:
   - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
+  - {fileID: 11400000, guid: b9921b39ab90e463a8a8389bc4484dcc, type: 2}
   - {fileID: 11400000, guid: 6076501a4b48b444a9fc80faf71629e0, type: 2}
   hotbarPanel: {fileID: 0}
   hotbarSlotImages: []
