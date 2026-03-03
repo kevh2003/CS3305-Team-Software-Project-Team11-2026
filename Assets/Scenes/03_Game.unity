@@ -2368,8 +2368,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_Acceleration
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_StoppingDistance
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_ObstacleAvoidanceType
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7369085208224547869, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_LocalScale.x
@@ -4179,8 +4187,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_Acceleration
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_StoppingDistance
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_ObstacleAvoidanceType
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7369085208224547869, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_LocalScale.x
@@ -4424,8 +4440,16 @@ PrefabInstance:
       value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_Acceleration
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_StoppingDistance
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_ObstacleAvoidanceType
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7369085208224547869, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_LocalScale.x
@@ -23799,8 +23823,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_Acceleration
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
+      propertyPath: m_StoppingDistance
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 1758213158113905958, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_ObstacleAvoidanceType
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7369085208224547869, guid: 49f7b009423933b44be3971290e5a87d, type: 3}
       propertyPath: m_LocalScale.x

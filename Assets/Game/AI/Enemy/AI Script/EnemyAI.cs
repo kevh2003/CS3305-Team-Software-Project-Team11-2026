@@ -16,6 +16,8 @@ public class EnemyAI : NetworkBehaviour
     public float viewAngle = 175f;
 
     [Header("Search Settings")]
+    private float lastSeenTime = -999f;
+    [SerializeField] private float loseSightGrace = 1.0f; // seconds before switching to searching
     public float alertedDetectionMultiplier = 1.5f;
     public float alertedViewAngle = 240f;
     public float searchDuration = 10f;
@@ -35,6 +37,8 @@ public class EnemyAI : NetworkBehaviour
     private Vector3 lureDestination;
     private Vector3 preLurePosition;
     private float lureEndTime;
+    private float lureGlanceTimer = 0f;
+    private int lureGlanceDirection = 1;
 
     [Header("Audio")]
     [Tooltip("Looping clip played while the enemy is patrolling. Quieter and calmer.")]
@@ -154,42 +158,66 @@ public class EnemyAI : NetworkBehaviour
             if (Time.time >= _nextRepathTime)
             {
                 _nextRepathTime = Time.time + chaseRepathRate;
-                agent.SetDestination(currentTarget.position);
+
+                Vector3 targetPos = currentTarget.position;
+
+                // If player is off the NavMesh (e.g., on a box), chase the closest NavMesh point instead
+                if (NavMesh.SamplePosition(targetPos, out var hit, 10f, NavMesh.AllAreas))
+                {
+                    targetPos = hit.position;
+                }
+
+                var dest = GetBestReachablePoint(currentTarget.position);
+                agent.SetDestination(dest);
             }
         }
         else if (isSearching)
         {
+            // If search time expired, calm down
+            if (Time.time >= searchEndTime)
+            {
+                StopSearching();
+                return;
+            }
+
             if (!isGlancing)
             {
-                // Move toward the last known position
-                agent.SetDestination(lastKnownPosition);
+                // Move toward last known position (clamp to navmesh so it doesn't get stuck)
+                Vector3 dest = lastKnownPosition;
+                if (NavMesh.SamplePosition(dest, out var hit, 3f, agent.areaMask))
+                    dest = hit.position;
 
-                if (Vector3.Distance(transform.position, lastKnownPosition) <= agent.stoppingDistance)
+                agent.SetDestination(dest);
+
+                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.1f)
                 {
-                    // Reached last known position → start glancing
-                    isGlancing      = true;
-                    glanceTimer     = 0f;
+                    // Start glancing
+                    isGlancing = true;
+                    glanceTimer = 0f;
                     glanceDirection = 1;
+
+                    agent.ResetPath();            // stop while glancing
+                    agent.updateRotation = false; // manual rotate during glance
                 }
             }
             else
             {
-                // 90° glance left and right
-                agent.ResetPath(); // Stop moving while glancing
-
                 glanceTimer += Time.deltaTime;
-                float rotationSpeed = 180f; // degrees per second
+
+                float rotationSpeed = 180f;
                 transform.Rotate(Vector3.up, glanceDirection * rotationSpeed * Time.deltaTime);
 
                 if (glanceTimer >= glanceTime)
                 {
-                    // Switch direction
+                    // Switch direction every glanceTime seconds
                     glanceDirection *= -1;
-                    glanceTimer      = 0f;
+                    glanceTimer = 0f;
 
-                    // After one full left-right cycle, end search
+                    // After a full left-right cycle, stop searching
                     if (glanceDirection == 1)
+                    {
                         StopSearching();
+                    }
                 }
             }
         }
@@ -208,78 +236,131 @@ public class EnemyAI : NetworkBehaviour
                 ServerClearTargetAndCalmDown();
                 return;
             }
+
+            // Check LOS to current target
+            Vector3 toTarget = currentTarget.position - transform.position;
+            float distSqrToTarget = toTarget.sqrMagnitude;
+            float rangeSqrToTarget = detectionRange * detectionRange;
+
+            bool canSeeCurrentTarget = false;
+
+            if (distSqrToTarget <= rangeSqrToTarget)
+            {
+                Vector3 dir = toTarget.normalized;
+                float dot = Vector3.Dot(transform.forward, dir);
+
+                if (dot >= _cosHalfFov)
+                {
+                    float dist = Mathf.Sqrt(distSqrToTarget);
+                    if (!Physics.Raycast(transform.position, dir, dist, obstacleMask))
+                        canSeeCurrentTarget = true;
+                }
+            }
+
+            if (canSeeCurrentTarget)
+            {
+                // still seeing the target -> stay in chase
+                lastSeenTime = Time.time;
+                lastKnownPosition = currentTarget.position;
+                wasChasing = true;
+                return;
+            }
+
+            // Lost sight -> remember last known position
+            lastKnownPosition = currentTarget.position;
+
+            // Grace period before switching to searching (prevents flicker)
+            if (Time.time - lastSeenTime < loseSightGrace)
+            {
+                // keep chasing for a short moment
+                wasChasing = true;
+                return;
+            }
+
+            // Switch to searching
+            currentTarget = null;
+            wasChasing = false;
+
+            StartSearching();
+            return;
         }
 
-        // Performance : non-alloc overlap sphere (avoids GC every tick)
+        // If searching, don't try to acquire a new target unless we see one
+        // (We DO still scan though, so we can reacquire)
         int hitCount = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _playerHits, whatIsPlayer);
 
-        Transform closestPlayer  = null;
-        float closestDistSqr     = Mathf.Infinity;
-        float rangeSqr           = detectionRange * detectionRange;
+        Transform closestPlayer = null;
+        float closestDistSqr = Mathf.Infinity;
+        float rangeSqr = detectionRange * detectionRange;
 
         for (int i = 0; i < hitCount; i++)
         {
             Collider playerCollider = _playerHits[i];
             if (playerCollider == null) continue;
 
-            // Skip dead players
             var ph = playerCollider.GetComponentInParent<PlayerHealth>();
-            if (ph != null && ph.IsDead.Value)
-                continue;
+            if (ph != null && ph.IsDead.Value) continue;
 
-            // Vector to player
             Vector3 toPlayer = playerCollider.transform.position - transform.position;
-
             float distSqr = toPlayer.sqrMagnitude;
             if (distSqr > rangeSqr) continue;
 
             Vector3 dir = toPlayer.normalized;
-
-            // dot-product check instead of Angle()
             float dot = Vector3.Dot(transform.forward, dir);
             if (dot < _cosHalfFov) continue;
 
             float dist = Mathf.Sqrt(distSqr);
+            if (Physics.Raycast(transform.position, dir, dist, obstacleMask)) continue;
 
-            if (!Physics.Raycast(transform.position, dir, dist, obstacleMask))
+            if (distSqr < closestDistSqr)
             {
-                if (distSqr < closestDistSqr)
-                {
-                    closestDistSqr = distSqr;
-                    closestPlayer  = playerCollider.transform;
-
-                    // reset any "alerted" state when sees a valid player
-                    isSearching    = false;
-                    isLured        = false;
-                    lureEndTime    = 0f;
-                    detectionRange = originalDetectionRange;
-                    viewAngle      = originalViewAngle;
-                    _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
-                    isGlancing     = false;
-                }
+                closestDistSqr = distSqr;
+                closestPlayer = playerCollider.transform;
             }
         }
 
         if (closestPlayer != null)
         {
-            // Treat as “just spotted” if wasn't currently chasing anyone
-            bool justSpotted = (currentTarget == null) || !wasChasing;
+            bool justSpotted = (currentTarget == null) && !wasChasing;
 
             currentTarget = closestPlayer;
             wasChasing = true;
 
-            if (justSpotted)
-                PlayClipClientRpc(false);
-        }
-        else if (currentTarget != null)
-        {
-            wasChasing = false;
-            StartSearching();
+            isSearching = false;
+            isGlancing = false;
+
+            if (agent != null)
+            {
+                agent.updateRotation = true;
+                agent.isStopped = false;
+            }
+
+            lastSeenTime = Time.time;
+            lastKnownPosition = closestPlayer.position;
+
+            // Ensure chase audio starts
+            PlayClipClientRpc(false);
         }
         else
         {
             wasChasing = false;
         }
+    }
+
+    private Vector3 GetBestReachablePoint(Vector3 desired)
+    {
+        // Snap desired point to NavMesh (handles players on boxes / off-mesh)
+        Vector3 snapped = desired;
+        if (NavMesh.SamplePosition(desired, out var hit, 2.0f, agent.areaMask))
+            snapped = hit.position;
+
+        // If we can compute a path, use the last reachable corner
+        var path = new NavMeshPath();
+        if (agent.CalculatePath(snapped, path) && path.status != NavMeshPathStatus.PathInvalid && path.corners.Length > 0)
+            return path.corners[path.corners.Length - 1];
+
+        // Fallback: go to snapped anyway
+        return snapped;
     }
 
     // Server-only: clears target & returns to calm state
@@ -301,7 +382,11 @@ public class EnemyAI : NetworkBehaviour
         _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
 
         if (agent != null)
+        {
+            agent.updateRotation = true; // give rotation control back to NavMeshAgent
+            agent.isStopped = false;
             agent.ResetPath();
+        }
 
         // Put audio back to patrol everywhere
         PlayClipClientRpc(true);
@@ -366,31 +451,48 @@ public class EnemyAI : NetworkBehaviour
 
     void StartSearching()
     {
-        if (currentTarget == null) return;
+        if (!IsServer) return;
 
+        isSearching = true;
+        isGlancing = false;
+
+        // Keep alert audio while searching
         PlayClipClientRpc(false);
 
-        lastKnownPosition = currentTarget.position;
-        currentTarget     = null;
+        searchEndTime = Time.time + searchDuration;
 
-        isSearching    = true;
-        searchEndTime  = Time.time + searchDuration;
+        // widen senses while searching
         detectionRange = originalDetectionRange * alertedDetectionMultiplier;
-        viewAngle      = alertedViewAngle;
-        _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
-        isGlancing     = false;
+        viewAngle = alertedViewAngle;
+        _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+            // let the agent rotate while moving toward lastKnownPosition
+            agent.updateRotation = true;
+        }
     }
 
     void StopSearching()
     {
-        isSearching    = false;
-        detectionRange = originalDetectionRange;
-        viewAngle      = originalViewAngle;
-        _cosHalfFov    = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
-        agent.ResetPath();
-        isGlancing     = false;
+        if (!IsServer) return;
 
-        // Enemy has fully calmed down — resume patrol sound
+        isSearching = false;
+        isGlancing = false;
+
+        detectionRange = originalDetectionRange;
+        viewAngle = originalViewAngle;
+        _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+
+        if (agent != null)
+        {
+            agent.updateRotation = true; // give control back
+            agent.ResetPath();
+            agent.isStopped = false;
+        }
+
+        // Calm down, patrol audio
         PlayClipClientRpc(true);
     }
 
@@ -467,41 +569,43 @@ public class EnemyAI : NetworkBehaviour
 
     void HandleLureBehaviour()
     {
+        if (!IsServer) return;
+
         float distToLure = Vector3.Distance(transform.position, lureDestination);
 
+        // Phase 1: walk to lure point
         if (lureEndTime == 0f)
         {
+            agent.isStopped = false;
+            agent.updateRotation = true;
             agent.SetDestination(lureDestination);
 
             if (!agent.pathPending && distToLure <= agent.stoppingDistance + 0.2f)
             {
+                // arrived -> start "investigating"
                 lureEndTime = Time.time + investigateDuration;
                 agent.ResetPath();
             }
+
+            return;
         }
-        else
+
+        // Phase 2: investigate (stand still)
+        if (Time.time < lureEndTime)
         {
-            glanceTimer += Time.deltaTime;
-            float rotationSpeed = 90f;
-            transform.Rotate(Vector3.up, glanceDirection * rotationSpeed * Time.deltaTime);
-
-            if (glanceTimer >= glanceTime)
-            {
-                glanceDirection *= -1;
-                glanceTimer      = 0f;
-            }
-
-            if (Time.time >= lureEndTime)
-            {
-                isLured         = false;
-                lureEndTime     = 0f;
-                glanceDirection = 1;
-                glanceTimer     = 0f;
-                agent.SetDestination(preLurePosition);
-
-                PlayClipClientRpc(true);
-            }
+            agent.ResetPath();
+            return;
         }
+
+        // Phase 3: done investigating -> return
+        isLured = false;
+        lureEndTime = 0f;
+
+        agent.isStopped = false;
+        agent.updateRotation = true;
+        agent.SetDestination(preLurePosition);
+
+        PlayClipClientRpc(true);
     }
 
     void OnDrawGizmosSelected()
