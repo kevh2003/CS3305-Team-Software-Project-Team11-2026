@@ -50,7 +50,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private PlayerInput _playerInput;
 
     private void Awake()
-    {   
+    {
         soundFX = GetComponent<PlayerSoundFX>();
         _cc = GetComponent<CharacterController>();
         _playerInput = GetComponent<PlayerInput>();
@@ -165,8 +165,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             _isSprinting = false;
 
-            // Regen only while walking and not holding sprint
-            if (isMoving && !sprintHeld)
+            // Regen whenever not sprinting (including standing still).
+            // Optional: require sprint NOT held to regen.
+            if (!sprintHeld)
             {
                 _staminaSeconds += staminaRegenPerSecond * Time.deltaTime;
             }
