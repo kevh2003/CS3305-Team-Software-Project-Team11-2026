@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 public sealed class MatchStartResetter : NetworkBehaviour
 {
     [SerializeField] private Transform[] spawnPoints;
+    [SerializeField] private Transform lateJoinerSpawnPoint;
 
     public override void OnNetworkSpawn()
     {
@@ -59,6 +60,18 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             if (TryGetPlayer(clientId, out var player) && player != null)
             {
+                // 1) Move them away from 0,0,0, otherwise they clip through the map :(
+                if (lateJoinerSpawnPoint != null)
+                {
+                    player.ServerResetForNewMatch(lateJoinerSpawnPoint.position, lateJoinerSpawnPoint.rotation);
+                }
+                else if (spawnPoints != null && spawnPoints.Length > 0 && spawnPoints[0] != null)
+                {
+                    // fallback: use SP_00
+                    player.ServerResetForNewMatch(spawnPoints[0].position, spawnPoints[0].rotation);
+                }
+
+                // 2) Mark dead/excluded
                 var health = player.GetComponent<PlayerHealth>();
                 if (health != null)
                 {
@@ -66,7 +79,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
                     health.IsDead.Value = true;
                 }
 
-                // clear inventory
+                // 3) Clear inventory so they can’t interfere
                 var inv = player.GetComponent<PlayerInventory>();
                 if (inv != null)
                     inv.ResetInventoryForNewMatchServer();
@@ -75,7 +88,6 @@ public sealed class MatchStartResetter : NetworkBehaviour
             }
             yield return null;
         }
-
         Debug.LogWarning($"[MatchStartResetter] Late joiner {clientId} could not be found to kill/exclude.");
     }
 
