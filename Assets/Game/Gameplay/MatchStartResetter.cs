@@ -123,14 +123,20 @@ public sealed class MatchStartResetter : NetworkBehaviour
         if (sceneName == "03_Game")
         {
             // new round
-            obj.DucksFound.Value = 0; // - reset ducks count
-            obj.ServerBeginRoundRoster(); // - lock roster + reset assignment submission tracking
+            obj.DucksFound.Value = 0; // reset ducks count
+            // pre-key "extra tasks" gate (future-proofing)
+            obj.PreKeyExtraRequired.Value = 0;    // set to N amount of additional tasks
+            obj.PreKeyExtraCompleted.Value = 0;   // reset progress
+            obj.ServerResetKeyGateForNewRound();  // KeySpawned=false, etc.
+            obj.ServerBeginRoundRoster(); // lock roster + reset assignment submission tracking
+            obj.ServerResetKeyGateForNewRound();// reset the pre-key gate for this new round
         }
         else
         {
             // lobby scene
-            obj.DucksFound.Value = 0; // - reset ducks
-            obj.ServerResetAssignmentForLobby(); // - unlock/reset assignment so late joiners can participate next round
+            obj.DucksFound.Value = 0; // reset ducks
+            obj.ServerResetAssignmentForLobby(); // unlock/reset assignment so late joiners can participate next round
+            obj.ServerResetKeyGateForNewRound();// reset pre-key gate in lobby as an additional safety measure
         }
     }
 

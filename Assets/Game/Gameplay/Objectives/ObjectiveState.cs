@@ -32,6 +32,36 @@ public class ObjectiveState : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    // Pre-key gate state
+    public NetworkVariable<bool> KeySpawned = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    // Optional future-proofing: extra “pre-key” tasks we may add later
+    // If you add new tasks, set PreKeyExtraRequired to N and increment PreKeyExtraCompleted as each completes
+    // see MatchStartResetter.cs for this method. And add the following to your new task script - kev
+
+    //if (!IsServer) return;
+
+    //if (ObjectiveState.Instance != null)
+    //{
+    //    ObjectiveState.Instance.PreKeyExtraCompleted.Value++;
+    //}
+
+    public NetworkVariable<int> PreKeyExtraRequired = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    public NetworkVariable<int> PreKeyExtraCompleted = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     // MUST be initialized at declaration for Netcode
     private NetworkList<ulong> requiredSubmitters = new();
     private NetworkList<ulong> submitted = new();
@@ -139,5 +169,24 @@ public class ObjectiveState : NetworkBehaviour
 
         requiredSubmitters.Remove(clientId);
         RequiredSubmitCount.Value = requiredSubmitters.Count;
+    }
+
+    public bool ServerArePreKeyObjectivesComplete()
+    {
+        if (!IsServer) return false;
+
+        bool ducksComplete = DucksFound.Value >= DucksTotal;
+        bool assignmentComplete = (RequiredSubmitCount.Value > 0 && CurrentSubmitCount.Value >= RequiredSubmitCount.Value);
+
+        bool extrasOk = (PreKeyExtraRequired.Value <= 0) || (PreKeyExtraCompleted.Value >= PreKeyExtraRequired.Value);
+
+        return ducksComplete && assignmentComplete && extrasOk;
+    }
+
+    public void ServerResetKeyGateForNewRound()
+    {
+        if (!IsServer) return;
+        KeySpawned.Value = false;
+        PreKeyExtraCompleted.Value = 0;
     }
 }
