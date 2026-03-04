@@ -97,6 +97,8 @@ public class ElevatorDoorController : NetworkBehaviour
         if (isOpen.Value) return; // already open
 
         isOpen.Value = true;
+        if (ObjectiveState.Instance != null)
+            ObjectiveState.Instance.ElevatorOpened.Value = true;
     }
 
     // Match reset hook

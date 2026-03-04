@@ -14,6 +14,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [SerializeField] private bool startsLocked = false;
     [SerializeField] private bool requireKey = false;
     [SerializeField] private int requiredKeyItemId = 1;
+    [SerializeField] private bool isSecurityDoor = false;
 
     // Defaults for resetting each round
     private bool _defaultOpen = false;   // doors start CLOSED by default
@@ -81,8 +82,10 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
                 var inv = client.PlayerObject.GetComponent<PlayerInventory>();
                 if (inv != null && inv.HasItemId(requiredKeyItemId))
                 {
-                    // unlock permanently
                     isLocked.Value = false;
+
+                    if (isSecurityDoor && ObjectiveState.Instance != null)
+                        ObjectiveState.Instance.SecurityDoorUnlocked.Value = true;
                 }
                 else
                 {

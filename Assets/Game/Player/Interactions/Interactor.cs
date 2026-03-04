@@ -19,6 +19,7 @@ public class Interactor : NetworkBehaviour
     [Header("Hold to interact")]
     private Coroutine holdRoutine;
     private PCInteractable holdingPc;
+    private GradeRackInteractable holdingRack;
 
     void Awake()
     {
@@ -55,13 +56,13 @@ public class Interactor : NetworkBehaviour
 
         CheckForInteractable();
 
-        // If currently holding a PC interaction, cancel the moment E is released
-        if (holdingPc != null)
+        // If currently holding a PC or ServerRack interaction, cancel the moment E is released
+        if (holdingPc != null || holdingRack != null)
         {
             bool eHeld = (Keyboard.current != null && Keyboard.current.eKey.isPressed);
             if (!eHeld)
             {
-                CancelHold(); // resets to 0 immediately
+                CancelHold();
                 return;
             }
         }
@@ -143,6 +144,13 @@ public class Interactor : NetworkBehaviour
             return;
         }
 
+        var rack = (currentInteractable as Component)?.GetComponentInParent<GradeRackInteractable>();
+        if (rack != null)
+        {
+            StartHoldRack(rack);
+            return;
+        }
+
         // Normal interactables (ducks, pickups, doors, etc.)
         bool success = currentInteractable.Interact(this);
         if (success)
@@ -179,6 +187,7 @@ public class Interactor : NetworkBehaviour
         }
 
         holdingPc = null;
+        holdingRack = null;
 
         if (crosshair != null)
         {
@@ -255,5 +264,58 @@ public class Interactor : NetworkBehaviour
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(InteractSource.position, InteractSource.forward * InteractRange);
         }
+    }
+
+    private void StartHoldRack(GradeRackInteractable rack)
+    {
+        CancelHold();
+
+        if (!rack.CanInteract())
+        {
+            TrySetInteractPrompt("Can't do that yet.");
+            return;
+        }
+
+        holdingRack = rack;
+        TrySetInteractPrompt("Changing grades... 0% (hold E)");
+        holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(rack));
+    }
+
+    private IEnumerator HoldToChangeGradesRoutine(GradeRackInteractable rack)
+    {
+        if (rack == null || !rack.gameObject.activeInHierarchy)
+        {
+            CancelHold();
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.1f, rack.holdSeconds);
+        float t = 0f;
+
+        while (t < duration)
+        {
+            if (currentInteractable == null || rack == null || !rack.gameObject.activeInHierarchy)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            if (Keyboard.current != null && !Keyboard.current.eKey.isPressed)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            t += Time.deltaTime;
+            float pct = Mathf.Clamp01(t / duration);
+            TrySetInteractPrompt($"Changing grades... {Mathf.RoundToInt(pct * 100f)}% (hold E)");
+            yield return null;
+        }
+
+        TrySetInteractPrompt("Done!");
+        rack.ChangeGradesServerRpc();
+
+        ClearInteractable();
+        CancelHold();
     }
 }

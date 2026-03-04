@@ -41,6 +41,10 @@ public class SecurityRoomController : NetworkBehaviour
     public int Stage => stage.Value;
     public int RequiredPlates => requiredPlates.Value;
     public int ActivePlates => activePlates.Value;
+    public int RequiredPlatesNet => requiredPlates.Value;
+    public int ActivePlatesNet => activePlates.Value;
+    public int StageNet => stage.Value;
+    public float WindowEndsAtServerTime => windowEndsAtServerTime.Value;
 
     public float GetSecondsRemaining()
     {

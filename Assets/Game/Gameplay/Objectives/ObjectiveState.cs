@@ -62,6 +62,31 @@ public class ObjectiveState : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    // Post-key objective state
+    public NetworkVariable<bool> KeyCollected = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    public NetworkVariable<bool> SecurityDoorUnlocked = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    public NetworkVariable<bool> ElevatorOpened = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    public NetworkVariable<bool> GradesChanged = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     // MUST be initialized at declaration for Netcode
     private NetworkList<ulong> requiredSubmitters = new();
     private NetworkList<ulong> submitted = new();
@@ -183,10 +208,54 @@ public class ObjectiveState : NetworkBehaviour
         return ducksComplete && assignmentComplete && extrasOk;
     }
 
+    public bool ArePreKeyObjectivesCompleteClient()
+    {
+        bool ducksComplete = DucksFound.Value >= DucksTotal;
+        bool assignmentComplete = (RequiredSubmitCount.Value > 0 && CurrentSubmitCount.Value >= RequiredSubmitCount.Value);
+        bool extrasOk = (PreKeyExtraRequired.Value <= 0) || (PreKeyExtraCompleted.Value >= PreKeyExtraRequired.Value);
+        return ducksComplete && assignmentComplete && extrasOk;
+    }
+
     public void ServerResetKeyGateForNewRound()
     {
         if (!IsServer) return;
         KeySpawned.Value = false;
         PreKeyExtraCompleted.Value = 0;
+    }
+
+    public void ServerResetPostKeyObjectivesForNewRound()
+    {
+        if (!IsServer) return;
+
+        KeyCollected.Value = false;
+        SecurityDoorUnlocked.Value = false;
+        ElevatorOpened.Value = false;
+        GradesChanged.Value = false;
+    }
+
+    // --- Post-key setters (server authoritative) ---
+
+    public void ServerMarkKeyCollected()
+    {
+        if (!IsServer) return;
+        KeyCollected.Value = true;
+    }
+
+    public void ServerMarkSecurityDoorUnlocked()
+    {
+        if (!IsServer) return;
+        SecurityDoorUnlocked.Value = true;
+    }
+
+    public void ServerMarkElevatorOpened()
+    {
+        if (!IsServer) return;
+        ElevatorOpened.Value = true;
+    }
+
+    public void ServerMarkGradesChanged()
+    {
+        if (!IsServer) return;
+        GradesChanged.Value = true;
     }
 }

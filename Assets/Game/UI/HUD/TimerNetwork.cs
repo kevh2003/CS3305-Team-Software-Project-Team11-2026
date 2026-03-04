@@ -13,8 +13,8 @@ public class TimerNetwork : NetworkBehaviour
     [SerializeField] private string lobbySceneName = "02_Lobby";
 
     [Header("Timer")]
-    [SerializeField] private int matchSeconds = 10 * 60;   // 10 minutes
-    [SerializeField] private float gameOverDelaySeconds = 3f;
+    [SerializeField] private int matchSeconds = 20 * 60;   // 10 minutes
+    [SerializeField] private float gameOverDelaySeconds = 5f;
 
     public NetworkVariable<int> RemainingSeconds =
         new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);

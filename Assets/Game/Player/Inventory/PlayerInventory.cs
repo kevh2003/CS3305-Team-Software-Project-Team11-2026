@@ -287,6 +287,13 @@ public class PlayerInventory : NetworkBehaviour
         // despawn the world object for everyone
         itemNo.Despawn(false);
 
+        // If this item is the key, mark it collected for everyone
+        // NOTE: ensure this matches key itemId (door uses requiredKeyItemId = 1 by default) -kev
+        if (ObjectiveState.Instance != null && itemId == 1)
+        {
+            ObjectiveState.Instance.KeyCollected.Value = true;
+        }
+
         // tell only this client to show UI/hand item
         ulong clientId = rpcParams.Receive.SenderClientId;
         GiveItemClientRpc(slot, itemId, new ClientRpcParams
