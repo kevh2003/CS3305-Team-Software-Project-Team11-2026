@@ -133,6 +133,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         if (player == null) return;
 
         _isViewingCCTV = true;
+        DropPromptUI.Instance?.SetCameraVisible(true, $"Press {exitKey} to exit");
 
         if (player.PlayerInput != null)
             player.PlayerInput.enabled = false;
@@ -148,6 +149,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        DropPromptUI.Instance?.SetCameraVisible(false);
 
         Debug.Log($"CameraInteraction: Entered CCTV view (Press {exitKey} to exit, Left-click to lure)");
     }

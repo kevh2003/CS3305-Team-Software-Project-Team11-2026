@@ -33,6 +33,9 @@ public class PlayerInventory : NetworkBehaviour
     // Fast lookup
     private Dictionary<int, ItemDefinition> byId;
 
+    // Local-only UI prompt state
+    private bool _inventoryPromptVisible = false;
+
     void Awake()
     {
         itemIds = new int[hotbarSlots];
@@ -93,6 +96,9 @@ public class PlayerInventory : NetworkBehaviour
 
             inputActions.Enable();
             SetupInputCallbacks();
+
+            // Ensure prompt matches current hand state
+            UpdateInventoryDropPrompt();
 
             StartCoroutine(OwnerLateInit());
             StartCoroutine(OwnerEnsureAnchors());
@@ -213,6 +219,7 @@ public class PlayerInventory : NetworkBehaviour
         selectedSlot = index;
         UpdateHotbarOutlines();
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     void UpdateHotbarOutlines()
@@ -232,6 +239,19 @@ public class PlayerInventory : NetworkBehaviour
             }
             outline.enabled = (i == selectedSlot);
         }
+    }
+
+    private void UpdateInventoryDropPrompt()
+    {
+        if (!IsOwner) return;
+
+        bool holdingItemInSelectedSlot =
+            (selectedSlot >= 0 && selectedSlot < hotbarSlots && itemIds[selectedSlot] != EMPTY);
+
+        _inventoryPromptVisible = holdingItemInSelectedSlot;
+
+        // Safe: Instance can be null during shutdown
+        DropPromptUI.Instance?.SetInventoryVisible(holdingItemInSelectedSlot, "Press Q to drop");
     }
 
     void UpdateHandDisplay()
@@ -334,6 +354,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     public void DropSelectedItem()
@@ -411,6 +432,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     public int GetSelectedSlot() => selectedSlot;
@@ -553,6 +575,7 @@ public class PlayerInventory : NetworkBehaviour
         selectedSlot = 0;
         UpdateHotbarOutlines();
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt(); // keeps the "Press Q" prompt correct
     }
 
     void OnDestroy()
