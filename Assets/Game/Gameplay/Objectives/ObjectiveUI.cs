@@ -71,8 +71,8 @@ public class ObjectiveUI : MonoBehaviour
         // static labels
         if (ducksLabel) ducksLabel.text = "Find rubber ducks";
         if (assignmentLabel) assignmentLabel.text = "Submit an assignment in Room 1.10";
-        if (keyLabel) keyLabel.text = "Find the key";
-        if (securityLabel) securityLabel.text = "Unlock the security room";
+        if (keyLabel) keyLabel.text = "Find the security office key";
+        if (securityLabel) securityLabel.text = "Unlock the security office";
         if (platesLabel) platesLabel.text = "Activate the pressure plates";
         if (timerLabel) timerLabel.text = "Press the yellow button";
         if (elevatorLabel) elevatorLabel.text = "Open the elevator doors";

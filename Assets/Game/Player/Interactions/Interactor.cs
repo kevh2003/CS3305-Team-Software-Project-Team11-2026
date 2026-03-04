@@ -19,7 +19,7 @@ public class Interactor : NetworkBehaviour
     [Header("Hold to interact")]
     private Coroutine holdRoutine;
     private PCInteractable holdingPc;
-    private GradeRackInteractable holdingRack;
+    private GradesRackInteractable holdingGrades;
 
     void Awake()
     {
@@ -56,8 +56,8 @@ public class Interactor : NetworkBehaviour
 
         CheckForInteractable();
 
-        // If currently holding a PC or ServerRack interaction, cancel the moment E is released
-        if (holdingPc != null || holdingRack != null)
+        // If currently holding a PC or Grades interaction, cancel the moment E is released
+        if (holdingPc != null || holdingGrades != null)
         {
             bool eHeld = (Keyboard.current != null && Keyboard.current.eKey.isPressed);
             if (!eHeld)
@@ -83,7 +83,7 @@ public class Interactor : NetworkBehaviour
                 if (currentInteractable != interactable)
                 {
                     // If swapped targets mid-hold, cancel the hold instantly
-                    if (holdingPc != null)
+                    if (holdingPc != null || holdingGrades != null)
                         CancelHold();
 
                     currentInteractable = interactable;
@@ -105,7 +105,7 @@ public class Interactor : NetworkBehaviour
 
     void ClearInteractable()
     {
-        if (holdingPc != null)
+        if (holdingPc != null || holdingGrades != null)
             CancelHold();
 
         if (currentInteractable != null)
@@ -144,10 +144,11 @@ public class Interactor : NetworkBehaviour
             return;
         }
 
-        var rack = (currentInteractable as Component)?.GetComponentInParent<GradeRackInteractable>();
-        if (rack != null)
+        // If this is the grades rack, hold-to-complete
+        var grades = (currentInteractable as Component)?.GetComponentInParent<GradesRackInteractable>();
+        if (grades != null)
         {
-            StartHoldRack(rack);
+            StartHoldGrades(grades);
             return;
         }
 
@@ -187,19 +188,25 @@ public class Interactor : NetworkBehaviour
         }
 
         holdingPc = null;
-        holdingRack = null;
+        holdingGrades = null;
 
         if (crosshair != null)
         {
-            // If still looking at something, show the default prompt again
             if (currentInteractable != null)
             {
-                // If it's a PC, show a "hold" message rather than plain "Press E"
                 var pc = (currentInteractable as Component)?.GetComponentInParent<PCInteractable>();
                 if (pc != null)
+                {
                     crosshair.SetPromptText("Hold E to submit");
+                }
                 else
-                    crosshair.ShowInteractPrompt();
+                {
+                    var grades = (currentInteractable as Component)?.GetComponentInParent<GradesRackInteractable>();
+                    if (grades != null)
+                        crosshair.SetPromptText("Hold E to change grades");
+                    else
+                        crosshair.ShowInteractPrompt();
+                }
             }
             else
             {
@@ -266,35 +273,41 @@ public class Interactor : NetworkBehaviour
         }
     }
 
-    private void StartHoldRack(GradeRackInteractable rack)
+    private void StartHoldGrades(GradesRackInteractable g)
     {
         CancelHold();
 
-        if (!rack.CanInteract())
+        if (g == null) return;
+
+        // If already done, don't allow starting again
+        if (ObjectiveState.Instance != null && ObjectiveState.Instance.GradesChanged.Value)
         {
-            TrySetInteractPrompt("Can't do that yet.");
+            TrySetInteractPrompt("Already changed.");
             return;
         }
 
-        holdingRack = rack;
-        TrySetInteractPrompt("Changing grades... 0% (hold E)");
-        holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(rack));
+        holdingGrades = g;
+
+        // show starting prompt immediately
+        TrySetInteractPrompt("Changing grades... 0%");
+
+        holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(g));
     }
 
-    private IEnumerator HoldToChangeGradesRoutine(GradeRackInteractable rack)
+    private IEnumerator HoldToChangeGradesRoutine(GradesRackInteractable g)
     {
-        if (rack == null || !rack.gameObject.activeInHierarchy)
+        if (g == null || !g.gameObject.activeInHierarchy)
         {
             CancelHold();
             yield break;
         }
 
-        float duration = Mathf.Max(0.1f, rack.holdSeconds);
+        float duration = Mathf.Max(0.1f, g.holdSeconds);
         float t = 0f;
 
         while (t < duration)
         {
-            if (currentInteractable == null || rack == null || !rack.gameObject.activeInHierarchy)
+            if (currentInteractable == null || g == null || !g.gameObject.activeInHierarchy)
             {
                 CancelHold();
                 yield break;
@@ -308,12 +321,15 @@ public class Interactor : NetworkBehaviour
 
             t += Time.deltaTime;
             float pct = Mathf.Clamp01(t / duration);
+
             TrySetInteractPrompt($"Changing grades... {Mathf.RoundToInt(pct * 100f)}% (hold E)");
             yield return null;
         }
 
-        TrySetInteractPrompt("Done!");
-        rack.ChangeGradesServerRpc();
+        TrySetInteractPrompt("Grades changed!");
+
+        // Server flips ObjectiveState.GradesChanged (syncs to everyone)
+        g.ChangeGradesServerRpc();
 
         ClearInteractable();
         CancelHold();

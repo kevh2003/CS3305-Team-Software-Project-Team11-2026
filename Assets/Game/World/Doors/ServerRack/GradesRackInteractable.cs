@@ -1,23 +1,28 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public class GradeRackInteractable : NetworkBehaviour, IInteractable
+public class GradesRackInteractable : NetworkBehaviour, IInteractable
 {
-    [Header("Hold Settings")]
-    public float holdSeconds = 10f;
+    [Header("Grades Task")]
+    public float holdSeconds = 8f;
+    public string taskLabel = "Change your grades";
 
     public bool CanInteract()
     {
-        // Only after elevator is opened, and only once
         if (ObjectiveState.Instance == null) return false;
+
+        // Only after elevator is opened
         if (!ObjectiveState.Instance.ElevatorOpened.Value) return false;
+
+        // Once done, don't allow again
         if (ObjectiveState.Instance.GradesChanged.Value) return false;
+
         return true;
     }
 
     public bool Interact(Interactor interactor)
     {
-        // Interactor handles the hold, same as PC
+        // Interactor handles hold timing; we just say if it's allowed
         return CanInteract();
     }
 
@@ -25,11 +30,10 @@ public class GradeRackInteractable : NetworkBehaviour, IInteractable
     public void ChangeGradesServerRpc(ServerRpcParams rpcParams = default)
     {
         if (ObjectiveState.Instance == null) return;
+
+        // Double-complete guard
         if (ObjectiveState.Instance.GradesChanged.Value) return;
 
         ObjectiveState.Instance.GradesChanged.Value = true;
-
-        // TODO: trigger win flow here (end screen / return to lobby / etc.)
-        Debug.Log("[Grades] Grades changed. Win!");
     }
 }
