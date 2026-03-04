@@ -165,12 +165,13 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             _isSprinting = false;
 
-            // Regen only while walking and not holding sprint
-            if (isMoving && !sprintHeld)
+            // Regen whenever not sprinting (including standing still).
+            if (!sprintHeld)
             {
                 _staminaSeconds += staminaRegenPerSecond * Time.deltaTime;
             }
         }
+    
 
         _staminaSeconds = Mathf.Clamp(_staminaSeconds, 0f, maxStaminaSeconds);
 
