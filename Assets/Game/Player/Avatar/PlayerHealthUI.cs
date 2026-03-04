@@ -150,6 +150,19 @@ public class PlayerHealthUI : NetworkBehaviour
             s_local.caughtRoot.SetActive(true);
     }
 
+    // You Win message
+    // adding this here to keep game ending messages in one place
+    public static void ShowYouWin()
+    {
+        if (s_local == null) return;
+
+        if (s_local.caughtLabel != null)
+            s_local.caughtLabel.text = "YOU WIN!";
+
+        if (s_local.caughtRoot != null)
+            s_local.caughtRoot.SetActive(true);
+    }
+
     private void BuildUI()
     {
         // Canvas that survives scene loads
