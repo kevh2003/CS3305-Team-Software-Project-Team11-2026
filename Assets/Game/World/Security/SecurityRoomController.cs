@@ -210,7 +210,7 @@ public class SecurityRoomController : NetworkBehaviour
         ServerRecountPlates();
     }
 
-    // Call this if roster changes (death/disconnect) mid puzzle
+    // Called if roster changes (death/disconnect) mid puzzle
     public void ServerOnRosterChanged()
     {
         if (!IsServer) return;
@@ -229,6 +229,9 @@ public class SecurityRoomController : NetworkBehaviour
                 bool on = (i < requiredPlates.Value);
                 plates[i].ServerSetPowered(on);
                 plates[i].ServerSetLatched(stage.Value == 2);
+
+                // fix “ghost players on plate” after despawn/disconnect
+                plates[i].ServerCleanupOrphanedPlayers();
             }
         }
 

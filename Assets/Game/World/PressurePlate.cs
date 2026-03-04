@@ -110,6 +110,7 @@ public class PressurePlate : NetworkBehaviour
         if (!IsServer) return;
 
         if (isPowered.Value == on) return;
+        ServerCleanupOrphanedPlayers();
         isPowered.Value = on;
 
         if (!on)
@@ -130,6 +131,7 @@ public class PressurePlate : NetworkBehaviour
         if (!IsServer) return;
 
         if (isLatched.Value == latched) return;
+        ServerCleanupOrphanedPlayers();
         isLatched.Value = latched;
 
         // If we just unlatched and nobody is standing on it, drop back to inactive
@@ -218,6 +220,29 @@ public class PressurePlate : NetworkBehaviour
                 plateLight.enabled = true;
                 plateLight.intensity = lightOnIntensity;
                 plateLight.color = isActive.Value ? lightActiveColor : lightPoweredColor;
+            }
+        }
+    }
+
+    // server: if a player despawns while on the plate, OnTriggerExit won't fire, thus
+    // Clean null/invalid colliders out and recompute active state.
+    public void ServerCleanupOrphanedPlayers()
+    {
+        if (!IsServer) return;
+
+        if (playersOnPlate.Count == 0) return;
+
+        playersOnPlate.RemoveWhere(c => c == null || c.gameObject == null);
+
+        // If not latched, active should reflect whether anyone is still on it
+        if (!isLatched.Value)
+        {
+            bool shouldBeActive = playersOnPlate.Count > 0;
+
+            if (isActive.Value != shouldBeActive)
+            {
+                isActive.Value = shouldBeActive;
+                controller?.ServerOnPlateChanged();
             }
         }
     }

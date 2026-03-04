@@ -83,25 +83,27 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        // Drop items before player object disappears
+        // try drop items before the player object disappears
         if (NetworkManager.Singleton != null &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
             client.PlayerObject != null)
         {
             var inv = client.PlayerObject.GetComponent<PlayerInventory>();
             if (inv != null)
-            {
                 inv.DropAllItemsOnDeathServer();
-                if (ObjectiveState.Instance != null && ObjectiveState.Instance.MatchRosterLocked.Value)
-                {
-                    ObjectiveState.Instance.ServerHandlePlayerDeath(clientId);
-
-                    var security = FindFirstObjectByType<SecurityRoomController>();
-                    if (security != null)
-                        security.ServerOnRosterChanged();
-                }
-            }
         }
+
+        // treat disconnect like "dead" for objective + security puzzle requirements (if round active)
+        if (ObjectiveState.Instance != null && ObjectiveState.Instance.MatchRosterLocked.Value)
+        {
+            // Prevent assignment soft-lock
+            ObjectiveState.Instance.ServerHandlePlayerDeath(clientId);
+        }
+
+        // Update security puzzle requirements (reduces powered/required plates)
+        var security = FindFirstObjectByType<SecurityRoomController>();
+        if (security != null)
+            security.ServerOnRosterChanged();
     }
 
     private IEnumerator ResetPlayersNextFrame()
