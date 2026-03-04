@@ -31,6 +31,9 @@ public class SecurityRoomController : NetworkBehaviour
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
 
+    // Tracks which plates were chosen for this round (server only)
+    private readonly System.Collections.Generic.List<PressurePlate> _chosenPlates = new();
+
     private NetworkVariable<float> windowEndsAtServerTime = new(0f,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server);
@@ -131,16 +134,46 @@ public class SecurityRoomController : NetworkBehaviour
         button2.ServerSetState(SecurityButton.ButtonState.RedDisabled);
         button3.ServerSetState(SecurityButton.ButtonState.RedDisabled);
 
-        if (plates == null) return;
+        if (plates == null || plates.Length == 0) return;
 
-        // Power first N plates (deterministic order)
+        // Build list of valid plates
+        var candidates = new System.Collections.Generic.List<PressurePlate>(plates.Length);
         for (int i = 0; i < plates.Length; i++)
-        {
-            if (plates[i] == null) continue;
+            if (plates[i] != null)
+                candidates.Add(plates[i]);
 
-            bool on = (i < requiredPlates.Value);
-            plates[i].ServerSetPowered(on);
-            plates[i].ServerSetLatched(false);
+        if (candidates.Count == 0) return;
+
+        // Clamp requirement to available
+        int req = Mathf.Clamp(requiredPlates.Value, 1, Mathf.Min(maxPlates, candidates.Count));
+        requiredPlates.Value = req;
+
+        // Power everything OFF first
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            candidates[i].ServerSetLatched(false);
+            candidates[i].ServerSetPowered(false);
+        }
+
+        // Shuffle candidates (server-authoritative)
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            int j = Random.Range(i, candidates.Count);
+            (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
+        }
+
+        // Remember the chosen set for this round
+        _chosenPlates.Clear();
+        for (int i = 0; i < req; i++)
+            _chosenPlates.Add(candidates[i]);
+
+        // Power chosen ON
+        for (int i = 0; i < _chosenPlates.Count; i++)
+        {
+            var p = _chosenPlates[i];
+            p.ServerSetPowered(true);
+            p.ServerSetLatched(false);
+            p.ServerForceRecheckOccupants();
         }
 
         ServerRecountPlates();
@@ -210,29 +243,47 @@ public class SecurityRoomController : NetworkBehaviour
         ServerRecountPlates();
     }
 
-    // Called if roster changes (death/disconnect) mid puzzle
     public void ServerOnRosterChanged()
     {
         if (!IsServer) return;
 
+        // Only relevant while puzzle is in progress
         if (stage.Value < 1 || stage.Value > 3)
             return;
 
-        requiredPlates.Value = ServerComputeRequiredPlates();
+        int newReq = ServerComputeRequiredPlates();
+        requiredPlates.Value = newReq;
 
-        if (plates != null)
+        // If somehow lost chosen list (e.g. hot reload), rebuild it from currently powered plates
+        if (_chosenPlates.Count == 0 && plates != null)
         {
             for (int i = 0; i < plates.Length; i++)
+                if (plates[i] != null && plates[i].IsPowered)
+                    _chosenPlates.Add(plates[i]);
+        }
+
+        // If requirement decreased, turn OFF extra chosen plates (unpowered + light off)
+        while (_chosenPlates.Count > newReq)
+        {
+            var p = _chosenPlates[_chosenPlates.Count - 1];
+            _chosenPlates.RemoveAt(_chosenPlates.Count - 1);
+
+            if (p != null)
             {
-                if (plates[i] == null) continue;
-
-                bool on = (i < requiredPlates.Value);
-                plates[i].ServerSetPowered(on);
-                plates[i].ServerSetLatched(stage.Value == 2);
-
-                // fix “ghost players on plate” after despawn/disconnect
-                plates[i].ServerCleanupOrphanedPlayers();
+                p.ServerSetLatched(false);
+                p.ServerSetPowered(false);
             }
+        }
+
+        // Apply latch state + recheck occupants for the remaining powered plates
+        for (int i = 0; i < _chosenPlates.Count; i++)
+        {
+            var p = _chosenPlates[i];
+            if (p == null) continue;
+
+            p.ServerSetPowered(true);
+            p.ServerSetLatched(stage.Value == 2);
+            p.ServerForceRecheckOccupants();
         }
 
         ServerRecountPlates();

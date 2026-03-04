@@ -8,6 +8,7 @@ public class PressurePlate : NetworkBehaviour
     [Header("Identity")]
     [SerializeField] private int plateID = 0;
     [SerializeField] private string playerTag = "Player";
+    [SerializeField] private Collider triggerCollider;
 
     [Header("Visuals")]
     [SerializeField] private MeshRenderer plateRenderer;
@@ -59,6 +60,9 @@ public class PressurePlate : NetworkBehaviour
     {
         if (plateRenderer == null)
             plateRenderer = GetComponentInChildren<MeshRenderer>(true);
+
+        if (triggerCollider == null)
+            triggerCollider = GetComponent<Collider>();
 
         // Ensure trigger collider
         var col = GetComponent<Collider>();
@@ -244,6 +248,58 @@ public class PressurePlate : NetworkBehaviour
                 isActive.Value = shouldBeActive;
                 controller?.ServerOnPlateChanged();
             }
+        }
+    }
+
+    public void ServerForceRecheckOccupants()
+    {
+        if (!IsServer) return;
+        if (!isPowered.Value) return;
+
+        if (triggerCollider == null)
+            triggerCollider = GetComponent<Collider>();
+
+        // Rebuild occupant set from physics query (covers disconnects / missed exits)
+        playersOnPlate.Clear();
+
+        // Use the trigger collider bounds as our overlap volume
+        var b = triggerCollider.bounds;
+
+        // OverlapBox expects half-extents
+        Collider[] hits = Physics.OverlapBox(
+            b.center,
+            b.extents,
+            triggerCollider.transform.rotation,
+            ~0, // all layers
+            QueryTriggerInteraction.Ignore
+        );
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            var c = hits[i];
+            if (c == null) continue;
+            if (!IsPlayerCollider(c)) continue;
+
+            playersOnPlate.Add(c);
+        }
+
+        // Decide desired active state
+        bool shouldBeActive;
+
+        if (isLatched.Value)
+        {
+            // latched plates stay active once activated (controller controls unlatching)
+            shouldBeActive = isActive.Value || playersOnPlate.Count > 0;
+        }
+        else
+        {
+            shouldBeActive = playersOnPlate.Count > 0;
+        }
+
+        if (isActive.Value != shouldBeActive)
+        {
+            isActive.Value = shouldBeActive;
+            controller?.ServerOnPlateChanged();
         }
     }
 }
