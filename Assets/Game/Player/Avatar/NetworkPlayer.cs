@@ -34,6 +34,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private float _staminaSeconds;
     private bool _isSprinting;
+    private bool _frozen = false;
 
     private InputAction _jump;
     private InputAction _move;
@@ -118,6 +119,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (!_inGameScene) return;
         if (_playerInput == null || !_playerInput.enabled) return;
         if (_cc == null || !_cc.enabled) return;
+        if (_frozen) return;
 
         // Movement input
         Vector2 move = _move.ReadValue<Vector2>();
@@ -234,5 +236,16 @@ public sealed class NetworkPlayer : NetworkBehaviour
     {
         yield return new WaitForSeconds(0.2f);
         if (_cc != null) _cc.enabled = true;
+    }
+
+
+    /// <summary>
+    /// Called by RedLightGreenLightBoss via ClientRpc to freeze/unfreeze input.
+    /// Only acts on the owning client.
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        if (!IsOwner) return;
+        _frozen = frozen;
     }
 }

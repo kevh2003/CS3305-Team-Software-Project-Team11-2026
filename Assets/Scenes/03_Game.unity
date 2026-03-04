@@ -176,7 +176,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.26723528, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
@@ -4416,7 +4416,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.17926908, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
@@ -6585,6 +6585,136 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!1 &379229142 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6673192658598402504, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+  m_PrefabInstance: {fileID: 649654294}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &379229143 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1965773870466121197, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+  m_PrefabInstance: {fileID: 649654294}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &379229144
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229142}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 23.206707, z: 89.115036}
+  m_Center: {x: 0, y: 11.09865, z: 0}
+--- !u!114 &379229145
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c6652719e00b426b9055c53e567b034, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossRoomActivationTrigger
+  boss: {fileID: 1823593010}
+  activationMode: 1
+  allPlayersTimeoutSeconds: 10
+--- !u!65 &379229146
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229143}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.000004, y: 15.344906, z: 89.115036}
+  m_Center: {x: 0, y: 7.1677494, z: 0}
+--- !u!114 &379229147
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229143}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5237f8218fe54d2c823052596372890, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RedLightFinishLine
+  boss: {fileID: 1823593010}
+--- !u!114 &379229148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229143}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 1060990950
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &379229149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 379229142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 1882958602
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1001 &379393985
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21050,6 +21180,10 @@ PrefabInstance:
       propertyPath: m_StaticEditorFlags
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 7678712537145248425, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7679478748561439960, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 1
@@ -21930,7 +22064,9 @@ PrefabInstance:
       propertyPath: m_StaticEditorFlags
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 7678712537145248425, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+    - {fileID: 578514005194637559, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
     m_RemovedGameObjects:
     - {fileID: 1644296196739873966, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
     - {fileID: 4127568974202391926, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
@@ -22056,6 +22192,24 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -2043151255019820474, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1896073826}
+    - targetCorrespondingSourceObject: {fileID: 1965773870466121197, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229147}
+    - targetCorrespondingSourceObject: {fileID: 1965773870466121197, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229146}
+    - targetCorrespondingSourceObject: {fileID: 1965773870466121197, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229148}
+    - targetCorrespondingSourceObject: {fileID: 6673192658598402504, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229145}
+    - targetCorrespondingSourceObject: {fileID: 6673192658598402504, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229144}
+    - targetCorrespondingSourceObject: {fileID: 6673192658598402504, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 379229149}
     - targetCorrespondingSourceObject: {fileID: 3782751701727609772, guid: 8ec78529752ec45c581859dc9ec672a3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 408122713}
@@ -33215,7 +33369,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.12042332, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
@@ -39777,13 +39931,123 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1823593008}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1823593010}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1823593009}
   m_SourcePrefab: {fileID: 100100000, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
 --- !u!4 &1823593006 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
   m_PrefabInstance: {fileID: 1823593005}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1823593007 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a640e7917c83a43f9856b35e7523a793, type: 3}
+  m_PrefabInstance: {fileID: 1823593005}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1823593008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1823593007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 702534485
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &1823593009
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1823593007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7b40edb0e78d4a80b8e651e83690de3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossRoomLightController
+  roomLights:
+  - {fileID: 1377270907}
+  - {fileID: 2142108231}
+  - {fileID: 659578}
+  - {fileID: 1848589668}
+  - {fileID: 1969172147}
+  - {fileID: 209585744}
+  eyeLights:
+  - {fileID: 2054059566}
+  - {fileID: 1603769088}
+  roomIdleColour: {r: 1, g: 0.95, b: 0.84, a: 1}
+  roomGreenColour: {r: 0.2, g: 1, b: 0.2, a: 1}
+  roomTurningColour: {r: 1, g: 0.6, b: 0, a: 1}
+  roomRedColour: {r: 1, g: 0.1, b: 0.1, a: 1}
+  eyeIdleColour: {r: 1, g: 0.95, b: 0.84, a: 1}
+  eyeGreenColour: {r: 0, g: 1, b: 0, a: 1}
+  eyeTurningColour: {r: 1, g: 0.5, b: 0, a: 1}
+  eyeRedColour: {r: 1, g: 0, b: 0, a: 1}
+  roomIdleIntensity: 100
+  roomGreenIntensity: 100
+  roomTurningIntensity: 50
+  roomRedIntensity: 100
+  eyeIdleIntensity: 10
+  eyeGreenIntensity: 100
+  eyeTurningIntensity: 50
+  eyeRedIntensity: 100
+  transitionSpeed: 5
+  flickerOnRed: 1
+  flickerDuration: 0.3
+  flickerCount: 4
+--- !u!114 &1823593010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1823593007}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3facb74618bf4bd9b360dae45fdc642, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RedLightGreenLightBoss
+  ShowTopMostFoldoutHeaderGroup: 1
+  Phase:
+    m_InternalValue: 0
+  lightController: {fileID: 1823593009}
+  countdownDuration: 3
+  minGreenDuration: 3
+  maxGreenDuration: 6
+  turningDuration: 1.2
+  minRedDuration: 2
+  maxRedDuration: 5
+  movementThreshold: 0.18
+  redLightGracePeriod: 0.15
+  greenLightClip: {fileID: 0}
+  redLightClip: {fileID: 0}
+  turningClip: {fileID: 0}
+  countdownClip: {fileID: 0}
+  eliminatedClip: {fileID: 0}
 --- !u!1 &1826840726
 GameObject:
   m_ObjectHideFlags: 0
@@ -40196,7 +40460,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.17416215, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
@@ -42167,7 +42431,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.26675177, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
@@ -44788,7 +45052,7 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0, b: 0.151155, a: 1}
+  m_Color: {r: 0, g: 0.07280898, b: 1, a: 1}
   m_Intensity: 100
   m_Range: 35
   m_SpotAngle: 30
