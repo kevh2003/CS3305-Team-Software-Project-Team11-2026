@@ -180,6 +180,12 @@ public class PlayerHealth : NetworkBehaviour
         StartCoroutine(ReturnToLobbyAfterDelay());
     }
 
+    public void KillPlayer()
+    {
+        CurrentHealth.Value = 0;
+        IsDead.Value = true;
+    }
+
     private System.Collections.IEnumerator ReturnToLobbyAfterDelay()
     {
         yield return new WaitForSeconds(gameOverDelaySeconds);
