@@ -1,9 +1,13 @@
 using UnityEngine;
 using Unity.Netcode;
 
-public class WorldPickup : MonoBehaviour, IInteractable
+public class WorldPickup : NetworkBehaviour, IInteractable
 {
-    public bool CanInteract() => true;
+    public bool CanInteract()
+    {
+        // If player has been been despawned/disabled, don't allow interaction
+        return isActiveAndEnabled;
+    }
 
     public bool Interact(Interactor interactor)
     {
@@ -26,7 +30,35 @@ public class WorldPickup : MonoBehaviour, IInteractable
             return false;
         }
 
+        // Ask server to pick it up. Server will despawn it.
         inv.PickupItemServerRpc(new NetworkObjectReference(no), worldItem.definition.itemId, inv.GetSelectedSlot());
         return true;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        // When the object is spawned, ensure it is visible/interactive
+        SetVisible(true);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+
+        SetVisible(false);
+    }
+
+    private void SetVisible(bool visible)
+    {
+        foreach (var c in GetComponentsInChildren<Collider>(true))
+            c.enabled = visible;
+
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+            r.enabled = visible;
+
+        // disable scripts so it can’t be interacted with
+        enabled = visible;
+
     }
 }

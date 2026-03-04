@@ -3,6 +3,8 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
 using System.Collections.Generic;
+using System.Linq;
+using System.Collections;
 
 public class PlayerInventory : NetworkBehaviour
 {
@@ -30,6 +32,9 @@ public class PlayerInventory : NetworkBehaviour
 
     // Fast lookup
     private Dictionary<int, ItemDefinition> byId;
+
+    // Local-only UI prompt state
+    private bool _inventoryPromptVisible = false;
 
     void Awake()
     {
@@ -73,28 +78,132 @@ public class PlayerInventory : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
-        // Keep enabled on server.
-        // Disable only on remote clients.
+        // IMPORTANT:
+        // - Server must keep this component enabled for ALL players (authoritative state / RPCs / spawning)
+        // - Only the owning client should read input + drive UI -kev
+
         if (!IsOwner && !IsServer)
         {
             enabled = false;
             return;
         }
 
+        // Owner: enable input + bind callbacks
         if (IsOwner)
         {
+            // Safety: avoid double-subscribing if something reinitializes
+            RemoveInputCallbacks();
+
             inputActions.Enable();
             SetupInputCallbacks();
+
+            // Ensure prompt matches current hand state
+            UpdateInventoryDropPrompt();
+
+            StartCoroutine(OwnerLateInit());
+            StartCoroutine(OwnerEnsureAnchors());
         }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        // If 'this' player disconnects, drop their items.
+        if (IsServer)
+        {
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.ShutdownInProgress)
+            {
+                // Only drop if they actually have items
+                bool hasAny = false;
+                for (int i = 0; i < hotbarSlots; i++)
+                {
+                    if (itemIds[i] != EMPTY) { hasAny = true; break; }
+                }
+
+                if (hasAny)
+                    DropAllItemsServer_NoClientUI();
+            }
+        }
+
+        base.OnNetworkDespawn();
+    }
+
+    private System.Collections.IEnumerator OwnerLateInit()
+    {
+        // Wait a short time for InventoryUI to create/assign HandPosition/DropPosition
+        float timeout = 2f;
+        while (timeout > 0f && handPosition == null)
+        {
+            timeout -= UnityEngine.Time.deltaTime;
+            yield return null;
+        }
+
+        UpdateHandDisplay();
     }
 
     void SetupInputCallbacks()
     {
-        inputActions.Player.HotbarSlot0.performed += _ => SelectSlot(0);
-        inputActions.Player.HotbarSlot1.performed += _ => SelectSlot(1);
-        inputActions.Player.DropItem.performed += _ => DropSelectedItem();
+        inputActions.Player.HotbarSlot0.performed += OnHotbar0;
+        inputActions.Player.HotbarSlot1.performed += OnHotbar1;
+        inputActions.Player.DropItem.performed += OnDrop;
     }
 
+    void RemoveInputCallbacks()
+    {
+        if (inputActions == null) return;
+
+        inputActions.Player.HotbarSlot0.performed -= OnHotbar0;
+        inputActions.Player.HotbarSlot1.performed -= OnHotbar1;
+        inputActions.Player.DropItem.performed -= OnDrop;
+    }
+
+    private void OnHotbar0(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(0);
+    private void OnHotbar1(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(1);
+    private void OnDrop(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => DropSelectedItem();
+
+
+    public void SetAnchors(Transform hand, Transform drop)
+    {
+        if (hand != null) handPosition = hand;
+        if (drop != null) dropPosition = drop;
+    }
+
+    private IEnumerator OwnerEnsureAnchors()
+    {
+        // Wait a few frames for InventoryUI to create HandPosition/DropPosition
+        for (int i = 0; i < 30; i++)
+        {
+            if (handPosition != null && dropPosition != null)
+                yield break;
+
+            // Try to find them if InventoryUI already created them
+            if (handPosition == null)
+            {
+                var hp = transform.Find("HandPosition");
+                if (hp == null)
+                    hp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "HandPosition");
+                handPosition = hp;
+            }
+
+            if (dropPosition == null)
+            {
+                var dp = transform.Find("DropPosition");
+                if (dp == null)
+                    dp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "DropPosition");
+                dropPosition = dp;
+            }
+
+            yield return null;
+        }
+
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "03_Game")
+            {
+                if (handPosition == null)
+                    Debug.LogError("PlayerInventory (Owner): HandPosition still missing after waiting. Held items may be invisible.");
+                if (dropPosition == null)
+                    Debug.LogError("PlayerInventory (Owner): DropPosition still missing after waiting. Drops may appear at wrong position.");
+            }
+    }
+    
     void Update()
     {
         if (!IsOwner) return;
@@ -110,6 +219,7 @@ public class PlayerInventory : NetworkBehaviour
         selectedSlot = index;
         UpdateHotbarOutlines();
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     void UpdateHotbarOutlines()
@@ -129,6 +239,19 @@ public class PlayerInventory : NetworkBehaviour
             }
             outline.enabled = (i == selectedSlot);
         }
+    }
+
+    private void UpdateInventoryDropPrompt()
+    {
+        if (!IsOwner) return;
+
+        bool holdingItemInSelectedSlot =
+            (selectedSlot >= 0 && selectedSlot < hotbarSlots && itemIds[selectedSlot] != EMPTY);
+
+        _inventoryPromptVisible = holdingItemInSelectedSlot;
+
+        // Safe: Instance can be null during shutdown
+        DropPromptUI.Instance?.SetInventoryVisible(holdingItemInSelectedSlot, "Press Q to drop");
     }
 
     void UpdateHandDisplay()
@@ -182,7 +305,14 @@ public class PlayerInventory : NetworkBehaviour
         itemIds[slot] = itemId;
 
         // despawn the world object for everyone
-        itemNo.Despawn();
+        itemNo.Despawn(false);
+
+        // If this item is the key, mark it collected for everyone
+        // NOTE: ensure this matches key itemId (door uses requiredKeyItemId = 1 by default) -kev
+        if (ObjectiveState.Instance != null && itemId == 1)
+        {
+            ObjectiveState.Instance.KeyCollected.Value = true;
+        }
 
         // tell only this client to show UI/hand item
         ulong clientId = rpcParams.Receive.SenderClientId;
@@ -224,6 +354,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     public void DropSelectedItem()
@@ -301,6 +432,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt();
     }
 
     public int GetSelectedSlot() => selectedSlot;
@@ -386,6 +518,36 @@ public class PlayerInventory : NetworkBehaviour
         itemIds[slot] = EMPTY;
     }
 
+    // Server: drops items when a player leaves/disconnects from session
+    private void DropAllItemsServer_NoClientUI()
+    {
+        if (!IsServer) return;
+
+        for (int slot = 0; slot < hotbarSlots; slot++)
+        {
+            if (slot < 0 || slot >= itemIds.Length) continue;
+            if (itemIds[slot] == EMPTY) continue;
+
+            DropItemFromSlotServer_Internal(slot);
+        }
+    }
+
+    // Server: wipes this player's inventory for a fresh match
+    public void ResetInventoryForNewMatchServer()
+    {
+        if (!IsServer) return;
+
+        // Clear server-authoritative IDs
+        for (int i = 0; i < hotbarSlots; i++)
+            itemIds[i] = EMPTY;
+
+        // Tell ONLY the owning client to clear UI + destroy hand prefabs
+        ClearAllSlotsClientRpc(new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
+        });
+    }
+
     [ClientRpc]
     private void ClearAllSlotsClientRpc(ClientRpcParams clientRpcParams = default)
     {
@@ -409,13 +571,26 @@ public class PlayerInventory : NetworkBehaviour
                 hotbarSlotImages[slot].color = new Color(1, 1, 1, 0.3f);
             }
         }
-
+        // Reset selection to slot 0 after a match reset
+        selectedSlot = 0;
+        UpdateHotbarOutlines();
         UpdateHandDisplay();
+        UpdateInventoryDropPrompt(); // keeps the "Press Q" prompt correct
     }
 
     void OnDestroy()
     {
+        RemoveInputCallbacks();
+
         if (inputActions != null)
             inputActions.Disable();
+    }
+
+    public bool HasItemId(int itemId) // used to check keys against locked doors
+    {
+        for (int i = 0; i < hotbarSlots; i++)
+            if (itemIds[i] == itemId)
+                return true;
+        return false;
     }
 }

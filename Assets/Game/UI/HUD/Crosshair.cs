@@ -8,8 +8,12 @@ public class Crosshair : NetworkBehaviour
 {
     private GameObject crosshairObject;
     private Text interactText;
+    private const string DefaultPromptText = "Press E";
+    private bool promptOverridden = false;
 
     private Coroutine createRoutine;
+
+    private PlayerHealth health;
 
     public override void OnNetworkSpawn()
     {
@@ -23,7 +27,18 @@ public class Crosshair : NetworkBehaviour
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
+        health = GetComponent<PlayerHealth>();
+        if (health != null)
+        {
+            health.IsDead.OnValueChanged += OnDeadChanged;
+        }
+
         StartCreateRoutine();
+    }
+
+    private void OnDeadChanged(bool oldValue, bool newValue)
+    {
+        UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
     private void StartCreateRoutine()
@@ -125,7 +140,7 @@ public class Crosshair : NetworkBehaviour
         textRect.sizeDelta = new Vector2(200, 30);
 
         interactText = textObj.AddComponent<Text>();
-        interactText.text = "Press E";
+        interactText.text = DefaultPromptText;
         interactText.fontSize = 16;
         interactText.color = Color.white;
         interactText.alignment = TextAnchor.MiddleCenter;
@@ -139,8 +154,16 @@ public class Crosshair : NetworkBehaviour
     {
         CleanupBrokenReferences();
 
+        if (health != null && health.IsDead.Value) return;
+
         if (interactText != null && SceneManager.GetActiveScene().name == "03_Game")
+        {
+            // If no custom prompt set, force the default
+            if (!promptOverridden)
+                interactText.text = DefaultPromptText;
+
             interactText.enabled = true;
+        }
     }
 
     public void HideInteractPrompt()
@@ -148,7 +171,13 @@ public class Crosshair : NetworkBehaviour
         CleanupBrokenReferences();
 
         if (interactText != null)
+        {
             interactText.enabled = false;
+
+            // When hide, clear any custom prompt
+            promptOverridden = false;
+            interactText.text = DefaultPromptText;
+        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -159,7 +188,10 @@ public class Crosshair : NetworkBehaviour
 
     private void UpdateVisibility(string sceneName)
     {
-        bool showCrosshair = (sceneName == "03_Game");
+        bool inGame = (sceneName == "03_Game");
+        bool isDead = (health != null && health.IsDead.Value);
+
+        bool showCrosshair = inGame && !isDead;
 
         CleanupBrokenReferences();
 
@@ -231,5 +263,17 @@ public class Crosshair : NetworkBehaviour
     private void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+
+        if (health != null)
+            health.IsDead.OnValueChanged -= OnDeadChanged;
+    }
+
+    public void SetPromptText(string t)
+    {
+        CleanupBrokenReferences();
+        if (interactText == null) return;
+
+        promptOverridden = true;
+        interactText.text = t;
     }
 }

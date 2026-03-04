@@ -10,7 +10,7 @@ public class DuckInteractable : NetworkBehaviour, IInteractable
 
     public bool Interact(Interactor interactor)
     {
-        // Local player sends the request
+        // Only the local player should request the pickup
         if (interactor == null || !interactor.IsOwner)
             return false;
 
@@ -25,12 +25,25 @@ public class DuckInteractable : NetworkBehaviour, IInteractable
         collectedServerSide = true;
 
         if (ObjectiveState.Instance != null)
-            ObjectiveState.Instance.RegisterDuckServerRpc();
+            ObjectiveState.Instance.ServerRegisterDuck();
 
-        // Despawns for everyone
+        HideDuckClientRpc();
+
         if (NetworkObject != null && NetworkObject.IsSpawned)
-            NetworkObject.Despawn(true);
+            NetworkObject.Despawn(false);
         else
-            Destroy(gameObject);
+            gameObject.SetActive(false);
+    }
+
+    [ClientRpc]
+    private void HideDuckClientRpc()
+    {
+        foreach (var c in GetComponentsInChildren<Collider>(true))
+            c.enabled = false;
+
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+            r.enabled = false;
+
+        gameObject.SetActive(false);
     }
 }

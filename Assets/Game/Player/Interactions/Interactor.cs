@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
@@ -12,14 +13,21 @@ public class Interactor : NetworkBehaviour
     private Crosshair crosshair;
     private IInteractable currentInteractable;
 
+    [Header("References")]
+    private PlayerSoundFX soundFX;
+
+    [Header("Hold to interact")]
+    private Coroutine holdRoutine;
+    private PCInteractable holdingPc;
+    private GradesRackInteractable holdingGrades;
+
     void Awake()
     {
+        soundFX = GetComponent<PlayerSoundFX>();
         Player = GetComponent<NetworkPlayer>();
 
         if (Player == null)
-        {
             Debug.LogError("Interactor: NetworkPlayer component not found");
-        }
     }
 
     public override void OnNetworkSpawn()
@@ -36,15 +44,9 @@ public class Interactor : NetworkBehaviour
 
         if (InteractSource == null)
         {
-            Camera cam = GetComponentInChildren<Camera>();
-            if (cam != null)
-            {
-                InteractSource = cam.transform;
-            }
-            else
-            {
-                Debug.LogError("Interactor: No camera found");
-            }
+            Camera cam = GetComponentInChildren<Camera>(true);
+            if (cam != null) InteractSource = cam.transform;
+            else Debug.LogError("Interactor: No camera found");
         }
     }
 
@@ -53,6 +55,17 @@ public class Interactor : NetworkBehaviour
         if (!IsOwner) return;
 
         CheckForInteractable();
+
+        // If currently holding a PC or Grades interaction, cancel the moment E is released
+        if (holdingPc != null || holdingGrades != null)
+        {
+            bool eHeld = (Keyboard.current != null && Keyboard.current.eKey.isPressed);
+            if (!eHeld)
+            {
+                CancelHold();
+                return;
+            }
+        }
     }
 
     void CheckForInteractable()
@@ -60,9 +73,8 @@ public class Interactor : NetworkBehaviour
         if (InteractSource == null) return;
 
         Ray ray = new Ray(InteractSource.position, InteractSource.forward);
-        RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, InteractRange))
+        if (Physics.Raycast(ray, out RaycastHit hit, InteractRange))
         {
             IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
@@ -70,12 +82,14 @@ public class Interactor : NetworkBehaviour
             {
                 if (currentInteractable != interactable)
                 {
+                    // If swapped targets mid-hold, cancel the hold instantly
+                    if (holdingPc != null || holdingGrades != null)
+                        CancelHold();
+
                     currentInteractable = interactable;
 
                     if (crosshair != null)
-                    {
                         crosshair.ShowInteractPrompt();
-                    }
                 }
             }
             else
@@ -91,14 +105,15 @@ public class Interactor : NetworkBehaviour
 
     void ClearInteractable()
     {
+        if (holdingPc != null || holdingGrades != null)
+            CancelHold();
+
         if (currentInteractable != null)
         {
             currentInteractable = null;
 
             if (crosshair != null)
-            {
                 crosshair.HideInteractPrompt();
-            }
         }
     }
 
@@ -106,24 +121,148 @@ public class Interactor : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        Debug.Log($"[Interactor] OnInteract fired. isPressed={value.isPressed}, currentInteractable={(currentInteractable != null)}");
+        bool pressed = value.isPressed;
 
-        if (value.isPressed && currentInteractable != null)
+        // release: cancel hold immediately
+        if (!pressed)
         {
-            Debug.Log($"[Interactor] Trying Interact() on {currentInteractable}");
-            if (currentInteractable.CanInteract())
-            {
-                bool success = currentInteractable.Interact(this);
-                Debug.Log($"[Interactor] Interact() returned {success}");
+            CancelHold();
+            return;
+        }
 
-                if (success)
+        // press:
+        soundFX?.PlayInteractSound();
+
+        if (currentInteractable == null) return;
+        if (!currentInteractable.CanInteract()) return;
+
+        // If this is a PC assignment, start holding logic instead of instant interact.
+        var pc = (currentInteractable as Component)?.GetComponentInParent<PCInteractable>();
+        if (pc != null)
+        {
+            StartHold(pc);
+            return;
+        }
+
+        // If this is the grades rack, hold-to-complete
+        var grades = (currentInteractable as Component)?.GetComponentInParent<GradesRackInteractable>();
+        if (grades != null)
+        {
+            StartHoldGrades(grades);
+            return;
+        }
+
+        // Normal interactables (ducks, pickups, doors, etc.)
+        bool success = currentInteractable.Interact(this);
+        if (success)
+            ClearInteractable();
+    }
+
+    private void StartHold(PCInteractable pc)
+    {
+        CancelHold();
+
+        // If already submitted this round, don't allow starting again
+        if (ObjectiveState.Instance != null &&
+            NetworkManager.Singleton != null &&
+            ObjectiveState.Instance.HasSubmittedClient(NetworkManager.Singleton.LocalClientId))
+        {
+            TrySetInteractPrompt("Already submitted.");
+            return;
+        }
+
+        holdingPc = pc;
+
+        // show starting prompt immediately
+        TrySetInteractPrompt("Submitting... 0% (hold E)");
+
+        holdRoutine = StartCoroutine(HoldToSubmitRoutine(pc));
+    }
+
+    private void CancelHold()
+    {
+        if (holdRoutine != null)
+        {
+            StopCoroutine(holdRoutine);
+            holdRoutine = null;
+        }
+
+        holdingPc = null;
+        holdingGrades = null;
+
+        if (crosshair != null)
+        {
+            if (currentInteractable != null)
+            {
+                var pc = (currentInteractable as Component)?.GetComponentInParent<PCInteractable>();
+                if (pc != null)
                 {
-                    ClearInteractable();
+                    crosshair.SetPromptText("Hold E to submit");
                 }
+                else
+                {
+                    var grades = (currentInteractable as Component)?.GetComponentInParent<GradesRackInteractable>();
+                    if (grades != null)
+                        crosshair.SetPromptText("Hold E to change grades");
+                    else
+                        crosshair.ShowInteractPrompt();
+                }
+            }
+            else
+            {
+                crosshair.HideInteractPrompt();
             }
         }
     }
 
+    private IEnumerator HoldToSubmitRoutine(PCInteractable pc)
+    {
+        if (pc == null || !pc.gameObject.activeInHierarchy)
+        {
+            CancelHold();
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.1f, pc.holdSeconds);
+        float t = 0f;
+
+        while (t < duration)
+        {
+            // Cancel if player looked away / lost the interactable / PC disabled
+            if (currentInteractable == null || pc == null || !pc.gameObject.activeInHierarchy)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            // Cancel if E released
+            if (Keyboard.current != null && !Keyboard.current.eKey.isPressed)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            t += Time.deltaTime;
+            float pct = Mathf.Clamp01(t / duration);
+
+            TrySetInteractPrompt($"Submitting... {Mathf.RoundToInt(pct * 100f)}% (hold E)");
+            yield return null;
+        }
+
+        TrySetInteractPrompt("Submitted!");
+
+        pc.SubmitAssignmentServerRpc();
+
+        // Prevent immediately restarting
+        ClearInteractable();
+        CancelHold();
+    }
+
+    private void TrySetInteractPrompt(string text)
+    {
+        if (crosshair != null)
+            crosshair.SetPromptText(text);
+    }
 
     private void OnDrawGizmosSelected()
     {
@@ -132,5 +271,67 @@ public class Interactor : NetworkBehaviour
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(InteractSource.position, InteractSource.forward * InteractRange);
         }
+    }
+
+    private void StartHoldGrades(GradesRackInteractable g)
+    {
+        CancelHold();
+
+        if (g == null) return;
+
+        // If already done, don't allow starting again
+        if (ObjectiveState.Instance != null && ObjectiveState.Instance.GradesChanged.Value)
+        {
+            TrySetInteractPrompt("Already changed.");
+            return;
+        }
+
+        holdingGrades = g;
+
+        // show starting prompt immediately
+        TrySetInteractPrompt("Changing grades... 0%");
+
+        holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(g));
+    }
+
+    private IEnumerator HoldToChangeGradesRoutine(GradesRackInteractable g)
+    {
+        if (g == null || !g.gameObject.activeInHierarchy)
+        {
+            CancelHold();
+            yield break;
+        }
+
+        float duration = Mathf.Max(0.1f, g.holdSeconds);
+        float t = 0f;
+
+        while (t < duration)
+        {
+            if (currentInteractable == null || g == null || !g.gameObject.activeInHierarchy)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            if (Keyboard.current != null && !Keyboard.current.eKey.isPressed)
+            {
+                CancelHold();
+                yield break;
+            }
+
+            t += Time.deltaTime;
+            float pct = Mathf.Clamp01(t / duration);
+
+            TrySetInteractPrompt($"Changing grades... {Mathf.RoundToInt(pct * 100f)}% (hold E)");
+            yield return null;
+        }
+
+        TrySetInteractPrompt("Grades changed!");
+
+        // Server flips ObjectiveState.GradesChanged (syncs to everyone)
+        g.ChangeGradesServerRpc();
+
+        ClearInteractable();
+        CancelHold();
     }
 }
