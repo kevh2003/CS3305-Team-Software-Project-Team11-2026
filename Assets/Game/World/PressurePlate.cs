@@ -1,194 +1,224 @@
-using UnityEngine;
-using Unity.Netcode;
 using System.Collections.Generic;
+using Unity.Netcode;
+using UnityEngine;
 
+[RequireComponent(typeof(Collider))]
 public class PressurePlate : NetworkBehaviour
 {
-    [Header("Plate Settings")]
+    [Header("Identity")]
     [SerializeField] private int plateID = 0;
     [SerializeField] private string playerTag = "Player";
-    
-    [Header("Visual Feedback")]
-    [SerializeField] private Material activatedMaterial;
-    [SerializeField] private Material deactivatedMaterial;
+
+    [Header("Visuals")]
     [SerializeField] private MeshRenderer plateRenderer;
-    [SerializeField] private float pressDepth = 0.1f;
-    [SerializeField] private Color activatedColor = Color.green;
-    [SerializeField] private Color deactivatedColor = Color.red;
-    
-    [Header("Audio (Optional)")]
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip activateSound;
-    [SerializeField] private AudioClip deactivateSound;
-    
-    private NetworkVariable<bool> isActivated = new NetworkVariable<bool>(
-        false, 
-        NetworkVariableReadPermission.Everyone, 
-        NetworkVariableWritePermission.Server
-    );
-    
-    private Vector3 originalPosition;
-    private Vector3 pressedPosition;
-    private HashSet<Collider> playersOnPlate = new HashSet<Collider>();
-    private PressurePlateGroup plateGroup;
-    
+    [SerializeField] private Light plateLight;
+
+    [Tooltip("Plate colour when powered OFF (navy/black).")]
+    [SerializeField] private Color poweredOffColor = new Color(0.05f, 0.06f, 0.09f);
+
+    [Tooltip("Plate colour when powered ON but not active (still navy/black).")]
+    [SerializeField] private Color poweredOnColor = new Color(0.05f, 0.06f, 0.09f);
+
+    [Tooltip("Plate colour when active (green).")]
+    [SerializeField] private Color activeColor = new Color(0.1f, 0.9f, 0.2f);
+
+    [Header("Light colours")]
+    [SerializeField] private Color lightPoweredColor = new Color(0.1f, 0.5f, 1.0f); // blue glow
+    [SerializeField] private Color lightActiveColor  = new Color(0.1f, 0.9f, 0.2f);  // green glow
+
+    [Header("Light intensity")]
+    [SerializeField] private float lightOffIntensity = 0f;
+    [SerializeField] private float lightOnIntensity  = 5f;
+
+    // Networked state
+    private NetworkVariable<bool> isPowered = new(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    private NetworkVariable<bool> isActive = new(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    private NetworkVariable<bool> isLatched = new(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // IMPORTANT: Netcode expects this exact delegate type
+    private NetworkVariable<bool>.OnValueChangedDelegate _onAnyNetBoolChanged;
+
+    // Server-only tracking of who is standing on it
+    private readonly HashSet<Collider> playersOnPlate = new();
+
+    // Controller hook
+    private SecurityRoomController controller;
+
     public int PlateID => plateID;
-    public bool IsActivated => isActivated.Value;
-    
+
+    // Properties the controller expects
+    public bool IsPowered => isPowered.Value;
+    public bool IsActive => isActive.Value;
+
     private void Awake()
     {
-        
-        
-        originalPosition = transform.localPosition;
-        pressedPosition = originalPosition - new Vector3(0, pressDepth, 0);
-        
         if (plateRenderer == null)
-            plateRenderer = GetComponent<MeshRenderer>();
-    }
-    
-    private void Start()
-    {
-        
-        
-        isActivated.OnValueChanged += OnActivationChanged;
-        UpdateVisuals(isActivated.Value);
-        
+            plateRenderer = GetComponentInChildren<MeshRenderer>(true);
 
+        // Ensure trigger collider
+        var col = GetComponent<Collider>();
+        if (col != null) col.isTrigger = true;
+
+        // Prevent “flash” in editor before network vars apply
+        UpdateVisuals();
     }
-    
-    public override void OnDestroy()
+
+    public override void OnNetworkSpawn()
     {
-        base.OnDestroy();
-        isActivated.OnValueChanged -= OnActivationChanged;
+        base.OnNetworkSpawn();
+
+        _onAnyNetBoolChanged ??= OnAnyNetBoolChanged;
+
+        isPowered.OnValueChanged += _onAnyNetBoolChanged;
+        isActive.OnValueChanged  += _onAnyNetBoolChanged;
+        isLatched.OnValueChanged += _onAnyNetBoolChanged;
+
+        UpdateVisuals();
     }
-    
-    public void RegisterWithGroup(PressurePlateGroup group)
+
+    public override void OnNetworkDespawn()
     {
-        plateGroup = group;
-        
+        base.OnNetworkDespawn();
+
+        if (_onAnyNetBoolChanged != null)
+        {
+            isPowered.OnValueChanged -= _onAnyNetBoolChanged;
+            isActive.OnValueChanged  -= _onAnyNetBoolChanged;
+            isLatched.OnValueChanged -= _onAnyNetBoolChanged;
+        }
     }
-    
+
+    private void OnAnyNetBoolChanged(bool previousValue, bool newValue)
+    {
+        UpdateVisuals();
+    }
+
+    // Called by SecurityRoomController
+    public void RegisterController(SecurityRoomController c)
+    {
+        controller = c;
+    }
+
+    // Called by SecurityRoomController
+    public void ServerSetPowered(bool on)
+    {
+        if (!IsServer) return;
+
+        if (isPowered.Value == on) return;
+        isPowered.Value = on;
+
+        if (!on)
+        {
+            // Fully shut down
+            playersOnPlate.Clear();
+            isLatched.Value = false;
+            if (isActive.Value)
+                isActive.Value = false;
+        }
+
+        controller?.ServerOnPlateChanged();
+    }
+
+    // Called by SecurityRoomController
+    public void ServerSetLatched(bool latched)
+    {
+        if (!IsServer) return;
+
+        if (isLatched.Value == latched) return;
+        isLatched.Value = latched;
+
+        // If we just unlatched and nobody is standing on it, drop back to inactive
+        if (!latched && playersOnPlate.Count == 0 && isActive.Value)
+        {
+            isActive.Value = false;
+            controller?.ServerOnPlateChanged();
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        
-        if (IsPlayerCollider(other))
+        if (!IsServer) return;
+        if (!isPowered.Value) return;
+        if (!IsPlayerCollider(other)) return;
+
+        playersOnPlate.Add(other);
+
+        // First player stepping on activates it
+        if (!isActive.Value)
         {
-            playersOnPlate.Add(other);
-            
-            
-            if (playersOnPlate.Count == 1)
-            {
-                
-                isActivated.Value = true;
-                
-                if (plateGroup != null)
-                    plateGroup.OnPlateStateChanged(this, true);
-            }
+            isActive.Value = true;
+            controller?.ServerOnPlateChanged();
         }
     }
-    
+
     private void OnTriggerExit(Collider other)
     {
-        
-        
         if (!IsServer) return;
-        
-        if (IsPlayerCollider(other))
+        if (!isPowered.Value) return;
+        if (!IsPlayerCollider(other)) return;
+
+        playersOnPlate.Remove(other);
+
+        // If latched, stay active even if people leave
+        if (isLatched.Value) return;
+
+        // If nobody left on plate, deactivate
+        if (playersOnPlate.Count == 0 && isActive.Value)
         {
-            playersOnPlate.Remove(other);
-            
-            if (playersOnPlate.Count == 0)
-            {
-                
-                isActivated.Value = false;
-                
-                if (plateGroup != null)
-                    plateGroup.OnPlateStateChanged(this, false);
-            }
+            isActive.Value = false;
+            controller?.ServerOnPlateChanged();
         }
     }
-    
+
     private bool IsPlayerCollider(Collider col)
     {
-        if (col.CompareTag(playerTag))
-        {
-            
-            return true;
-        }
-        
-        if (col.transform.parent != null && col.transform.parent.CompareTag(playerTag))
-        {
-            
-            return true;
-        }
-        
+        if (col == null) return false;
+
+        if (col.CompareTag(playerTag)) return true;
+        if (col.transform.parent != null && col.transform.parent.CompareTag(playerTag)) return true;
+
         Transform root = col.transform.root;
-        if (root != null && root.CompareTag(playerTag))
-        {
-
-            return true;
-        }
-        
-        return false;
+        return root != null && root.CompareTag(playerTag);
     }
-    
-    private void OnActivationChanged(bool previousValue, bool newValue)
-    {
-        
-        UpdateVisuals(newValue);
-        PlaySound(newValue);
-    }
-    
-    private void UpdateVisuals(bool activated)
-    {
 
-        
+    private void UpdateVisuals()
+    {
+        // Plate colour: navy unless active green
         if (plateRenderer != null)
         {
-            if (activated && activatedMaterial != null)
+            Color c;
+
+            if (!isPowered.Value) c = poweredOffColor;
+            else if (isActive.Value) c = activeColor;
+            else c = poweredOnColor;
+
+            // Note: this instantiates a per-renderer material at runtime; fine for a few plates.
+            if (plateRenderer.material != null)
+                plateRenderer.material.color = c;
+        }
+
+        // Light behaviour:
+        // - OFF when not powered
+        // - Blue when powered
+        // - Green when active
+        if (plateLight != null)
+        {
+            if (!isPowered.Value)
             {
-                plateRenderer.material = activatedMaterial;
-            }
-            else if (!activated && deactivatedMaterial != null)
-            {
-                plateRenderer.material = deactivatedMaterial;
+                plateLight.enabled = false;
+                plateLight.intensity = lightOffIntensity;
             }
             else
             {
-                Color targetColor = activated ? activatedColor : deactivatedColor;
-                plateRenderer.material.color = targetColor;
+                plateLight.enabled = true;
+                plateLight.intensity = lightOnIntensity;
+                plateLight.color = isActive.Value ? lightActiveColor : lightPoweredColor;
             }
-        }
-        
-        StopAllCoroutines();
-        StartCoroutine(AnimatePlate(activated ? pressedPosition : originalPosition));
-    }
-    
-    private System.Collections.IEnumerator AnimatePlate(Vector3 targetPosition)
-    {
-        float duration = 0.2f;
-        float elapsed = 0f;
-        Vector3 startPosition = transform.localPosition;
-        
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.SmoothStep(0, 1, elapsed / duration);
-            transform.localPosition = Vector3.Lerp(startPosition, targetPosition, t);
-            yield return null;
-        }
-        
-        transform.localPosition = targetPosition;
-    }
-    
-    private void PlaySound(bool activated)
-    {
-        if (audioSource == null) return;
-        
-        AudioClip clipToPlay = activated ? activateSound : deactivateSound;
-        if (clipToPlay != null)
-        {
-            audioSource.PlayOneShot(clipToPlay);
         }
     }
 }

@@ -1,3 +1,6 @@
+
+// DEPRECATED / OBSOLETE - kev
+/*
 using UnityEngine;
 using Unity.Netcode;
 using System.Linq;
@@ -141,3 +144,4 @@ public class PressurePlateGroup : NetworkBehaviour
         return plates.Length;
     }
 }
+*/

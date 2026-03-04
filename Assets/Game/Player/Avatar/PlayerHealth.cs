@@ -140,6 +140,9 @@ public class PlayerHealth : NetworkBehaviour
             if (ObjectiveState.Instance != null)
             {
                 ObjectiveState.Instance.ServerHandlePlayerDeath(OwnerClientId);
+                var security = FindFirstObjectByType<SecurityRoomController>();
+                if (security != null)
+                    security.ServerOnRosterChanged();
             }
 
             // after a player dies, check if that was the last one

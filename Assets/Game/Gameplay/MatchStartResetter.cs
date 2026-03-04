@@ -92,6 +92,14 @@ public sealed class MatchStartResetter : NetworkBehaviour
             if (inv != null)
             {
                 inv.DropAllItemsOnDeathServer();
+                if (ObjectiveState.Instance != null && ObjectiveState.Instance.MatchRosterLocked.Value)
+                {
+                    ObjectiveState.Instance.ServerHandlePlayerDeath(clientId);
+
+                    var security = FindFirstObjectByType<SecurityRoomController>();
+                    if (security != null)
+                        security.ServerOnRosterChanged();
+                }
             }
         }
     }
@@ -103,6 +111,9 @@ public sealed class MatchStartResetter : NetworkBehaviour
         ResetAllPlayers();
         ResetAllDoors();
         ResetAllEnemies();
+        var puzzles = FindObjectsByType<SecurityRoomController>(FindObjectsSortMode.None);
+        foreach (var p in puzzles)
+            p.ServerResetForNewRound();
 
         SetupObjectivesForScene();
     }
