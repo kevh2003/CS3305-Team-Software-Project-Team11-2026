@@ -20,11 +20,15 @@ public class AnimationStateController : NetworkBehaviour
     {
         Debug.Log("Update called in AnimationStateController");
         // using unity's new input system is stinky 
-        bool walking = Keyboard.current.wKey.isPressed || Keyboard.current.aKey.isPressed || Keyboard.current.sKey.isPressed || Keyboard.current.dKey.isPressed;
-        bool running = Keyboard.current.leftShiftKey.isPressed && walking;
+        if (IsOwner)
+        {
+            bool walking = Keyboard.current.wKey.isPressed || Keyboard.current.aKey.isPressed || Keyboard.current.sKey.isPressed || Keyboard.current.dKey.isPressed;
+            bool running = Keyboard.current.leftShiftKey.isPressed && walking;
+            animator.SetBool("isWalking", walking);
+            animator.SetBool("isRunning", running);
+        }
 
-        animator.SetBool("isWalking", walking);
-        animator.SetBool("isRunning", running);
+      
 
     }
 }
