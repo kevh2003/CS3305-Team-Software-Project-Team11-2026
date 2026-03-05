@@ -18,7 +18,7 @@ public class NPC : NetworkBehaviour
     {
 
         // looping over the text message 
-        if(display_text && message_index < text.Length)
+        if(display_text && message_index <=text.Length)
         {
             text_box.text = text[..message_index];
             message_index ++;
