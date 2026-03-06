@@ -11,8 +11,21 @@ public class PlayerInventory : NetworkBehaviour
     [Header("Hotbar Settings")]
     public int hotbarSlots = 2;
 
-    [Header("Item Database (assign all ItemDefinitions here)")]
+    [Header("Item Database")]
     public List<ItemDefinition> itemDatabase = new List<ItemDefinition>();
+
+    [Header("Torch Networking")]
+    [SerializeField] private int torchItemId = 2;
+    [SerializeField] private bool remoteTorchAnchorToCamera = true;
+    [SerializeField] private Vector3 remoteTorchLocalOffset = new Vector3(0.08f, -0.24f, 0.03f);
+    [SerializeField] private Vector3 remoteTorchLocalEuler = new Vector3(4f, 0f, 0f);
+    [SerializeField] private float remoteTorchIntensity = 12f;
+    [SerializeField] private float remoteTorchRange = 22f;
+    [SerializeField] private float remoteTorchSpotAngle = 52f;
+    [SerializeField] private Color remoteTorchColor = new Color(0.99f, 0.99f, 0.99f, 1f);
+    [SerializeField] private bool remoteTorchUseLookPitch = true;
+    [SerializeField] private float remoteTorchPitchOffset = 0f;
+    [SerializeField] private float remoteTorchPitchLerpSpeed = 20f;
 
     [HideInInspector] public GameObject hotbarPanel;
     [HideInInspector] public Image[] hotbarSlotImages;
@@ -36,6 +49,24 @@ public class PlayerInventory : NetworkBehaviour
     // Local-only UI prompt state
     private bool _inventoryPromptVisible = false;
 
+    // Networked torch state for remote visual replication
+    private readonly NetworkVariable<bool> _torchEquipped = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+    private readonly NetworkVariable<bool> _torchOn = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    private GameObject _remoteTorchLightObject;
+    private Light _remoteTorchLight;
+    private bool _lastSentTorchEquipped;
+    private bool _lastSentTorchOn;
+    private NetworkPlayer _networkPlayer;
+    private float _remoteTorchSmoothedPitch;
+    private Transform _remoteTorchAnchor;
+
     void Awake()
     {
         itemIds = new int[hotbarSlots];
@@ -43,6 +74,7 @@ public class PlayerInventory : NetworkBehaviour
 
         handItems = new GameObject[hotbarSlots];
         inputActions = new PlayerInputActions();
+        _networkPlayer = GetComponent<NetworkPlayer>();
 
         BuildDatabaseLookup();
     }
@@ -81,12 +113,16 @@ public class PlayerInventory : NetworkBehaviour
         // IMPORTANT:
         // - Server must keep this component enabled for ALL players (authoritative state / RPCs / spawning)
         // - Only the owning client should read input + drive UI -kev
+        // - Non-owners remain enabled to render remote torch lights.
 
-        if (!IsOwner && !IsServer)
-        {
-            enabled = false;
-            return;
-        }
+        if (IsServer)
+            ServerSetTorchState(false, false);
+
+        _torchEquipped.OnValueChanged += OnTorchNetworkStateChanged;
+        _torchOn.OnValueChanged += OnTorchNetworkStateChanged;
+
+        EnsureRemoteTorchLight();
+        UpdateRemoteTorchVisual();
 
         // Owner: enable input + bind callbacks
         if (IsOwner)
@@ -102,11 +138,15 @@ public class PlayerInventory : NetworkBehaviour
 
             StartCoroutine(OwnerLateInit());
             StartCoroutine(OwnerEnsureAnchors());
+            SyncTorchStateIfOwner(force: true);
         }
     }
 
     public override void OnNetworkDespawn()
     {
+        _torchEquipped.OnValueChanged -= OnTorchNetworkStateChanged;
+        _torchOn.OnValueChanged -= OnTorchNetworkStateChanged;
+
         // If 'this' player disconnects, drop their items.
         if (IsServer)
         {
@@ -122,7 +162,17 @@ public class PlayerInventory : NetworkBehaviour
                 if (hasAny)
                     DropAllItemsServer_NoClientUI();
             }
+
+            ServerSetTorchState(false, false);
         }
+
+        if (_remoteTorchLightObject != null)
+        {
+            Destroy(_remoteTorchLightObject);
+            _remoteTorchLightObject = null;
+            _remoteTorchLight = null;
+        }
+        _remoteTorchAnchor = null;
 
         base.OnNetworkDespawn();
     }
@@ -211,6 +261,14 @@ public class PlayerInventory : NetworkBehaviour
         // fallback Q
         if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
             DropSelectedItem();
+
+        SyncTorchStateIfOwner();
+    }
+
+    private void LateUpdate()
+    {
+        if (IsOwner) return;
+        UpdateRemoteTorchPose();
     }
 
     public void SelectSlot(int index)
@@ -220,6 +278,7 @@ public class PlayerInventory : NetworkBehaviour
         UpdateHotbarOutlines();
         UpdateHandDisplay();
         UpdateInventoryDropPrompt();
+        SyncTorchStateIfOwner(force: true);
     }
 
     void UpdateHotbarOutlines()
@@ -284,6 +343,9 @@ public class PlayerInventory : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void PickupItemServerRpc(NetworkObjectReference itemRef, int itemId, int preferredSlot, ServerRpcParams rpcParams = default)
     {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (senderClientId != OwnerClientId) return;
+
         if (!itemRef.TryGet(out NetworkObject itemNo)) return;
         if (!itemNo.IsSpawned) return;
 
@@ -315,7 +377,7 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         // tell only this client to show UI/hand item
-        ulong clientId = rpcParams.Receive.SenderClientId;
+        ulong clientId = senderClientId;
         GiveItemClientRpc(slot, itemId, new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
@@ -355,6 +417,7 @@ public class PlayerInventory : NetworkBehaviour
 
         UpdateHandDisplay();
         UpdateInventoryDropPrompt();
+        SyncTorchStateIfOwner(force: true);
     }
 
     public void DropSelectedItem()
@@ -369,6 +432,9 @@ public class PlayerInventory : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     void DropItemFromSlotServerRpc(int slot, ServerRpcParams rpcParams = default)
     {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (senderClientId != OwnerClientId) return;
+
         if (slot < 0 || slot >= hotbarSlots) return;
 
         int itemId = itemIds[slot];
@@ -402,9 +468,11 @@ public class PlayerInventory : NetworkBehaviour
 
         // clear server slot
         itemIds[slot] = EMPTY;
+        if (itemId == torchItemId)
+            ServerSetTorchState(false, false);
 
         // clear only dropping client's UI/hand
-        ulong clientId = rpcParams.Receive.SenderClientId;
+        ulong clientId = senderClientId;
         ClearSlotClientRpc(slot, new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
@@ -433,6 +501,7 @@ public class PlayerInventory : NetworkBehaviour
 
         UpdateHandDisplay();
         UpdateInventoryDropPrompt();
+        SyncTorchStateIfOwner(force: true);
     }
 
     public int GetSelectedSlot() => selectedSlot;
@@ -478,6 +547,8 @@ public class PlayerInventory : NetworkBehaviour
         {
             ClearAllSlotsClientRpc();
         }
+
+        ServerSetTorchState(false, false);
     }
 
     // Internal server-side drop
@@ -516,6 +587,8 @@ public class PlayerInventory : NetworkBehaviour
 
         // Clear server slot
         itemIds[slot] = EMPTY;
+        if (itemId == torchItemId)
+            ServerSetTorchState(false, false);
     }
 
     // Server: drops items when a player leaves/disconnects from session
@@ -530,6 +603,8 @@ public class PlayerInventory : NetworkBehaviour
 
             DropItemFromSlotServer_Internal(slot);
         }
+
+        ServerSetTorchState(false, false);
     }
 
     // Server: wipes this player's inventory for a fresh match
@@ -546,6 +621,8 @@ public class PlayerInventory : NetworkBehaviour
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } }
         });
+
+        ServerSetTorchState(false, false);
     }
 
     [ClientRpc]
@@ -576,14 +653,17 @@ public class PlayerInventory : NetworkBehaviour
         UpdateHotbarOutlines();
         UpdateHandDisplay();
         UpdateInventoryDropPrompt(); // keeps the "Press Q" prompt correct
+        SyncTorchStateIfOwner(force: true);
     }
 
-    void OnDestroy()
+    public override void OnDestroy()
     {
         RemoveInputCallbacks();
 
         if (inputActions != null)
             inputActions.Disable();
+
+        base.OnDestroy();
     }
 
     public bool HasItemId(int itemId) // used to check keys against locked doors
@@ -592,5 +672,149 @@ public class PlayerInventory : NetworkBehaviour
             if (itemIds[i] == itemId)
                 return true;
         return false;
+    }
+
+    private void OnTorchNetworkStateChanged(bool oldValue, bool newValue)
+    {
+        UpdateRemoteTorchVisual();
+    }
+
+    private void EnsureRemoteTorchLight()
+    {
+        if (!IsClient) return;
+        if (IsOwner) return;
+        if (_remoteTorchLightObject != null) return;
+
+        _remoteTorchLightObject = new GameObject("RemoteTorchLight");
+        _remoteTorchLightObject.transform.SetParent(transform, false);
+        _remoteTorchAnchor = ResolveRemoteTorchAnchor();
+
+        _remoteTorchLight = _remoteTorchLightObject.AddComponent<Light>();
+        _remoteTorchLight.type = LightType.Spot;
+        _remoteTorchLight.color = remoteTorchColor;
+        _remoteTorchLight.intensity = remoteTorchIntensity;
+        _remoteTorchLight.range = remoteTorchRange;
+        _remoteTorchLight.spotAngle = remoteTorchSpotAngle;
+        _remoteTorchLight.shadows = LightShadows.None;
+        _remoteTorchLight.enabled = false;
+
+        _remoteTorchSmoothedPitch = remoteTorchLocalEuler.x;
+        UpdateRemoteTorchPose();
+    }
+
+    private void UpdateRemoteTorchVisual()
+    {
+        if (_remoteTorchLight == null) return;
+
+        _remoteTorchLight.color = remoteTorchColor;
+        _remoteTorchLight.intensity = remoteTorchIntensity;
+        _remoteTorchLight.range = remoteTorchRange;
+        _remoteTorchLight.spotAngle = remoteTorchSpotAngle;
+
+        bool inGame = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "03_Game";
+        bool shouldBeOn = !IsOwner && inGame && _torchEquipped.Value && _torchOn.Value;
+        _remoteTorchLight.enabled = shouldBeOn;
+        UpdateRemoteTorchPose();
+    }
+
+    private void UpdateRemoteTorchPose()
+    {
+        if (_remoteTorchLightObject == null) return;
+        var anchor = ResolveRemoteTorchAnchor();
+
+        float targetPitch = remoteTorchLocalEuler.x;
+
+        if (remoteTorchUseLookPitch && _networkPlayer != null)
+            targetPitch += _networkPlayer.LookPitch.Value + remoteTorchPitchOffset;
+
+        _remoteTorchSmoothedPitch = Mathf.LerpAngle(
+            _remoteTorchSmoothedPitch,
+            targetPitch,
+            Mathf.Max(1f, remoteTorchPitchLerpSpeed) * Time.deltaTime);
+
+        Vector3 anchorPosition = anchor != null ? anchor.position : transform.position;
+        Quaternion anchorRotation = anchor != null ? anchor.rotation : transform.rotation;
+
+        Quaternion localRotation = Quaternion.Euler(
+            _remoteTorchSmoothedPitch,
+            remoteTorchLocalEuler.y,
+            remoteTorchLocalEuler.z);
+
+        _remoteTorchLightObject.transform.SetPositionAndRotation(
+            anchorPosition + (anchorRotation * remoteTorchLocalOffset),
+            anchorRotation * localRotation);
+    }
+
+    private Transform ResolveRemoteTorchAnchor()
+    {
+        if (_remoteTorchAnchor != null)
+            return _remoteTorchAnchor;
+
+        if (remoteTorchAnchorToCamera)
+        {
+            if (_networkPlayer != null && _networkPlayer.PlayerCameraTransform != null)
+            {
+                _remoteTorchAnchor = _networkPlayer.PlayerCameraTransform;
+                return _remoteTorchAnchor;
+            }
+
+            var cameraByName = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "MainCamera");
+            if (cameraByName != null)
+            {
+                _remoteTorchAnchor = cameraByName;
+                return _remoteTorchAnchor;
+            }
+        }
+
+        _remoteTorchAnchor = transform;
+        return _remoteTorchAnchor;
+    }
+
+    private void SyncTorchStateIfOwner(bool force = false)
+    {
+        if (!IsOwner || !IsSpawned) return;
+
+        bool equipped = TryGetSelectedTorchState(out bool isOn);
+
+        if (!force && equipped == _lastSentTorchEquipped && isOn == _lastSentTorchOn)
+            return;
+
+        _lastSentTorchEquipped = equipped;
+        _lastSentTorchOn = isOn;
+
+        SetTorchStateServerRpc(equipped, isOn);
+    }
+
+    private bool TryGetSelectedTorchState(out bool isOn)
+    {
+        isOn = false;
+
+        if (selectedSlot < 0 || selectedSlot >= hotbarSlots) return false;
+        if (itemIds[selectedSlot] != torchItemId) return false;
+        if (handItems == null || selectedSlot >= handItems.Length) return false;
+
+        var hand = handItems[selectedSlot];
+        if (hand == null) return false;
+
+        var torch = hand.GetComponentInChildren<TorchHeld>(true);
+        if (torch == null) return false;
+
+        isOn = torch.IsOn;
+        return true;
+    }
+
+    [ServerRpc]
+    private void SetTorchStateServerRpc(bool equipped, bool isOn, ServerRpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+        ServerSetTorchState(equipped, isOn);
+    }
+
+    private void ServerSetTorchState(bool equipped, bool isOn)
+    {
+        if (!IsServer) return;
+
+        _torchEquipped.Value = equipped;
+        _torchOn.Value = equipped && isOn;
     }
 }

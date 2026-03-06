@@ -7,6 +7,7 @@ public class TorchHeld : MonoBehaviour
     [SerializeField] private bool startOn = true;
 
     private bool _isOn;
+    public bool IsOn => _isOn;
 
     private void Awake()
     {

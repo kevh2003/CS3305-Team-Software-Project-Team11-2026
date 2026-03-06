@@ -133,7 +133,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9090654707310040234}
@@ -153,7 +153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 934990576
+  GlobalObjectIdHash: 1350446368
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -282,13 +282,27 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   moveSpeed: 5
   lookSensitivity: 0.12
+  lookPitchSyncInterval: 0.033
   playerCamera: {fileID: 0}
+  hideOwnerBodyInFirstPerson: 0
+  hideOwnerHeadInFirstPerson: 1
+  ownerHeadScaleMultiplier: 0.01
+  ownerNearClipPlane: 0.05
+  ownerHiddenVisualRoot: {fileID: 0}
   jumpHeight: 1.6
   gravity: -25
   sprintMultiplier: 1.6
   maxStaminaSeconds: 4
   staminaRegenPerSecond: 1
   minMoveToSprint: 0.1
+  walkBobFrequency: 10
+  runBobFrequency: 15
+  walkBobAmplitude: 0.1
+  runBobAmplitude: 0.2
+  bobLerpSpeed: 10
+  sprintCameraLocalOffset: {x: 0, y: -0.05, z: 0.13}
+  sprintOffsetEnterSpeed: 14
+  sprintOffsetExitSpeed: 10
 --- !u!114 &1745521175803550177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -303,7 +317,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Interactor
   ShowTopMostFoldoutHeaderGroup: 1
   InteractSource: {fileID: 9090654707310040234}
-  InteractRange: 3
+  InteractRange: 3.6
 --- !u!114 &699725007467170078
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -356,6 +370,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bc9787784b2bf4a1cafcbf7daa72ce56, type: 2}
   - {fileID: 11400000, guid: b9921b39ab90e463a8a8389bc4484dcc, type: 2}
   - {fileID: 11400000, guid: 6076501a4b48b444a9fc80faf71629e0, type: 2}
+  torchItemId: 2
+  remoteTorchAnchorToCamera: 1
+  remoteTorchLocalOffset: {x: 0.08, y: -0.24, z: 0.03}
+  remoteTorchLocalEuler: {x: 4, y: 0, z: 0}
+  remoteTorchIntensity: 12
+  remoteTorchRange: 22
+  remoteTorchSpotAngle: 52
+  remoteTorchColor: {r: 0.99, g: 0.99, b: 0.99, a: 1}
+  remoteTorchUseLookPitch: 1
+  remoteTorchPitchOffset: 0
+  remoteTorchPitchLerpSpeed: 20
   hotbarPanel: {fileID: 0}
   hotbarSlotImages: []
   handPosition: {fileID: 0}
@@ -623,13 +648,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8458818826631794839}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.75, z: 0}
+  m_LocalRotation: {x: 0, y: 0.059193097, z: 0, w: 0.99824655}
+  m_LocalPosition: {x: -0.02900001, y: 0.78, z: 0.04700001}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 619309807817533595}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 6.787, z: 0}
 --- !u!20 &6299705925954022843
 Camera:
   m_ObjectHideFlags: 0
@@ -663,7 +688,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 65
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -991,7 +1016,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e04fface0e373ae499887f3d1eaaf192, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationStateController
-  ShowTopMostFoldoutHeaderGroup: 1
+  walkStartSpeed: 0.08
+  runStartSpeed: 5.6
+  speedSmoothing: 12
+  transitionDuration: 0.12
+  teleportResetDistance: 3
 --- !u!114 &8017514925318702262
 MonoBehaviour:
   m_ObjectHideFlags: 0
