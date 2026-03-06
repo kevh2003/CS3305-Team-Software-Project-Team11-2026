@@ -15,6 +15,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [SerializeField] private bool requireKey = false;
     [SerializeField] private int requiredKeyItemId = 1;
     [SerializeField] private bool isSecurityDoor = false;
+    [SerializeField] private float serverInteractRange = 4f;
 
     // Defaults for resetting each round
     private bool _defaultOpen = false;   // doors start CLOSED by default
@@ -66,6 +67,9 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [ServerRpc(RequireOwnership = false)]
     private void ToggleDoorServerRpc(ServerRpcParams rpcParams = default)
     {
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!IsSenderInRange(senderId)) return;
+
         // Locked door logic
         if (isLocked.Value)
         {
@@ -73,8 +77,6 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
                 return;
 
             // Require key in inventory
-            ulong senderId = rpcParams.Receive.SenderClientId;
-
             if (NetworkManager.Singleton != null &&
                 NetworkManager.Singleton.ConnectedClients.TryGetValue(senderId, out var client) &&
                 client.PlayerObject != null)
@@ -136,5 +138,15 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 
         UpdateTarget();
         ApplyImmediate();
+    }
+
+    private bool IsSenderInRange(ulong senderId)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return false;
+        if (!nm.ConnectedClients.TryGetValue(senderId, out var client)) return false;
+        if (client.PlayerObject == null) return false;
+
+        return Vector3.Distance(client.PlayerObject.transform.position, transform.position) <= serverInteractRange;
     }
 }

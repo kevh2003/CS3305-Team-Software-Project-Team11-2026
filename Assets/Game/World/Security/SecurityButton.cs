@@ -14,6 +14,7 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     [Header("Wiring")]
     [SerializeField] private SecurityRoomController controller;
     [SerializeField] private int buttonIndex = 1; // 1,2,3
+    [SerializeField] private float serverInteractRange = 4f;
 
     private NetworkVariable<int> state = new(
         (int)ButtonState.RedDisabled,
@@ -33,10 +34,12 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     [ServerRpc(RequireOwnership = false)]
     private void PressServerRpc(ServerRpcParams rpcParams = default)
     {
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!IsSenderInRange(senderId)) return;
         if (controller == null) return;
         if (state.Value != (int)ButtonState.YellowReady) return;
 
-        controller.ServerOnButtonPressed(buttonIndex, rpcParams.Receive.SenderClientId);
+        controller.ServerOnButtonPressed(buttonIndex, senderId);
     }
 
     public override void OnNetworkSpawn()
@@ -59,5 +62,15 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     {
         if (!IsServer) return;
         state.Value = (int)newState;
+    }
+
+    private bool IsSenderInRange(ulong senderId)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return false;
+        if (!nm.ConnectedClients.TryGetValue(senderId, out var client)) return false;
+        if (client.PlayerObject == null) return false;
+
+        return Vector3.Distance(client.PlayerObject.transform.position, transform.position) <= serverInteractRange;
     }
 }

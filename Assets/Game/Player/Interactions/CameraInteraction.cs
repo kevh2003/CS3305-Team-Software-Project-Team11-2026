@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
 /// <summary>
 /// CameraInteraction using LocalPlayerReference and direct Keyboard input for exit.
@@ -22,9 +23,6 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
     [Tooltip("LayerMask for surfaces the lure raycast can hit (e.g. Ground, Floor)")]
     public LayerMask lureSurfaceMask = ~0;   // All layers by default; restrict in Inspector
-
-    [Tooltip("LayerMask for enemies that can be lured")]
-    public LayerMask enemyMask;
 
     private bool _isViewingCCTV = false;
     private Keyboard _keyboard;
@@ -89,21 +87,18 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         Vector3 lurePoint = hit.point;
         Debug.Log($"CameraInteraction: Lure point set at {lurePoint}");
 
-        // Find all enemies within lure radius of the clicked point
-        Collider[] nearbyColliders = Physics.OverlapSphere(lurePoint, lureRadius, enemyMask);
-
-        int luredCount = 0;
-        foreach (Collider col in nearbyColliders)
+        // Host can invoke directly; clients request server-authoritative lure via ObjectiveState RPC.
+        var state = ObjectiveState.Instance;
+        if (state == null)
         {
-            EnemyAI enemy = col.GetComponent<EnemyAI>();
-            if (enemy != null)
-            {
-                enemy.Lure(lurePoint);
-                luredCount++;
-            }
+            Debug.LogWarning("CameraInteraction: ObjectiveState unavailable, cannot send lure request.");
+            return;
         }
 
-        Debug.Log($"CameraInteraction: Lured {luredCount} enemy/enemies.");
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            state.ServerLureEnemiesAtPoint(lurePoint, lureRadius);
+        else
+            state.RequestLureEnemiesServerRpc(lurePoint, lureRadius);
     }
 
     // ─── IInteractable ────────────────────────────────────────────────────────
@@ -149,7 +144,6 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        DropPromptUI.Instance?.SetCameraVisible(false);
 
         Debug.Log($"CameraInteraction: Entered CCTV view (Press {exitKey} to exit, Left-click to lure)");
     }
@@ -172,6 +166,8 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
         if (player.PlayerInput != null)
             player.PlayerInput.enabled = true;
+
+        DropPromptUI.Instance?.SetCameraVisible(false);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;

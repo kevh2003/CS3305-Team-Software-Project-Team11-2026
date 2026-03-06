@@ -5,9 +5,13 @@ using Unity.Netcode;
 
 public class Interactor : NetworkBehaviour
 {
+    private const int MaxProbeHits = 16;
+
     [Header("Raycast Settings")]
     public Transform InteractSource;
-    public float InteractRange = 3f;
+    public float InteractRange = 3.6f;
+    [Tooltip("Adds thickness to the interaction probe so close/low objects are easier to target.")]
+    public float InteractProbeRadius = 0.2f;
 
     public NetworkPlayer Player { get; private set; }
     private Crosshair crosshair;
@@ -20,6 +24,8 @@ public class Interactor : NetworkBehaviour
     private Coroutine holdRoutine;
     private PCInteractable holdingPc;
     private GradesRackInteractable holdingGrades;
+    private readonly RaycastHit[] _sphereHits = new RaycastHit[MaxProbeHits];
+    private readonly RaycastHit[] _rayHits = new RaycastHit[MaxProbeHits];
 
     void Awake()
     {
@@ -48,6 +54,9 @@ public class Interactor : NetworkBehaviour
             if (cam != null) InteractSource = cam.transform;
             else Debug.LogError("Interactor: No camera found");
         }
+
+        // Interact UI should only appear while aiming at a valid target.
+        crosshair?.HideInteractPrompt();
     }
 
     void Update()
@@ -56,7 +65,7 @@ public class Interactor : NetworkBehaviour
 
         CheckForInteractable();
 
-        // If currently holding a PC or Grades interaction, cancel the moment E is released
+        // If currently holding a PC or Grades interaction, cancel if E is released
         if (holdingPc != null || holdingGrades != null)
         {
             bool eHeld = (Keyboard.current != null && Keyboard.current.eKey.isPressed);
@@ -74,7 +83,7 @@ public class Interactor : NetworkBehaviour
 
         Ray ray = new Ray(InteractSource.position, InteractSource.forward);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, InteractRange))
+        if (TryGetValidHit(ray, out RaycastHit hit))
         {
             IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
@@ -88,9 +97,10 @@ public class Interactor : NetworkBehaviour
 
                     currentInteractable = interactable;
 
-                    if (crosshair != null)
-                        crosshair.ShowInteractPrompt();
                 }
+
+                if (crosshair != null)
+                    crosshair.ShowInteractPrompt();
             }
             else
             {
@@ -103,18 +113,76 @@ public class Interactor : NetworkBehaviour
         }
     }
 
+    private bool TryGetValidHit(Ray ray, out RaycastHit hit)
+    {
+        if (TryGetClosestNonSelfHit(ray, useSphereProbe: true, out hit))
+            return true;
+
+        return TryGetClosestNonSelfHit(ray, useSphereProbe: false, out hit);
+    }
+
+    private bool TryGetClosestNonSelfHit(Ray ray, bool useSphereProbe, out RaycastHit closestHit)
+    {
+        closestHit = default;
+
+        int hitCount;
+        RaycastHit[] hits;
+
+        if (useSphereProbe && InteractProbeRadius > 0f)
+        {
+            hitCount = Physics.SphereCastNonAlloc(
+                ray,
+                InteractProbeRadius,
+                _sphereHits,
+                InteractRange,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            hits = _sphereHits;
+        }
+        else
+        {
+            hitCount = Physics.RaycastNonAlloc(
+                ray,
+                _rayHits,
+                InteractRange,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            hits = _rayHits;
+        }
+
+        if (hitCount <= 0) return false;
+
+        bool found = false;
+        float bestDistance = float.MaxValue;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            var candidate = hits[i];
+            var col = candidate.collider;
+            if (col == null) continue;
+
+            if (col.transform.IsChildOf(transform)) continue;
+
+            if (candidate.distance < bestDistance)
+            {
+                bestDistance = candidate.distance;
+                closestHit = candidate;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
     void ClearInteractable()
     {
         if (holdingPc != null || holdingGrades != null)
             CancelHold();
 
-        if (currentInteractable != null)
-        {
-            currentInteractable = null;
+        currentInteractable = null;
 
-            if (crosshair != null)
-                crosshair.HideInteractPrompt();
-        }
+        if (crosshair != null)
+            crosshair.HideInteractPrompt();
     }
 
     public void OnInteract(InputValue value)
@@ -129,9 +197,6 @@ public class Interactor : NetworkBehaviour
             CancelHold();
             return;
         }
-
-        // press:
-        soundFX?.PlayInteractSound();
 
         if (currentInteractable == null) return;
         if (!currentInteractable.CanInteract()) return;
@@ -155,7 +220,10 @@ public class Interactor : NetworkBehaviour
         // Normal interactables (ducks, pickups, doors, etc.)
         bool success = currentInteractable.Interact(this);
         if (success)
+        {
+            soundFX?.PlayInteractSound();
             ClearInteractable();
+        }
     }
 
     private void StartHold(PCInteractable pc)
@@ -175,6 +243,7 @@ public class Interactor : NetworkBehaviour
 
         // show starting prompt immediately
         TrySetInteractPrompt("Submitting... 0% (hold E)");
+        soundFX?.PlayInteractSound();
 
         holdRoutine = StartCoroutine(HoldToSubmitRoutine(pc));
     }
@@ -270,6 +339,7 @@ public class Interactor : NetworkBehaviour
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawRay(InteractSource.position, InteractSource.forward * InteractRange);
+            Gizmos.DrawWireSphere(InteractSource.position + (InteractSource.forward * InteractRange), InteractProbeRadius);
         }
     }
 
@@ -290,6 +360,7 @@ public class Interactor : NetworkBehaviour
 
         // show starting prompt immediately
         TrySetInteractPrompt("Changing grades... 0%");
+        soundFX?.PlayInteractSound();
 
         holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(g));
     }
