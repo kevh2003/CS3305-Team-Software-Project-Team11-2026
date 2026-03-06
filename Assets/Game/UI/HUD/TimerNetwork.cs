@@ -13,7 +13,7 @@ public class TimerNetwork : NetworkBehaviour
     [SerializeField] private string lobbySceneName = "02_Lobby";
 
     [Header("Timer")]
-    [SerializeField] private int matchSeconds = 20 * 60;   // 10 minutes
+    [SerializeField] private int matchSeconds = 20 * 60;   // 20 minutes
     [SerializeField] private float gameOverDelaySeconds = 5f;
 
     public NetworkVariable<int> RemainingSeconds =
@@ -47,7 +47,7 @@ public class TimerNetwork : NetworkBehaviour
             StartMatchTimerServer();
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         if (IsServer && NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
         {
@@ -57,9 +57,11 @@ public class TimerNetwork : NetworkBehaviour
         SceneManager.activeSceneChanged -= OnActiveSceneChanged;
 
         if (Instance == this) Instance = null;
+
+        base.OnDestroy();
     }
 
-    // NGO scene load completion (preferred)
+    // NGO scene load completion
     private void OnLoadEventCompleted(string sceneName, LoadSceneMode mode,
         List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
     {
@@ -71,7 +73,7 @@ public class TimerNetwork : NetworkBehaviour
             StopAndResetServer();
     }
 
-    // Unity fallback (works even if NGO event doesn’t fire)
+    // Unity fallback if NGO doesn't fire
     private void OnActiveSceneChanged(Scene oldScene, Scene newScene)
     {
         if (!IsServer) return;

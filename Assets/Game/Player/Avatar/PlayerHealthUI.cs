@@ -31,6 +31,7 @@ public class PlayerHealthUI : NetworkBehaviour
     private GameObject caughtRoot;
     private Text caughtLabel;
     private static PlayerHealthUI s_local;
+    private string _endMessageOverride;
 
     public override void OnNetworkSpawn()
     {
@@ -49,6 +50,7 @@ public class PlayerHealthUI : NetworkBehaviour
         }
 
         s_local = this;
+        _endMessageOverride = null;
 
         SceneManager.sceneLoaded += OnSceneLoaded;
 
@@ -59,22 +61,25 @@ public class PlayerHealthUI : NetworkBehaviour
         UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
-        if (!IsOwner) return;
-
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-
-        if (health != null)
+        if (IsOwner)
         {
-            health.CurrentHealth.OnValueChanged -= OnHealthChanged;
-            health.IsDead.OnValueChanged -= OnDeadChanged;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
+            if (health != null)
+            {
+                health.CurrentHealth.OnValueChanged -= OnHealthChanged;
+                health.IsDead.OnValueChanged -= OnDeadChanged;
+            }
+
+            if (canvas != null)
+                Destroy(canvas.gameObject);
+
+            if (s_local == this) s_local = null;
         }
 
-        if (canvas != null)
-            Destroy(canvas.gameObject);
-
-        if (s_local == this) s_local = null;
+        base.OnDestroy();
     }
 
     private void OnHealthChanged(int oldValue, int newValue)
@@ -85,17 +90,32 @@ public class PlayerHealthUI : NetworkBehaviour
     private void OnDeadChanged(bool oldValue, bool newValue)
     {
         if (newValue)
-            ShowCaughtMessage(true);
+        {
+            string msg = string.IsNullOrEmpty(_endMessageOverride) ? caughtMessage : _endMessageOverride;
+            ShowDeathMessage(msg);
+        }
         else
-            ShowCaughtMessage(false);
+        {
+            _endMessageOverride = null;
+            HideDeathMessage();
+        }
+
+        // Keep panel/message visibility in sync when death state toggles mid-scene.
+        UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
-    private void ShowCaughtMessage(bool show)
+    private void ShowDeathMessage(string message)
     {
         if (caughtRoot == null) return;
-        caughtRoot.SetActive(show);
-        if (show && caughtLabel != null)
-            caughtLabel.text = caughtMessage;
+        caughtRoot.SetActive(true);
+        if (caughtLabel != null)
+            caughtLabel.text = message;
+    }
+
+    private void HideDeathMessage()
+    {
+        if (caughtRoot == null) return;
+        caughtRoot.SetActive(false);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -112,6 +132,10 @@ public class PlayerHealthUI : NetworkBehaviour
         bool inGame = sceneName == gameSceneName;
         bool isDead = (health != null && health.IsDead.Value);
 
+        // Never carry end-of-round text across scenes/new rounds.
+        if (!inGame || !isDead)
+            _endMessageOverride = null;
+
         // Build once when entering game scene
         if (inGame && canvas == null)
         {
@@ -124,9 +148,13 @@ public class PlayerHealthUI : NetworkBehaviour
         // Health bar should be hidden when dead
         if (panel != null) panel.SetActive(inGame && !isDead);
 
-        // "You got caught" only when dead, only in game
+        // Don't auto-show caught text during scene transitions.
+        // Death messages are driven by OnDeadChanged / ShowGameOver / ShowYouWin.
         if (caughtRoot != null)
-            caughtRoot.SetActive(inGame && isDead);
+        {
+            if (!inGame || !isDead)
+                HideDeathMessage();
+        }
     }
 
     private void UpdateBlocks(int hp)
@@ -142,12 +170,8 @@ public class PlayerHealthUI : NetworkBehaviour
     {
         if (s_local == null) return;
 
-        // Ensure message shows even if "caught" message was already visible
-        if (s_local.caughtLabel != null)
-            s_local.caughtLabel.text = "GAME OVER";
-
-        if (s_local.caughtRoot != null)
-            s_local.caughtRoot.SetActive(true);
+        s_local._endMessageOverride = "GAME OVER";
+        s_local.ShowDeathMessage("GAME OVER");
     }
 
     // You Win message
@@ -156,11 +180,8 @@ public class PlayerHealthUI : NetworkBehaviour
     {
         if (s_local == null) return;
 
-        if (s_local.caughtLabel != null)
-            s_local.caughtLabel.text = "YOU WIN!";
-
-        if (s_local.caughtRoot != null)
-            s_local.caughtRoot.SetActive(true);
+        s_local._endMessageOverride = "YOU WIN!";
+        s_local.ShowDeathMessage("YOU WIN!");
     }
 
     private void BuildUI()

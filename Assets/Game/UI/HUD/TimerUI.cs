@@ -30,13 +30,15 @@ public class TimerUI : NetworkBehaviour
         UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
-        if (!IsOwner) return;
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (IsOwner)
+            SceneManager.sceneLoaded -= OnSceneLoaded;
 
         if (canvas != null)
             Destroy(canvas.gameObject);
+
+        base.OnDestroy();
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

@@ -18,7 +18,6 @@ public class PlayerHealth : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
-    private PlayerSoundFX soundFX;
     public int MaxHealth => maxHealth;
 
     [Header("Death Behaviour")]
@@ -37,9 +36,10 @@ public class PlayerHealth : NetworkBehaviour
 
     private static bool s_gameOverTriggered;
 
-    void Awake()
+    // Round-scoped flag reset by MatchStartResetter when a new match begins.
+    public static void ServerResetGlobalGameOverFlag()
     {
-        soundFX = GetComponent<PlayerSoundFX>();
+        s_gameOverTriggered = false;
     }
 
     public override void OnNetworkSpawn()
@@ -48,9 +48,6 @@ public class PlayerHealth : NetworkBehaviour
         {
             CurrentHealth.Value = maxHealth;
             IsDead.Value = false;
-
-            // reset for a new match when game scene spawns players
-            s_gameOverTriggered = false;
         }
 
         // React to death changes on ALL clients
@@ -110,8 +107,10 @@ public class PlayerHealth : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void TakeDamageServerRpc(int amount)
+    private void TakeDamageServerRpc(int amount, ServerRpcParams rpcParams = default)
     {
+        // Security: only the owning client can request damage on this player object.
+        if (!IsAuthorizedRpcSender(rpcParams.Receive.SenderClientId)) return;
         ApplyDamage(amount);
     }
 
@@ -121,12 +120,10 @@ public class PlayerHealth : NetworkBehaviour
 
         
         CurrentHealth.Value = Mathf.Clamp(CurrentHealth.Value - amount, 0, maxHealth);
-        soundFX.PlayDamageSound();
 
         if (CurrentHealth.Value <= 0)
         {
             IsDead.Value = true;
-            soundFX.PlayDeathSound();
 
             // Drop all inventory items on death
             var inv = GetComponent<PlayerInventory>();
@@ -151,10 +148,18 @@ public class PlayerHealth : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void ResetHealthServerRpc()
+    public void ResetHealthServerRpc(ServerRpcParams rpcParams = default)
     {
+        // Security: prevent clients from resetting other players.
+        if (!IsAuthorizedRpcSender(rpcParams.Receive.SenderClientId)) return;
         CurrentHealth.Value = maxHealth;
         IsDead.Value = false;
+    }
+
+    private bool IsAuthorizedRpcSender(ulong senderId)
+    {
+        if (senderId == OwnerClientId) return true;
+        return senderId == NetworkManager.ServerClientId;
     }
 
     private void TryTriggerGameOverServer()
@@ -163,7 +168,7 @@ public class PlayerHealth : NetworkBehaviour
         if (s_gameOverTriggered) return;
 
         // Find all PlayerHealth in the scene (includes inactive)
-        var all = FindObjectsOfType<PlayerHealth>(true);
+        var all = FindObjectsByType<PlayerHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (all == null || all.Length == 0) return;
 
         // If any spawned player is still alive, don't trigger
@@ -182,8 +187,9 @@ public class PlayerHealth : NetworkBehaviour
 
     public void KillPlayer()
     {
-        CurrentHealth.Value = 0;
-        IsDead.Value = true;
+        // Route through the normal damage path so death side-effects stay consistent.
+        if (IsServer) ApplyDamage(maxHealth);
+        else TakeDamageServerRpc(maxHealth);
     }
 
     private System.Collections.IEnumerator ReturnToLobbyAfterDelay()
