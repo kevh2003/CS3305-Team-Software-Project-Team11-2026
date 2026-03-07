@@ -55,17 +55,20 @@ public class PlayerStaminaUI : NetworkBehaviour
         UpdateVisibility(SceneManager.GetActiveScene().name);
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
-        if (!IsOwner) return;
+        if (IsOwner)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
 
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (health != null)
+                health.IsDead.OnValueChanged -= OnDeadChanged;
 
-        if (health != null)
-            health.IsDead.OnValueChanged -= OnDeadChanged;
+            if (canvas != null)
+                Destroy(canvas.gameObject);
+        }
 
-        if (canvas != null)
-            Destroy(canvas.gameObject);
+        base.OnDestroy();
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

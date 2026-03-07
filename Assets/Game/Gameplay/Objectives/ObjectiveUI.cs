@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Unity.Netcode; // for NetworkVariable<T>.OnValueChangedDelegate
+using Unity.Netcode;
 
 public class ObjectiveUI : MonoBehaviour
 {
@@ -16,6 +16,10 @@ public class ObjectiveUI : MonoBehaviour
     [SerializeField] private TMP_Text assignmentLabel;
     [SerializeField] private TMP_Text assignmentCountText;
     [SerializeField] private GameObject assignmentObjectiveRoot;
+
+    [Header("Assignment Count Layout")]
+    [SerializeField] private bool assignmentCountAlignLeft = true;
+    [SerializeField] private float assignmentCountPreferredWidth = 38f;
 
     [Header("Key Objective")]
     [SerializeField] private Toggle keyToggle;
@@ -52,7 +56,6 @@ public class ObjectiveUI : MonoBehaviour
     private ObjectiveState state;
     private SecurityRoomController security;
 
-    // We MUST store these, otherwise we cannot unsubscribe safely.
     private NetworkVariable<int>.OnValueChangedDelegate _onIntChanged;
     private NetworkVariable<bool>.OnValueChangedDelegate _onBoolChanged;
 
@@ -77,6 +80,8 @@ public class ObjectiveUI : MonoBehaviour
         if (timerLabel) timerLabel.text = "Press the yellow button";
         if (elevatorLabel) elevatorLabel.text = "Open the elevator doors";
         if (gradesLabel) gradesLabel.text = "Change your grades";
+
+        ConfigureAssignmentCountLayout();
     }
 
     private void Start()
@@ -220,6 +225,9 @@ public class ObjectiveUI : MonoBehaviour
         }
 
         SetActiveSafe(assignmentObjectiveRoot, !complete);
+
+        if (assignmentObjectiveRoot != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(assignmentObjectiveRoot.GetComponent<RectTransform>());
     }
 
     // -------------------------
@@ -350,5 +358,20 @@ public class ObjectiveUI : MonoBehaviour
     {
         if (go != null && go.activeSelf != active)
             go.SetActive(active);
+    }
+
+    private void ConfigureAssignmentCountLayout()
+    {
+        if (assignmentCountText == null) return;
+
+        if (assignmentCountAlignLeft)
+            assignmentCountText.horizontalAlignment = HorizontalAlignmentOptions.Left;
+
+        if (assignmentCountPreferredWidth > 0f)
+        {
+            var le = assignmentCountText.GetComponent<LayoutElement>();
+            if (le != null)
+                le.preferredWidth = assignmentCountPreferredWidth;
+        }
     }
 }

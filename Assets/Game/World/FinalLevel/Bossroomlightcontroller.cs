@@ -19,6 +19,9 @@ using UnityEngine;
 /// </summary>
 public class BossRoomLightController : MonoBehaviour
 {
+    private static readonly Color ForcedRoomIdleColour = new Color(0.05f, 0.12f, 0.28f);
+    private static readonly Color ForcedEyeIdleColour  = new Color(0.30f, 0.55f, 1f);
+
     [Header("Room Lights")]
     [Tooltip("All ceiling / ambient Light components in the boss room.")]
     [SerializeField] private Light[] roomLights;
@@ -28,20 +31,20 @@ public class BossRoomLightController : MonoBehaviour
     [SerializeField] private Light[] eyeLights;
 
     [Header("Room Colours")]
-    [SerializeField] private Color roomIdleColour    = new Color(1f, 0.95f, 0.84f);
+    [SerializeField] private Color roomIdleColour    = new Color(0.05f, 0.12f, 0.28f);
     [SerializeField] private Color roomGreenColour   = new Color(0.2f, 1f, 0.2f);
     [SerializeField] private Color roomTurningColour = new Color(1f, 0.6f, 0f);
     [SerializeField] private Color roomRedColour     = new Color(1f, 0.1f, 0.1f);
 
     [Header("Eye Colours")]
     [Tooltip("Eyes use a brighter tint so they glow distinctly against the room.")]
-    [SerializeField] private Color eyeIdleColour    = new Color(1f, 0.95f, 0.84f);
+    [SerializeField] private Color eyeIdleColour    = new Color(0.30f, 0.55f, 1f);
     [SerializeField] private Color eyeGreenColour   = new Color(0f, 1f, 0f);
     [SerializeField] private Color eyeTurningColour = new Color(1f, 0.5f, 0f);
     [SerializeField] private Color eyeRedColour     = Color.red;
 
     [Header("Room Intensities")]
-    [SerializeField] private float roomIdleIntensity    = 1f;
+    [SerializeField] private float roomIdleIntensity    = 0.6f;
     [SerializeField] private float roomGreenIntensity   = 1.4f;
     [SerializeField] private float roomTurningIntensity = 1.2f;
     [SerializeField] private float roomRedIntensity     = 1.6f;
@@ -75,6 +78,9 @@ public class BossRoomLightController : MonoBehaviour
 
     private void Awake()
     {
+        roomIdleColour        = ForcedRoomIdleColour;
+        eyeIdleColour         = ForcedEyeIdleColour;
+
         _roomTargetColour     = roomIdleColour;
         _roomTargetIntensity  = roomIdleIntensity;
         _eyeTargetColour      = eyeIdleColour;

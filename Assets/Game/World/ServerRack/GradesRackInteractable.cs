@@ -11,8 +11,21 @@ public class GradesRackInteractable : NetworkBehaviour, IInteractable
     [Header("Win Flow")]
     [SerializeField] private string lobbySceneName = "02_Lobby";
     [SerializeField] private float winDelaySeconds = 3f;
+    [SerializeField] private float serverInteractRange = 6f;
 
     private static bool s_winTriggered;
+    private Collider[] _interactionColliders;
+
+    private void Awake()
+    {
+        _interactionColliders = GetComponentsInChildren<Collider>(true);
+    }
+
+    // Round-scoped flag reset by MatchStartResetter when a new match begins.
+    public static void ServerResetGlobalWinFlag()
+    {
+        s_winTriggered = false;
+    }
 
     public bool CanInteract()
     {
@@ -27,7 +40,17 @@ public class GradesRackInteractable : NetworkBehaviour, IInteractable
     [ServerRpc(RequireOwnership = false)]
     public void ChangeGradesServerRpc(ServerRpcParams rpcParams = default)
     {
-        if (ObjectiveState.Instance == null) return;
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!IsSenderInRange(senderId))
+        {
+            Debug.LogWarning($"[GradesRackInteractable] Reject grade change from {senderId}: out of range.");
+            return;
+        }
+        if (ObjectiveState.Instance == null)
+        {
+            Debug.LogWarning("[GradesRackInteractable] ObjectiveState missing, cannot change grades.");
+            return;
+        }
         if (ObjectiveState.Instance.GradesChanged.Value) return;
 
         ObjectiveState.Instance.GradesChanged.Value = true;
@@ -65,5 +88,35 @@ public class GradesRackInteractable : NetworkBehaviour, IInteractable
     private void ShowYouWinClientRpc()
     {
         PlayerHealthUI.ShowYouWin();
+    }
+
+    private bool IsSenderInRange(ulong senderId)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return false;
+        if (!nm.ConnectedClients.TryGetValue(senderId, out var client)) return false;
+        if (client.PlayerObject == null) return false;
+
+        Vector3 playerPos = client.PlayerObject.transform.position;
+        float maxSqr = serverInteractRange * serverInteractRange;
+        float bestSqr = float.PositiveInfinity;
+
+        if (_interactionColliders != null)
+        {
+            for (int i = 0; i < _interactionColliders.Length; i++)
+            {
+                var col = _interactionColliders[i];
+                if (col == null) continue;
+
+                Vector3 closest = col.ClosestPoint(playerPos);
+                float sqr = (closest - playerPos).sqrMagnitude;
+                if (sqr < bestSqr) bestSqr = sqr;
+            }
+        }
+
+        if (bestSqr < float.PositiveInfinity)
+            return bestSqr <= maxSqr;
+
+        return (transform.position - playerPos).sqrMagnitude <= maxSqr;
     }
 }

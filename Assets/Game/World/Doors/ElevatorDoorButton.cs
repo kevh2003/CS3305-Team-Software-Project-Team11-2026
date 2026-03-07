@@ -4,6 +4,7 @@ using UnityEngine;
 public class ElevatorDoorButton : NetworkBehaviour, IInteractable
 {
     [SerializeField] private ElevatorDoorController door;
+    [SerializeField] private float serverInteractRange = 4f;
 
     public bool CanInteract() => true;
 
@@ -18,6 +19,9 @@ public class ElevatorDoorButton : NetworkBehaviour, IInteractable
     [ServerRpc(RequireOwnership = false)]
     private void PressServerRpc(ServerRpcParams rpcParams = default)
     {
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!IsSenderInRange(senderId)) return;
+
         if (door == null)
         {
             Debug.LogError($"{name}: ElevatorDoorButton missing Door reference.");
@@ -25,5 +29,15 @@ public class ElevatorDoorButton : NetworkBehaviour, IInteractable
         }
 
         door.ServerOpenPermanently();
+    }
+
+    private bool IsSenderInRange(ulong senderId)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return false;
+        if (!nm.ConnectedClients.TryGetValue(senderId, out var client)) return false;
+        if (client.PlayerObject == null) return false;
+
+        return Vector3.Distance(client.PlayerObject.transform.position, transform.position) <= serverInteractRange;
     }
 }

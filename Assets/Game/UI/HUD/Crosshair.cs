@@ -10,6 +10,7 @@ public class Crosshair : NetworkBehaviour
     private Text interactText;
     private const string DefaultPromptText = "Press E";
     private bool promptOverridden = false;
+    private bool showInteractUi = false;
 
     private Coroutine createRoutine;
 
@@ -155,8 +156,14 @@ public class Crosshair : NetworkBehaviour
         CleanupBrokenReferences();
 
         if (health != null && health.IsDead.Value) return;
+        if (SceneManager.GetActiveScene().name != "03_Game") return;
 
-        if (interactText != null && SceneManager.GetActiveScene().name == "03_Game")
+        showInteractUi = true;
+
+        if (crosshairObject != null)
+            crosshairObject.SetActive(true);
+
+        if (interactText != null)
         {
             // If no custom prompt set, force the default
             if (!promptOverridden)
@@ -169,6 +176,7 @@ public class Crosshair : NetworkBehaviour
     public void HideInteractPrompt()
     {
         CleanupBrokenReferences();
+        showInteractUi = false;
 
         if (interactText != null)
         {
@@ -178,6 +186,9 @@ public class Crosshair : NetworkBehaviour
             promptOverridden = false;
             interactText.text = DefaultPromptText;
         }
+
+        if (crosshairObject != null)
+            crosshairObject.SetActive(false);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -191,17 +202,20 @@ public class Crosshair : NetworkBehaviour
         bool inGame = (sceneName == "03_Game");
         bool isDead = (health != null && health.IsDead.Value);
 
-        bool showCrosshair = inGame && !isDead;
+        if (!inGame || isDead)
+            showInteractUi = false;
+
+        bool canShowInteractUi = inGame && !isDead && showInteractUi;
 
         CleanupBrokenReferences();
 
         if (crosshairObject != null)
-            crosshairObject.SetActive(showCrosshair);
+            crosshairObject.SetActive(canShowInteractUi);
 
         if (interactText != null)
         {
-            interactText.gameObject.SetActive(showCrosshair);
-            if (!showCrosshair) interactText.enabled = false;
+            interactText.gameObject.SetActive(inGame && !isDead);
+            if (!canShowInteractUi) interactText.enabled = false;
         }
     }
 
@@ -260,12 +274,14 @@ public class Crosshair : NetworkBehaviour
         }
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
 
         if (health != null)
             health.IsDead.OnValueChanged -= OnDeadChanged;
+
+        base.OnDestroy();
     }
 
     public void SetPromptText(string t)

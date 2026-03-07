@@ -13,6 +13,10 @@ public sealed class MatchStartResetter : NetworkBehaviour
         base.OnNetworkSpawn();
         if (!IsServer) return;
 
+        // Reset round-scoped global gates as soon as resetter comes online.
+        PlayerHealth.ServerResetGlobalGameOverFlag();
+        GradesRackInteractable.ServerResetGlobalWinFlag();
+
         // After scene load, place everyone once.
         StartCoroutine(ResetPlayersNextFrame());
 
@@ -104,6 +108,19 @@ public sealed class MatchStartResetter : NetworkBehaviour
             if (inv != null)
                 inv.DropAllItemsOnDeathServer();
         }
+        else
+        {
+            // Fallback: the client might already be removed from ConnectedClients
+            // by the time this callback fires; scan live inventories by owner id.
+            var allInventories = FindObjectsByType<PlayerInventory>(FindObjectsSortMode.None);
+            foreach (var inv in allInventories)
+            {
+                if (inv == null || !inv.IsSpawned) continue;
+                if (inv.OwnerClientId != clientId) continue;
+                inv.DropAllItemsOnDeathServer();
+                break;
+            }
+        }
 
         // treat disconnect like "dead" for objective + security puzzle requirements (if round active)
         if (ObjectiveState.Instance != null && ObjectiveState.Instance.MatchRosterLocked.Value)
@@ -129,12 +146,16 @@ public sealed class MatchStartResetter : NetworkBehaviour
         foreach (var p in puzzles)
             p.ServerResetForNewRound();
 
-        SetupObjectivesForScene();
+        StartCoroutine(SetupObjectivesWhenReady());
     }
 
     private void SetupObjectivesForScene()
     {
         if (!IsServer) return;
+
+        // Reset round-scoped static gates so game-over/win can trigger every round.
+        PlayerHealth.ServerResetGlobalGameOverFlag();
+        GradesRackInteractable.ServerResetGlobalWinFlag();
 
         var obj = ObjectiveState.Instance;
         if (obj == null)
@@ -166,9 +187,25 @@ public sealed class MatchStartResetter : NetworkBehaviour
         }
     }
 
+    private IEnumerator SetupObjectivesWhenReady()
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            if (ObjectiveState.Instance != null)
+            {
+                SetupObjectivesForScene();
+                yield break;
+            }
+            yield return null;
+        }
+
+        // Final attempt (keeps existing warning if still missing).
+        SetupObjectivesForScene();
+    }
+
     private IEnumerator ResetSinglePlayerNextFrame(ulong clientId)
     {
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 60; i++)
         {
             if (TryGetPlayer(clientId, out var player))
             {

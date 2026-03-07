@@ -12,7 +12,8 @@ using UnityEngine;
 /// 2. Assign BossRoomLightController in the inspector.
 /// 3. Place a BossRoomActivationTrigger in the boss room doorway and assign
 ///    this boss as its target. Nothing starts until players enter the room.
-/// 4. Optionally place a RedLightFinishLine at the end of the room.
+/// 4. Assign an optional containment collider. Only players inside it can be
+///    eliminated during Red Light.
 /// </summary>
 public class RedLightGreenLightBoss : NetworkBehaviour
 {
@@ -40,9 +41,12 @@ public class RedLightGreenLightBoss : NetworkBehaviour
 
     [Header("References")]
     [SerializeField] private BossRoomLightController lightController;
+    [Tooltip("Only players inside this collider can be eliminated during Red Light. " +
+             "If unassigned, all players are considered in-bounds.")]
+    [SerializeField] private Collider redLightContainmentCollider;
 
     [Header("Phase Durations")]
-    [SerializeField] private float countdownDuration = 3f;
+    [SerializeField] private float countdownDuration = 0.25f;
     [SerializeField] private float minGreenDuration  = 3f;
     [SerializeField] private float maxGreenDuration  = 6f;
     [SerializeField] private float turningDuration   = 1.2f;
@@ -53,6 +57,8 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     [SerializeField] private float movementThreshold   = 0.18f;
     [Tooltip("Seconds after Red Light begins before checks start. Covers network latency.")]
     [SerializeField] private float redLightGracePeriod = 0.15f;
+    [Tooltip("How long movement must remain above threshold before elimination.")]
+    [SerializeField] private float redLightViolationSeconds = 0.2f;
 
     [Header("Audio")]
     [SerializeField] private AudioClip greenLightClip;
@@ -67,6 +73,9 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     private float _graceTimer;
     private bool  _graceOver;
     private readonly Dictionary<ulong, Vector3> _snapshots = new();
+    private readonly Dictionary<ulong, float> _violationTimers = new();
+    private readonly List<ulong> _pendingEliminations = new();
+    private readonly List<ulong> _staleTrackedIds = new();
 
     // ── Private — all clients ────────────────────────────────────────────────
 
@@ -87,7 +96,18 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         Phase.OnValueChanged += OnPhaseChanged;
-        ApplyLightsClientRpc(Phase.Value);
+
+        if (IsServer)
+        {
+            _snapshots.Clear();
+            _violationTimers.Clear();
+            Phase.Value = BossPhase.Idle;
+            ApplyLightsClientRpc(Phase.Value);
+        }
+        else
+        {
+            ApplyLightsLocal(Phase.Value);
+        }
     }
 
     public override void OnNetworkDespawn()
@@ -140,8 +160,8 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     {
         if (!IsServer) return;
         if (Phase.Value != BossPhase.Idle) return;
-        Debug.Log("[RLGL Boss] Room activated — starting countdown.");
-        ServerSetPhase(BossPhase.Countdown);
+        Debug.Log("[RLGL Boss] Room activated — starting immediately.");
+        ServerSetPhase(BossPhase.GreenLight);
     }
 
     /// <summary>Call (server only) when a player crosses the finish line.</summary>
@@ -156,6 +176,12 @@ public class RedLightGreenLightBoss : NetworkBehaviour
 
     private void ServerSetPhase(BossPhase next)
     {
+        if (next != BossPhase.RedLight)
+        {
+            _snapshots.Clear();
+            _violationTimers.Clear();
+        }
+
         switch (next)
         {
             case BossPhase.Countdown:
@@ -187,6 +213,7 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     private void ServerTakeSnapshots()
     {
         _snapshots.Clear();
+        _violationTimers.Clear();
 
         foreach (var client in NetworkManager.ConnectedClientsList)
         {
@@ -195,33 +222,123 @@ public class RedLightGreenLightBoss : NetworkBehaviour
 
             var health = obj.GetComponent<PlayerHealth>();
             if (health != null && health.IsDead.Value) continue;
+            if (!IsInsideRedLightContainment(obj.transform.position)) continue;
 
-            _snapshots[client.ClientId] = obj.transform.position;
+            var p = obj.transform.position;
+            p.y = 0f; // ignore tiny vertical jitter from network/controller
+            _snapshots[client.ClientId] = p;
+            _violationTimers[client.ClientId] = 0f;
         }
     }
 
     private void ServerCheckMovement()
     {
-        var copy = new Dictionary<ulong, Vector3>(_snapshots);
+        _pendingEliminations.Clear();
+        _staleTrackedIds.Clear();
 
-        foreach (var kvp in copy)
+        // Track/validate all connected players currently inside containment.
+        foreach (var clientData in NetworkManager.ConnectedClientsList)
         {
-            if (!NetworkManager.ConnectedClients.TryGetValue(kvp.Key, out var clientData)) continue;
+            ulong clientId = clientData.ClientId;
 
             var obj = clientData.PlayerObject;
-            if (obj == null) continue;
+            if (obj == null)
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
 
             var health = obj.GetComponent<PlayerHealth>();
-            if (health != null && health.IsDead.Value) continue;
+            if (health != null && health.IsDead.Value)
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
 
-            if (Vector3.Distance(obj.transform.position, kvp.Value) > movementThreshold)
-                ServerEliminatePlayer(kvp.Key, obj);
+            if (!IsInsideRedLightContainment(obj.transform.position))
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
+
+            var current = obj.transform.position;
+            current.y = 0f;
+
+            if (!_snapshots.ContainsKey(clientId))
+            {
+                _snapshots[clientId] = current;
+                _violationTimers[clientId] = 0f;
+                continue;
+            }
+
+            float moved = Vector3.Distance(current, _snapshots[clientId]);
+            if (moved > movementThreshold)
+            {
+                if (!_violationTimers.ContainsKey(clientId))
+                    _violationTimers[clientId] = 0f;
+
+                _violationTimers[clientId] += Time.deltaTime;
+                if (_violationTimers[clientId] >= redLightViolationSeconds)
+                    _pendingEliminations.Add(clientId);
+            }
+            else
+            {
+                _violationTimers[clientId] = 0f;
+            }
+        }
+
+        // Remove tracked IDs that no longer exist in ConnectedClients.
+        foreach (var kvp in _snapshots)
+        {
+            if (!NetworkManager.ConnectedClients.ContainsKey(kvp.Key))
+                _staleTrackedIds.Add(kvp.Key);
+        }
+
+        for (int i = 0; i < _staleTrackedIds.Count; i++)
+        {
+            ulong staleId = _staleTrackedIds[i];
+            _snapshots.Remove(staleId);
+            _violationTimers.Remove(staleId);
+        }
+
+        for (int i = 0; i < _pendingEliminations.Count; i++)
+        {
+            ulong clientId = _pendingEliminations[i];
+
+            if (!NetworkManager.ConnectedClients.TryGetValue(clientId, out var clientData))
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
+
+            var obj = clientData.PlayerObject;
+            if (obj == null)
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
+
+            var health = obj.GetComponent<PlayerHealth>();
+            if (health != null && health.IsDead.Value)
+            {
+                _snapshots.Remove(clientId);
+                _violationTimers.Remove(clientId);
+                continue;
+            }
+
+            ServerEliminatePlayer(clientId, obj);
         }
     }
 
     private void ServerEliminatePlayer(ulong clientId, NetworkObject playerObj)
     {
         _snapshots.Remove(clientId);
+        _violationTimers.Remove(clientId);
 
         var health = playerObj.GetComponent<PlayerHealth>();
         if (health != null)
@@ -256,6 +373,11 @@ public class RedLightGreenLightBoss : NetworkBehaviour
 
     [ClientRpc]
     private void ApplyLightsClientRpc(BossPhase phase)
+    {
+        ApplyLightsLocal(phase);
+    }
+
+    private void ApplyLightsLocal(BossPhase phase)
     {
         switch (phase)
         {
@@ -302,6 +424,15 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     {
         Debug.Log("[RLGL] You moved on Red Light — eliminated!");
         // Hook your UI here: PlayerHealthUI.ShowEliminated();
+    }
+
+    private bool IsInsideRedLightContainment(Vector3 worldPosition)
+    {
+        if (redLightContainmentCollider == null)
+            return true;
+
+        Vector3 closest = redLightContainmentCollider.ClosestPoint(worldPosition);
+        return (closest - worldPosition).sqrMagnitude <= 0.0001f;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

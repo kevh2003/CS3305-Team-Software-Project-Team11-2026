@@ -5,6 +5,7 @@ public class PlayerSoundFX : NetworkBehaviour
 {
 
     private bool isDead = false;
+    private bool deathSfxPlayedThisLife = false;
 
     [Header("Interact")]
     public AudioClip interactClip;  //https://opengameart.org/content/click
@@ -25,13 +26,13 @@ public class PlayerSoundFX : NetworkBehaviour
     [Header("Sources")]
     private AudioSource actionSource;   //Player actions
     private AudioSource bodySource;     //Player damage, death, etc.
+    private PlayerHealth health;
 
     private void Awake()
     {
-
+        health = GetComponent<PlayerHealth>();
         actionSource = CreateAudioSource("ActionSource", false);
         bodySource = CreateAudioSource("BodySource", false);
-
     }
 
     public override void OnNetworkSpawn()
@@ -40,7 +41,46 @@ public class PlayerSoundFX : NetworkBehaviour
         {
             actionSource.enabled = false;
             bodySource.enabled = false;
+            return;
         }
+
+        if (health != null)
+        {
+            isDead = health.IsDead.Value;
+            deathSfxPlayedThisLife = isDead;
+            health.CurrentHealth.OnValueChanged += OnHealthChanged;
+            health.IsDead.OnValueChanged += OnDeadChanged;
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (health != null)
+        {
+            health.CurrentHealth.OnValueChanged -= OnHealthChanged;
+            health.IsDead.OnValueChanged -= OnDeadChanged;
+        }
+    }
+
+    private void OnHealthChanged(int oldValue, int newValue)
+    {
+        // Owner-local feedback for both host and client-owned players.
+        if (newValue < oldValue)
+            PlayDamageSound();
+    }
+
+    private void OnDeadChanged(bool oldValue, bool newValue)
+    {
+        isDead = newValue;
+
+        if (!newValue)
+        {
+            deathSfxPlayedThisLife = false;
+            return;
+        }
+
+        if (!oldValue)
+            PlayDeathSound();
     }
 
     // Plays when player presses Interact button
@@ -61,11 +101,10 @@ public class PlayerSoundFX : NetworkBehaviour
     // Plays after death
     public void PlayDeathSound()
     {   
-        if (!IsOwner || isDead) return;
-
-        isDead = true;
-
+        if (!IsOwner || deathSfxPlayedThisLife) return;
+        if (bodySource == null || deathClip == null) return;
         bodySource.PlayOneShot(deathClip, deathVolume);
+        deathSfxPlayedThisLife = true;
     }
 
     // Plays after player falls vertically and hits the ground

@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ObjectiveState : NetworkBehaviour
 {
@@ -87,6 +88,10 @@ public class ObjectiveState : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    [Header("CCTV Lure")]
+    [SerializeField] private LayerMask lureEnemyMask = ~0;
+    [SerializeField] private float maxLureRadius = 30f;
+
     // MUST be initialized at declaration for Netcode
     private NetworkList<ulong> requiredSubmitters = new();
     private NetworkList<ulong> submitted = new();
@@ -129,8 +134,19 @@ public class ObjectiveState : NetworkBehaviour
 
     // Keeping rpc version for now - kev
     [ServerRpc(RequireOwnership = false)]
-    public void RegisterDuckServerRpc()
+    public void RegisterDuckServerRpc(ServerRpcParams rpcParams = default)
     {
+        if (!IsServer) return;
+        if (!MatchRosterLocked.Value) return;
+        if (NetworkManager.Singleton == null) return;
+
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderId, out var sender)) return;
+        if (sender.PlayerObject == null) return;
+
+        var ph = sender.PlayerObject.GetComponent<PlayerHealth>();
+        if (ph != null && ph.IsDead.Value) return;
+
         ServerRegisterDuck();
     }
 
@@ -231,6 +247,44 @@ public class ObjectiveState : NetworkBehaviour
         SecurityDoorUnlocked.Value = false;
         ElevatorOpened.Value = false;
         GradesChanged.Value = false;
+    }
+
+    public void ServerLureEnemiesAtPoint(Vector3 point, float radius)
+    {
+        if (!IsServer) return;
+
+        float safeRadius = Mathf.Clamp(radius, 0.5f, maxLureRadius);
+        Collider[] hits = Physics.OverlapSphere(point, safeRadius, lureEnemyMask, QueryTriggerInteraction.Ignore);
+        var seen = new HashSet<EnemyAI>();
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            var c = hits[i];
+            if (c == null) continue;
+
+            var enemy = c.GetComponentInParent<EnemyAI>();
+            if (enemy == null) continue;
+            if (!seen.Add(enemy)) continue;
+
+            enemy.Lure(point);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void RequestLureEnemiesServerRpc(Vector3 point, float radius, ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        if (!MatchRosterLocked.Value) return; // only allow lure requests during active rounds
+
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (NetworkManager.Singleton == null) return;
+        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderId, out var sender)) return;
+        if (sender.PlayerObject == null) return;
+
+        var ph = sender.PlayerObject.GetComponent<PlayerHealth>();
+        if (ph != null && ph.IsDead.Value) return;
+
+        ServerLureEnemiesAtPoint(point, radius);
     }
 
     // --- Post-key setters (server authoritative) ---
