@@ -366,8 +366,8 @@ public class PlayerInventory : NetworkBehaviour
         // record on server
         itemIds[slot] = itemId;
 
-        // despawn the world object for everyone
-        itemNo.Despawn(false);
+        // Remove the picked world object fully to avoid stale hidden instances lingering in-scene.
+        itemNo.Despawn(true);
 
         // If this item is the key, mark it collected for everyone
         // NOTE: ensure this matches key itemId (door uses requiredKeyItemId = 1 by default) -kev
@@ -449,9 +449,7 @@ public class PlayerInventory : NetworkBehaviour
             return;
         }
 
-        Vector3 dropPos = (dropPosition != null)
-            ? dropPosition.position
-            : (transform.position + transform.forward * 1.5f + Vector3.up * 0.5f);
+        Vector3 dropPos = GetServerDropPosition();
 
         GameObject worldItem = Instantiate(def.worldPrefab, dropPos, Quaternion.identity);
 
@@ -464,7 +462,8 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         EnsureWorldPhysics(worldItem);
-        no.Spawn();
+        // World drops are round-scoped; destroy on scene unload (don't persist into lobby/new match).
+        no.Spawn(true);
 
         // clear server slot
         itemIds[slot] = EMPTY;
@@ -521,6 +520,19 @@ public class PlayerInventory : NetworkBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
+    private Vector3 GetServerDropPosition()
+    {
+        Vector3 flatForward = transform.forward;
+        flatForward.y = 0f;
+
+        if (flatForward.sqrMagnitude < 0.0001f)
+            flatForward = Vector3.forward;
+        else
+            flatForward.Normalize();
+
+        return transform.position + flatForward * 1.5f + Vector3.up * 0.5f;
+    }
+
     // Drop all items on death logic (SERVER ONLY) - Called by PlayerHealth when a player dies - kev
     public void DropAllItemsOnDeathServer()
     {
@@ -568,9 +580,7 @@ public class PlayerInventory : NetworkBehaviour
             return;
         }
 
-        Vector3 dropPos = (dropPosition != null)
-            ? dropPosition.position
-            : (transform.position + transform.forward * 1.5f + Vector3.up * 0.5f);
+        Vector3 dropPos = GetServerDropPosition();
 
         GameObject worldItem = Instantiate(def.worldPrefab, dropPos, Quaternion.identity);
 
@@ -583,7 +593,8 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         EnsureWorldPhysics(worldItem);
-        no.Spawn();
+        // World drops are round-scoped; destroy on scene unload (don't persist into lobby/new match).
+        no.Spawn(true);
 
         // Clear server slot
         itemIds[slot] = EMPTY;
