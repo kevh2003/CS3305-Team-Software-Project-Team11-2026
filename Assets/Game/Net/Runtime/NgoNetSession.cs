@@ -94,6 +94,8 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
 
         if (transport == null || networkManager == null)
             return NetStartResult.NotInitialized;
+        if (networkManager.ShutdownInProgress)
+            return NetStartResult.TransportError;
 
         // If already running, cleanly stop first
         if (networkManager.IsListening || networkManager.IsClient || networkManager.IsServer)
@@ -125,6 +127,7 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
     {
         if (transport == null || networkManager == null) return NetStartResult.NotInitialized;
         if (string.IsNullOrWhiteSpace(address)) return NetStartResult.InvalidInput;
+        if (networkManager.ShutdownInProgress) return NetStartResult.TransportError;
 
         transport.SetConnectionData(address, port);
         return networkManager.StartClient() ? NetStartResult.Success : NetStartResult.TransportError;
