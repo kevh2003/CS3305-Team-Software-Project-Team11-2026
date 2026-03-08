@@ -120,7 +120,7 @@ public sealed class LobbyAvatarSelectorUI : MonoBehaviour
         }
 
         if (readyButtonText != null)
-            readyButtonText.text = hasPlayer && player.IsReadyInLobby ? "Not Ready" : "Ready";
+            readyButtonText.text = hasPlayer && player.IsReadyInLobby ? "UnReady" : "Ready";
 
         if (readyStateText != null)
             readyStateText.text = hasPlayer && player.IsReadyInLobby ? "READY" : "NOT READY";
