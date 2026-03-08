@@ -10,7 +10,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 {
     [Header("Tuning")]
     [SerializeField] private float moveSpeed = 4f;
-    [SerializeField] private float lookSensitivity = 0.12f;
+    [SerializeField] public float lookSensitivity = 0.12f; // changed to public for the wifi minigame
     [SerializeField] private float lookPitchSyncInterval = 0.033f;
 
     [Header("Refs")]
