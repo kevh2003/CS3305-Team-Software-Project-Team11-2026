@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 3
   tags:
   - Wifi Ball
+  - Wifi Top
+  - Wifi Middle
+  - Wifi Bottom
   layers:
   - Default
   - TransparentFX
