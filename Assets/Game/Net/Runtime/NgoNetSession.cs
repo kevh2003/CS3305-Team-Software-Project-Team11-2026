@@ -68,10 +68,7 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
         }
     }
 
-    // NOTE: HostLan method is currently only useful for debugging, particularly regarding port number issues.
-    // It does not actively get used by the current build.
-    // Instead, the HostLanAutoPort method is used, as it automatically finds a port for the host to use.
-    // I will likely remove the HostLan method in future - kev
+    // Internal host helper used by HostLanAutoPort.
     private NetStartResult HostLan(ushort port)
     {
         if (transport == null || networkManager == null) return NetStartResult.NotInitialized;
@@ -135,14 +132,14 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
 
     public async Task<(NetStartResult result, string joinCode)> HostOnlineAsync(int maxPlayers)
     {
-        // PLACEHOLDER Relay implementation will be added later ***** - kev
+        // Relay integration is not wired in this branch.
         await Task.CompletedTask;
         return (NetStartResult.ServicesUnavailable, string.Empty);
     }
 
     public async Task<NetStartResult> JoinOnlineAsync(string joinCode)
     {
-        // PLACEHOLDER Relay implementation will be added later ***** - kev
+        // Relay integration is not wired in this branch.
         await Task.CompletedTask;
         return NetStartResult.ServicesUnavailable;
     }

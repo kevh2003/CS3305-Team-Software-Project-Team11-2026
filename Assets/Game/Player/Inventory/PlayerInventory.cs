@@ -3,7 +3,6 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
 using System.Collections.Generic;
-using System.Linq;
 using System.Collections;
 
 public class PlayerInventory : NetworkBehaviour
@@ -230,7 +229,7 @@ public class PlayerInventory : NetworkBehaviour
             {
                 var hp = transform.Find("HandPosition");
                 if (hp == null)
-                    hp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "HandPosition");
+                    hp = FindChildTransformByName("HandPosition");
                 handPosition = hp;
             }
 
@@ -238,7 +237,7 @@ public class PlayerInventory : NetworkBehaviour
             {
                 var dp = transform.Find("DropPosition");
                 if (dp == null)
-                    dp = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "DropPosition");
+                    dp = FindChildTransformByName("DropPosition");
                 dropPosition = dp;
             }
 
@@ -522,6 +521,8 @@ public class PlayerInventory : NetworkBehaviour
 
     private Vector3 GetServerDropPosition()
     {
+        // Server copies for remote players do not own camera/drop anchors reliably.
+        // Build a deterministic drop point from authoritative player transform instead.
         Vector3 flatForward = transform.forward;
         flatForward.y = 0f;
 
@@ -769,7 +770,7 @@ public class PlayerInventory : NetworkBehaviour
                 return _remoteTorchAnchor;
             }
 
-            var cameraByName = GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "MainCamera");
+            var cameraByName = FindChildTransformByName("MainCamera");
             if (cameraByName != null)
             {
                 _remoteTorchAnchor = cameraByName;
@@ -779,6 +780,22 @@ public class PlayerInventory : NetworkBehaviour
 
         _remoteTorchAnchor = transform;
         return _remoteTorchAnchor;
+    }
+
+    private Transform FindChildTransformByName(string childName)
+    {
+        if (string.IsNullOrEmpty(childName))
+            return null;
+
+        var children = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
+        {
+            var t = children[i];
+            if (t != null && t.name == childName)
+                return t;
+        }
+
+        return null;
     }
 
     private void SyncTorchStateIfOwner(bool force = false)
