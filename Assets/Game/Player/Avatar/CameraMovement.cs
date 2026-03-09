@@ -3,6 +3,8 @@ using UnityEngine.InputSystem;
 
 public class CameraMovement : MonoBehaviour
 {
+    private const string PrefSensitivity = "settings_sensitivity";
+
     [Header("Settings")]
     public float sensitivity = 2f;
     public float minY = -40f;
@@ -11,8 +13,15 @@ public class CameraMovement : MonoBehaviour
     private float rotationX = 0f;
     private float rotationY = 0f;
 
+    public void SetSensitivity(float value)
+    {
+        sensitivity = Mathf.Clamp(value, 0.02f, 2f);
+    }
+
     void OnEnable()
     {
+        sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, sensitivity), 0.02f, 2f);
+
         // Initialize rotation from current transform
         Vector3 currentRotation = transform.localEulerAngles;
         
@@ -48,6 +57,3 @@ public class CameraMovement : MonoBehaviour
         transform.localRotation = Quaternion.Euler(rotationX, rotationY, 0f);
     }
 }
-
-
-

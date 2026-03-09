@@ -8,6 +8,8 @@ using System.Collections;
 [RequireComponent(typeof(PlayerInput))]
 public sealed class NetworkPlayer : NetworkBehaviour
 {
+    private const string PrefSensitivity = "settings_sensitivity";
+
     [Header("Tuning")]
     [SerializeField] private float moveSpeed = 4f;
     [SerializeField] private float lookSensitivity = 0.12f;
@@ -105,6 +107,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
     public event System.Action<NetworkPlayer> LobbyStateChanged;
     public static event System.Action<NetworkPlayer> AnyLobbyStateChanged;
 
+    public void SetLookSensitivity(float value)
+    {
+        lookSensitivity = Mathf.Clamp(value, 0.02f, 2f);
+    }
+
     private void Awake()
     {   
         soundFX = GetComponent<PlayerSoundFX>();
@@ -139,6 +146,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
         _jump = _playerInput.actions["Jump"];
+        if (IsOwner)
+            lookSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, lookSensitivity), 0.02f, 2f);
 
         // Safer lookup (won't hard-crash if renamed)
         _sprint = _playerInput.actions.FindAction("Sprint", throwIfNotFound: false);
