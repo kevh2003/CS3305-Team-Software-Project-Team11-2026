@@ -8,7 +8,7 @@ public sealed class GlobalBrightnessManager : MonoBehaviour
     private const string PrefBrightness = "settings_brightness";
     private const float MinBrightness = -2.0f;
     private const float MaxBrightness = 2.0f;
-    private const float DefaultBrightness = 0f;
+    private const float DefaultBrightness = 1f;
 
     private static GlobalBrightnessManager instance;
 
