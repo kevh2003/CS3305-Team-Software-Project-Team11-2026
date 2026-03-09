@@ -30089,7 +30089,10 @@ MonoBehaviour:
   - {fileID: 2042448370}
   - {fileID: 1397767053}
   - {fileID: 3264647}
-  delay: 10
+  delay: 8
+  enableSway: 1
+  swayAmplitudeEuler: {x: 1, y: 1}
+  swayFrequencyHz: {x: 0.08, y: 0.11}
 --- !u!1 &518369525
 GameObject:
   m_ObjectHideFlags: 0
