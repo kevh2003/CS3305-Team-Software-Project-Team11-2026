@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.Netcode;
 
 /// <summary>
 /// Handles patrol movement between a set of patrol points.
@@ -9,7 +10,7 @@ using UnityEngine.AI;
 /// 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyAI))]
-public class EnemyPatrol : MonoBehaviour
+public class EnemyPatrol : NetworkBehaviour
 {
     [Header("Patrol Settings")]
     public Transform[] patrolPoints;     // Empty game objects as patrol points
@@ -29,7 +30,27 @@ public class EnemyPatrol : MonoBehaviour
         enemyAI = GetComponent<EnemyAI>();
     }
 
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        // Enemy movement is server-authoritative. Clients should not run patrol logic.
+        if (!IsServer)
+        {
+            enabled = false;
+            return;
+        }
+
+        StartPatrolAtFirstPoint();
+    }
+
     void Start()
+    {
+        if (!IsServer) return;
+        StartPatrolAtFirstPoint();
+    }
+
+    private void StartPatrolAtFirstPoint()
     {
         if (patrolPoints.Length > 0)
         {
@@ -39,6 +60,8 @@ public class EnemyPatrol : MonoBehaviour
 
     void Update()
     {
+        if (!IsServer) return;
+
         // If EnemyAI is busy (chasing or searching), patrol is disabled
         if (enemyAIHasControl())
         {

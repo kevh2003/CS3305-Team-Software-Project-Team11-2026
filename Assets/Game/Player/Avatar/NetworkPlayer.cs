@@ -8,10 +8,13 @@ using System.Collections;
 [RequireComponent(typeof(PlayerInput))]
 public sealed class NetworkPlayer : NetworkBehaviour
 {
+    private const string PrefSensitivity = "settings_sensitivity";
+
     [Header("Tuning")]
     [SerializeField] private float moveSpeed = 4f;
     [SerializeField] private float lookSensitivity = 0.12f;
     [SerializeField] private float lookPitchSyncInterval = 0.033f;
+    [SerializeField] private string gameSceneName = "03_Game";
 
     [Header("Refs")]
     [SerializeField] private Camera playerCamera;
@@ -21,7 +24,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [Range(0.001f, 1f)]
     [SerializeField] private float ownerHeadScaleMultiplier = 0.01f;
     [SerializeField] private float ownerNearClipPlane = 0.05f;
-    [Tooltip("Optional avatar root hidden for the owning player in first person.")]
+    [SerializeField] private bool hideLivePlayerBodiesOutsideGameScene = true;
     [SerializeField] private Transform ownerHiddenVisualRoot;
     private PlayerSoundFX soundFX;
 
@@ -57,6 +60,17 @@ public sealed class NetworkPlayer : NetworkBehaviour
         0f,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Owner);
+    private readonly NetworkVariable<int> _selectedAvatarId = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+    private readonly NetworkVariable<bool> _readyInLobby = new(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server);
+
+    [Header("Avatar Selection")]
+    [SerializeField] private AvatarCatalog avatarCatalog;
 
     private float _staminaSeconds;
     private bool _isSprinting;
@@ -87,6 +101,17 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private float _lastSyncedPitch = float.NaN;
     private float _nextPitchSyncTime;
 
+    public int SelectedAvatarId => _selectedAvatarId.Value;
+    public bool IsReadyInLobby => _readyInLobby.Value;
+
+    public event System.Action<NetworkPlayer> LobbyStateChanged;
+    public static event System.Action<NetworkPlayer> AnyLobbyStateChanged;
+
+    public void SetLookSensitivity(float value)
+    {
+        lookSensitivity = Mathf.Clamp(value, 0.02f, 2f);
+    }
+
     private void Awake()
     {   
         soundFX = GetComponent<PlayerSoundFX>();
@@ -110,6 +135,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
         SceneManager.sceneLoaded += OnSceneLoaded;
 
         if (_ownerHiddenRenderers.Length == 0)
@@ -120,14 +146,36 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _move = _playerInput.actions["Move"];
         _look = _playerInput.actions["Look"];
         _jump = _playerInput.actions["Jump"];
+        if (IsOwner)
+            lookSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, lookSensitivity), 0.02f, 2f);
 
         // Safer lookup (won't hard-crash if renamed)
         _sprint = _playerInput.actions.FindAction("Sprint", throwIfNotFound: false);
 
+        _selectedAvatarId.OnValueChanged -= OnSelectedAvatarChanged;
+        _selectedAvatarId.OnValueChanged += OnSelectedAvatarChanged;
+        _readyInLobby.OnValueChanged -= OnReadyStateChanged;
+        _readyInLobby.OnValueChanged += OnReadyStateChanged;
+
+        if (IsServer)
+        {
+            int count = AvatarCatalogUtility.GetAvatarCount(avatarCatalog);
+            int max = Mathf.Max(0, count - 1);
+            _selectedAvatarId.Value = Mathf.Clamp(_selectedAvatarId.Value, 0, max);
+        }
+
         ApplySceneState(SceneManager.GetActiveScene().name);
+        NotifyLobbyStateChanged();
 
         if (IsOwner)
             SyncLookPitch(force: true);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        _selectedAvatarId.OnValueChanged -= OnSelectedAvatarChanged;
+        _readyInLobby.OnValueChanged -= OnReadyStateChanged;
+        base.OnNetworkDespawn();
     }
 
     public override void OnDestroy()
@@ -143,8 +191,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private void ApplySceneState(string sceneName)
     {
-        _inGameScene = sceneName == "03_Game";
+        _inGameScene = sceneName == gameSceneName;
         bool isOwner = IsOwner;
+
+        if (IsServer && _inGameScene && _readyInLobby.Value)
+            _readyInLobby.Value = false;
 
         if (playerCamera != null)
         {
@@ -162,8 +213,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (_playerInput != null)
             _playerInput.enabled = _inGameScene && isOwner;
 
+        bool showLiveBody = _inGameScene || !hideLivePlayerBodiesOutsideGameScene;
         foreach (var r in GetComponentsInChildren<Renderer>(true))
-            r.enabled = _inGameScene;
+            r.enabled = showLiveBody;
 
         // Owner body hiding is optional; by default the owner still sees their body.
         bool ownerBodyShouldBeVisible = !isOwner || !hideOwnerBodyInFirstPerson;
@@ -186,6 +238,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+
+        NotifyLobbyStateChanged();
     }
 
     private void Update()
@@ -451,5 +505,60 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _lastSyncedPitch = _pitch;
         _nextPitchSyncTime = now + Mathf.Max(0.01f, lookPitchSyncInterval);
         LookPitch.Value = _pitch;
+    }
+
+    public AvatarCatalog ResolveAvatarCatalog()
+    {
+        return AvatarCatalogUtility.ResolveCatalog(avatarCatalog);
+    }
+
+    public void RequestSetSelectedAvatar(int avatarId)
+    {
+        if (!IsOwner) return;
+        RequestSetSelectedAvatarServerRpc(avatarId);
+    }
+
+    public void RequestSetReadyInLobby(bool ready)
+    {
+        if (!IsOwner) return;
+        RequestSetReadyInLobbyServerRpc(ready);
+    }
+
+    private void OnSelectedAvatarChanged(int previousValue, int newValue)
+    {
+        NotifyLobbyStateChanged();
+    }
+
+    private void OnReadyStateChanged(bool previousValue, bool newValue)
+    {
+        NotifyLobbyStateChanged();
+    }
+
+    private void NotifyLobbyStateChanged()
+    {
+        LobbyStateChanged?.Invoke(this);
+        AnyLobbyStateChanged?.Invoke(this);
+    }
+
+    [ServerRpc]
+    private void RequestSetSelectedAvatarServerRpc(int requestedAvatarId, ServerRpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (senderClientId != OwnerClientId) return;
+
+        int count = AvatarCatalogUtility.GetAvatarCount(avatarCatalog);
+        int max = Mathf.Max(0, count - 1);
+        int validated = Mathf.Clamp(requestedAvatarId, 0, max);
+
+        _selectedAvatarId.Value = validated;
+        _readyInLobby.Value = false;
+    }
+
+    [ServerRpc]
+    private void RequestSetReadyInLobbyServerRpc(bool ready, ServerRpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (senderClientId != OwnerClientId) return;
+        _readyInLobby.Value = ready;
     }
 }

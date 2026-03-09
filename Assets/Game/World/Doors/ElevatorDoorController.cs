@@ -48,12 +48,6 @@ public class ElevatorDoorController : NetworkBehaviour
 
         // apply instantly when spawned
         ApplyImmediate(isOpen.Value);
-
-        isOpen.OnValueChanged += (_, newValue) =>
-        {
-            // snap target immediately (animation still happens in Update)
-            if (newValue) { /* opened */ } else { /* closed */ }
-        };
     }
 
     private void CacheLocalPositions()

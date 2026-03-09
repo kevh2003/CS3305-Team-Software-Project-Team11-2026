@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b0764f76dc8f405eb69d077152e54f2, type: 3}
+  m_Name: AvatarCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::AvatarCatalog
+  avatars:
+  - displayName: Kevin
+    previewPrefab: {fileID: 919132149155446097, guid: 62cfb7c2e5553b146816a3c58726d7e9, type: 3}
+    previewAnimationClip: {fileID: 7400000, guid: d5c7e9d16970f274e993b47ba122d79b, type: 2}
+    previewAnimatorController: {fileID: 9100000, guid: a366adf0e9b4f08499ecd1039f9ed1f4, type: 2}
+    icon: {fileID: 0}
+  - displayName: Aidan
+    previewPrefab: {fileID: 919132149155446097, guid: c221ebd1f4d15374fa6154427bf269a2, type: 3}
+    previewAnimationClip: {fileID: 7400000, guid: caa45f096baaa044e8f64db423607be5, type: 2}
+    previewAnimatorController: {fileID: 0}
+    icon: {fileID: 0}
