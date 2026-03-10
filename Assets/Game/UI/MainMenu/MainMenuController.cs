@@ -15,7 +15,7 @@ public sealed class MainMenuController : MonoBehaviour
     private const float DefaultSensitivity = 0.12f;
     private const float MinBrightness = -2.0f;
     private const float MaxBrightness = 2.0f;
-    private const float DefaultBrightness = 0f;
+    private const float DefaultBrightness = 1f;
 
     [Header("Main Buttons")]
     [SerializeField] private Button multiplayerButton;
@@ -57,6 +57,9 @@ public sealed class MainMenuController : MonoBehaviour
     private bool isMultiplayerOpen;
     private bool isJoinPromptOpen;
     private bool isSettingsOpen;
+    private float appliedSensitivity = DefaultSensitivity;
+    private float appliedBrightness = DefaultBrightness;
+    private bool appliedFullscreen;
 
     private void OnEnable()
     {
@@ -138,9 +141,11 @@ public sealed class MainMenuController : MonoBehaviour
         GlobalBrightnessManager.SetBrightness(value, false);
     }
 
-    private void SetStatus(string message)
+    private void SetStatus(string message, float duration = 2.25f)
     {
+        if (string.IsNullOrWhiteSpace(message)) return;
         Debug.Log("[MainMenu] " + message);
+        ShowTransientStatus(message, duration);
     }
 
     private void ShowTransientStatus(string message, float duration = 2.25f)
@@ -177,9 +182,8 @@ public sealed class MainMenuController : MonoBehaviour
     private void ApplyModalState()
     {
         bool hideMainButtons = isMultiplayerOpen || isJoinPromptOpen || isSettingsOpen;
-        bool showDimmer = isMultiplayerOpen || isJoinPromptOpen || isSettingsOpen;
         SetMainButtonsVisible(!hideMainButtons);
-        SetActive(modalDimmer, showDimmer);
+        SetActive(modalDimmer, false);
     }
 
     private void SetMultiplayerOptionsVisible(bool visible)
@@ -243,17 +247,22 @@ public sealed class MainMenuController : MonoBehaviour
         HideSettings();
         if (isMultiplayerOpen)
             SetMultiplayerOptionsVisible(false);
+        if (roomCodeField == null)
+        {
+            SetStatus("Room code field is not configured.");
+            return;
+        }
+
         isJoinPromptOpen = true;
-        TMP_InputField codeField = roomCodeField != null ? roomCodeField : joinIpField;
         SetPanelVisible(joinPromptPanel, true);
-        SetActive(joinIpField, roomCodeField == null);
+        SetActive(joinIpField, false);
         SetActive(portField, false);
-        SetActive(roomCodeField, roomCodeField != null);
+        SetActive(roomCodeField, true);
         SetActive(confirmJoinLanButton, false);
         SetActive(confirmJoinOnlineButton, true);
         SetActive(cancelJoinPromptButton, true);
-        UpdatePlaceholder(codeField, "Room Code");
-        codeField?.Select();
+        UpdatePlaceholder(roomCodeField, "Room Code");
+        roomCodeField.Select();
         ApplyModalState();
     }
 
@@ -293,6 +302,7 @@ public sealed class MainMenuController : MonoBehaviour
     {
         HideMultiplayer();
         HideJoinPrompt();
+        RestoreAppliedSettings();
         isSettingsOpen = true;
         ConfigureCloseButtonForSettings();
         SetPanelVisible(settingsPanel, true);
@@ -308,6 +318,7 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void HideSettings()
     {
+        RestoreAppliedSettings();
         isSettingsOpen = false;
         SetPanelVisible(settingsPanel, false);
         SetActive(brightnessLabel, false);
@@ -393,7 +404,7 @@ public sealed class MainMenuController : MonoBehaviour
             return;
         }
 
-        SetStatus(string.IsNullOrWhiteSpace(joinCode) ? "Online room created." : $"Online room code: {joinCode}");
+        SetStatus(string.IsNullOrWhiteSpace(joinCode) ? "Online room created." : $"Online room code: {joinCode}", 10f);
     }
 
     private void OnJoinOnlineClicked() => _ = JoinOnlineAsync();
@@ -405,15 +416,20 @@ public sealed class MainMenuController : MonoBehaviour
             return;
         }
 
-        TMP_InputField codeField = roomCodeField != null ? roomCodeField : joinIpField;
-        if (codeField == null || string.IsNullOrWhiteSpace(codeField.text))
+        if (roomCodeField == null)
+        {
+            SetStatus("Room code field is not configured.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(roomCodeField.text))
         {
             SetStatus("Enter a room code.");
             return;
         }
 
-        string roomCode = codeField.text.Trim().ToUpperInvariant();
-        codeField.text = roomCode;
+        string roomCode = roomCodeField.text.Trim().ToUpperInvariant();
+        roomCodeField.text = roomCode;
 
         SetStatus("Joining online room...");
         NetStartResult result = await Services.NetSession.JoinOnlineAsync(roomCode);
@@ -494,22 +510,40 @@ public sealed class MainMenuController : MonoBehaviour
         PlayerPrefs.SetInt(PrefFullscreen, fullscreenEnabled ? 1 : 0);
         PlayerPrefs.Save();
 
-        GlobalBrightnessManager.SetBrightness(brightness, true);
+        appliedSensitivity = sensitivity;
+        appliedBrightness = brightness;
+        appliedFullscreen = fullscreenEnabled;
+
+        GlobalBrightnessManager.SetBrightness(appliedBrightness, true);
         ShowTransientStatus($"Settings saved (Sensitivity {sensitivity:0.00}, Brightness {brightness:0.00}).");
     }
 
     private void LoadSettingsFromPrefs()
     {
-        float sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, DefaultSensitivity), MinSensitivity, MaxSensitivity);
-        float brightness = GlobalBrightnessManager.LoadSavedBrightness();
-        fullscreenEnabled = PlayerPrefs.GetInt(PrefFullscreen, Screen.fullScreen ? 1 : 0) == 1;
+        appliedSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, DefaultSensitivity), MinSensitivity, MaxSensitivity);
+        appliedBrightness = GlobalBrightnessManager.LoadSavedBrightness();
+        appliedFullscreen = PlayerPrefs.GetInt(PrefFullscreen, Screen.fullScreen ? 1 : 0) == 1;
+        fullscreenEnabled = appliedFullscreen;
 
-        if (sensitivitySlider != null) sensitivitySlider.value = sensitivity;
-        if (brightnessSlider != null) brightnessSlider.value = brightness;
+        if (sensitivitySlider != null) sensitivitySlider.SetValueWithoutNotify(appliedSensitivity);
+        if (brightnessSlider != null) brightnessSlider.SetValueWithoutNotify(appliedBrightness);
 
-        ApplyFullscreenMode(fullscreenEnabled);
-        GlobalBrightnessManager.SetBrightness(brightness, false);
-        SetButtonLabel(fullscreenModeButton, fullscreenEnabled ? "Display: Fullscreen" : "Display: Windowed");
+        ApplyFullscreenMode(appliedFullscreen);
+        GlobalBrightnessManager.SetBrightness(appliedBrightness, false);
+        SetButtonLabel(fullscreenModeButton, appliedFullscreen ? "Display: Fullscreen" : "Display: Windowed");
+    }
+
+    private void RestoreAppliedSettings()
+    {
+        if (sensitivitySlider != null)
+            sensitivitySlider.SetValueWithoutNotify(appliedSensitivity);
+        if (brightnessSlider != null)
+            brightnessSlider.SetValueWithoutNotify(appliedBrightness);
+
+        fullscreenEnabled = appliedFullscreen;
+        ApplyFullscreenMode(appliedFullscreen);
+        GlobalBrightnessManager.SetBrightness(appliedBrightness, false);
+        SetButtonLabel(fullscreenModeButton, appliedFullscreen ? "Display: Fullscreen" : "Display: Windowed");
     }
 
     private static void ApplyFullscreenMode(bool enabled)
