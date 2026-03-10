@@ -17,9 +17,29 @@ MonoBehaviour:
     previewPrefab: {fileID: 919132149155446097, guid: 62cfb7c2e5553b146816a3c58726d7e9, type: 3}
     previewAnimationClip: {fileID: 7400000, guid: d5c7e9d16970f274e993b47ba122d79b, type: 2}
     previewAnimatorController: {fileID: 9100000, guid: a366adf0e9b4f08499ecd1039f9ed1f4, type: 2}
+    gameplayPrefab: {fileID: 0}
+    gameplayAnimatorController: {fileID: 0}
+    gameplayPositionOffset: {x: 0, y: 0, z: 0}
+    gameplayEulerOffset: {x: 0, y: 0, z: 0}
+    gameplayScaleMultiplier: {x: 0, y: 0, z: 0}
+    cameraLocalOffset: {x: 0, y: 0, z: 0}
+    overrideController: 0
+    controllerHeight: 0
+    controllerRadius: 0
+    controllerCenter: {x: 0, y: 0, z: 0}
     icon: {fileID: 0}
   - displayName: Aidan
     previewPrefab: {fileID: 919132149155446097, guid: c221ebd1f4d15374fa6154427bf269a2, type: 3}
     previewAnimationClip: {fileID: 7400000, guid: caa45f096baaa044e8f64db423607be5, type: 2}
     previewAnimatorController: {fileID: 0}
+    gameplayPrefab: {fileID: 0}
+    gameplayAnimatorController: {fileID: 0}
+    gameplayPositionOffset: {x: 0, y: -0.2, z: 0}
+    gameplayEulerOffset: {x: 0, y: 0, z: 0}
+    gameplayScaleMultiplier: {x: 0, y: 0, z: 0}
+    cameraLocalOffset: {x: 0.02, y: -0.2, z: 0}
+    overrideController: 0
+    controllerHeight: 0
+    controllerRadius: 0
+    controllerCenter: {x: 0, y: 0, z: 0}
     icon: {fileID: 0}

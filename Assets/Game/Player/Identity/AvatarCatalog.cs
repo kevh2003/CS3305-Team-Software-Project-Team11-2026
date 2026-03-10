@@ -12,6 +12,17 @@ public sealed class AvatarCatalog : ScriptableObject
         public GameObject previewPrefab;
         public AnimationClip previewAnimationClip;
         public RuntimeAnimatorController previewAnimatorController;
+        [Header("Gameplay")]
+        public GameObject gameplayPrefab;
+        public RuntimeAnimatorController gameplayAnimatorController;
+        public Vector3 gameplayPositionOffset;
+        public Vector3 gameplayEulerOffset;
+        public Vector3 gameplayScaleMultiplier;
+        public Vector3 cameraLocalOffset;
+        public bool overrideController;
+        public float controllerHeight;
+        public float controllerRadius;
+        public Vector3 controllerCenter;
         public Sprite icon;
     }
 

@@ -4,6 +4,7 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
+  - menuMusic: {fileID: 8300000, guid: 48fd1f1b5dcd94929b33f3fb4cc9339e, type: 3}
   - lobbyMusic: {fileID: 8300000, guid: 48fd1f1b5dcd94929b33f3fb4cc9339e, type: 3}
   - gameplayMusic: {fileID: 8300000, guid: 896420773d54640daba6e940a0db0dc6, type: 3}
   - finalLevelMusic: {fileID: 8300000, guid: 04d480c566eb7484391b1acaecf080cf, type: 3}
