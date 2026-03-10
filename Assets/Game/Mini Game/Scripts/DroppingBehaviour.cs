@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -13,7 +14,31 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
     {
         canvas = GetComponentInParent<Canvas>();
         rect = GetComponent<RectTransform>();
-        Debug.Log("Tag: " + tag);
+      
+    }
+
+    public void Update() // move this to on trigger
+    {
+         if(canvas.enabled) {
+            // show the cursor 
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            // lock the player camera
+            NetworkPlayer player = GetComponentInParent<NetworkPlayer>();
+            player.lookSensitivity = 0;
+
+        } else
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            // lock the player camera
+            NetworkPlayer player = GetComponentInParent<NetworkPlayer>();
+            player.lookSensitivity = 0;
+
+        }
+
     }
 
     
@@ -27,12 +52,11 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
         {
             eventData.pointerDrag.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, y);
             eventData.pointerDrag.GetComponent<DraggingBehaviour>().locked = true;
-            Debug.Log("LOCKED");
+           
 
         }
 
-        Debug.Log("Dropped");
-
+        
     }
 
 

@@ -3,7 +3,22 @@ guid: efbb396d05c984840922f82c1a53f006
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: grey_metal
+    second: {fileID: 2800000, guid: f69859f8ac2999448ac3d59684b94a79, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: rusted_metal
+    second: {fileID: 2800000, guid: 97b98c5bd8e7fbe4d9596091a1681c38, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: wood
+    second: {fileID: 2800000, guid: 491c39256951ec746a9a2a79707b8e45, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0

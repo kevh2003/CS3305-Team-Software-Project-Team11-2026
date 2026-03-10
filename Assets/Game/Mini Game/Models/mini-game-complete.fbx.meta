@@ -7,6 +7,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
+      name: blue_metal
+    second: {fileID: 2800000, guid: 57f58f474b7ea28499e50ff4c82570ba, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: grey_metal
+    second: {fileID: 2800000, guid: 17e5d17051389bd4fabdb9dc6624f0a5, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
       name: grunge-style-blue-metallic-background
     second: {fileID: 2800000, guid: 7d2dd26633f92e6499972eb15b42f778, type: 3}
   - first:
@@ -24,6 +34,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: photo-wood-texture-pattern
     second: {fileID: 2800000, guid: 377eeb8fad5c7f346811964c01d7d7be, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: rusted_metal
+    second: {fileID: 2800000, guid: 130eab8f79379594587e1f9e5419a7a7, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: wood
+    second: {fileID: 2800000, guid: e47be9e895667004ab8fa6df105d4a55, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
