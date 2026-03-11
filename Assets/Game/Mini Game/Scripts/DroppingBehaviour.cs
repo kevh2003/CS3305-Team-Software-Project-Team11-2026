@@ -4,11 +4,12 @@ using UnityEngine.EventSystems;
 
 public class DroppingBehaviour : MonoBehaviour, IDropHandler
 {
-
+    [Header("Player")]
     private Canvas _canvas;
+
+    [Header("Collision Area")]
     private RectTransform _rect;
 
-    
 
     public void Awake()
     {
@@ -17,9 +18,10 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
       
     }
 
-    public void Update() // move this to on trigger
+    public void Update()
     {
          if(_canvas.enabled) {
+
             // show the cursor 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -55,10 +57,7 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
            
 
         }
-
         
     }
-
-
 
 }
