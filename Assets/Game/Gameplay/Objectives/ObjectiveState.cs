@@ -6,7 +6,7 @@ public class ObjectiveState : NetworkBehaviour
 {
     public static ObjectiveState Instance { get; private set; }
 
-    [SerializeField] private int ducksTotal = 12;
+    [SerializeField] private int ducksTotal = 8;
     public int DucksTotal => ducksTotal;
 
     public NetworkVariable<int> DucksFound = new(

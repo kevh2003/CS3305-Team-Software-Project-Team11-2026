@@ -152,8 +152,6 @@ public class ObjectiveUI : MonoBehaviour
 
     private void Update()
     {
-        // SecurityRoomController values aren’t events here (stage vars are private NetworkVariables),
-        // so we poll while the post-key phase is active.
         if (state == null) return;
 
         bool shouldPoll =

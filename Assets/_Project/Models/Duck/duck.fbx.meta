@@ -9,6 +9,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: duck_MAT
     second: {fileID: 2100000, guid: 2f1aee768e95348a4b5c97a5d9a3d4e0, type: 2}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: cute-rubber-duck-still-life
+    second: {fileID: 2800000, guid: 0703b08811829e8458ddec8a88e6fc6a, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
