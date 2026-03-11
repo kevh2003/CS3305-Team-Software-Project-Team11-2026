@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 
 public class GetPlayerData : MonoBehaviour
 {
+    [Header("Legacy Mode")]
+    [SerializeField] private bool _useLegacyWifiPromptAndInput = false;
 
     [Header("Interactable")]
     [SerializeField] private float _interactDistance = 10f;
@@ -16,8 +18,18 @@ public class GetPlayerData : MonoBehaviour
     private Camera _playerCamera;
     private CharacterController _playerController;
 
+    private void Awake()
+    {
+        // WiFi interaction now runs through Interactor + StartGame (center prompt path).
+        if (!_useLegacyWifiPromptAndInput)
+            enabled = false;
+    }
+
     private void Update()
     {
+        if (!_useLegacyWifiPromptAndInput)
+            return;
+
         if (_playerCamera == null)
             return;
 
@@ -68,6 +80,9 @@ public class GetPlayerData : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        if (!_useLegacyWifiPromptAndInput)
+            return;
+
         // function that gets a reference to the player
         if (other.CompareTag("Player"))
         {
@@ -98,6 +113,9 @@ public class GetPlayerData : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
+        if (!_useLegacyWifiPromptAndInput)
+            return;
+
         if (!other.CompareTag("Player"))
             return;
 

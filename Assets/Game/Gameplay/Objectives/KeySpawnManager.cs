@@ -51,10 +51,9 @@ public class KeySpawnManager : MonoBehaviour
             return;
 
         objectiveState.DucksFound.OnValueChanged += OnAnyObjectiveChanged;
+        objectiveState.WifiFixedCount.OnValueChanged += OnAnyObjectiveChanged;
         objectiveState.CurrentSubmitCount.OnValueChanged += OnAnyObjectiveChanged;
         objectiveState.RequiredSubmitCount.OnValueChanged += OnAnyObjectiveChanged;
-        objectiveState.PreKeyExtraCompleted.OnValueChanged += OnAnyObjectiveChanged;
-        objectiveState.PreKeyExtraRequired.OnValueChanged += OnAnyObjectiveChanged;
 
         _subscribed = true;
 
@@ -67,10 +66,9 @@ public class KeySpawnManager : MonoBehaviour
         if (!_subscribed || objectiveState == null) return;
 
         objectiveState.DucksFound.OnValueChanged -= OnAnyObjectiveChanged;
+        objectiveState.WifiFixedCount.OnValueChanged -= OnAnyObjectiveChanged;
         objectiveState.CurrentSubmitCount.OnValueChanged -= OnAnyObjectiveChanged;
         objectiveState.RequiredSubmitCount.OnValueChanged -= OnAnyObjectiveChanged;
-        objectiveState.PreKeyExtraCompleted.OnValueChanged -= OnAnyObjectiveChanged;
-        objectiveState.PreKeyExtraRequired.OnValueChanged -= OnAnyObjectiveChanged;
 
         _subscribed = false;
     }

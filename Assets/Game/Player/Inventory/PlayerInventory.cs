@@ -212,7 +212,8 @@ public class PlayerInventory : NetworkBehaviour
     private void OnHotbar1(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(1);
     private void OnDrop(UnityEngine.InputSystem.InputAction.CallbackContext ctx)
     {
-        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame)
+        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame ||
+            StartGame.IsAnyLocalWifiMinigameActive || StartGame.WasExitedThisFrame)
             return;
 
         DropSelectedItem();
@@ -269,6 +270,8 @@ public class PlayerInventory : NetworkBehaviour
         // fallback Q
         if (!CameraInteraction.IsAnyLocalCctvActive &&
             !CameraInteraction.WasExitedThisFrame &&
+            !StartGame.IsAnyLocalWifiMinigameActive &&
+            !StartGame.WasExitedThisFrame &&
             Keyboard.current != null &&
             Keyboard.current.qKey.wasPressedThisFrame)
             DropSelectedItem();
@@ -441,7 +444,9 @@ public class PlayerInventory : NetworkBehaviour
     public void DropSelectedItem()
     {
         if (!IsOwner) return;
-        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame) return;
+        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame ||
+            StartGame.IsAnyLocalWifiMinigameActive || StartGame.WasExitedThisFrame)
+            return;
         if (selectedSlot < 0 || selectedSlot >= hotbarSlots) return;
         if (itemIds[selectedSlot] == EMPTY) return;
 

@@ -3,6 +3,8 @@ using Unity.Netcode;
 
 public class PlayerSoundFX : NetworkBehaviour
 {
+    private const string PrefWifiLoopVolume = "settings_wifi_loop_volume";
+    private const float DefaultWifiLoopVolume = 0.07f;
 
     private bool isDead = false;
     private bool deathSfxPlayedThisLife = false;
@@ -43,7 +45,9 @@ public class PlayerSoundFX : NetworkBehaviour
     [Header("Hold Loops")]
     public AudioClip assignmentTypingLoopClip;
     public AudioClip gradesChangeLoopClip;
+    public AudioClip wifiFixLoopClip;
     [Range(0f, 1f)] public float holdLoopVolume = 0.25f;
+    [Range(0f, 1f)] public float wifiLoopVolume = DefaultWifiLoopVolume;
 
     [Header("Footsteps")]
     public AudioClip[] walkFootstepClips;
@@ -59,9 +63,19 @@ public class PlayerSoundFX : NetworkBehaviour
     private AudioSource footstepSource; //One-shot footsteps
     private PlayerHealth health;
     private float localSfxVolumeMultiplier = 1f;
+    private HoldLoopType currentHoldLoopType = HoldLoopType.None;
+
+    private enum HoldLoopType
+    {
+        None,
+        Assignment,
+        Grades,
+        Wifi
+    }
 
     private void Awake()
     {
+        wifiLoopVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefWifiLoopVolume, wifiLoopVolume > 0f ? wifiLoopVolume : DefaultWifiLoopVolume));
         health = GetComponent<PlayerHealth>();
         actionSource = CreateAudioSource("ActionSource", false);
         bodySource = CreateAudioSource("BodySource", false);
@@ -206,12 +220,18 @@ public class PlayerSoundFX : NetworkBehaviour
 
     public void StartAssignmentTypingLoop()
     {
-        StartHoldLoop(assignmentTypingLoopClip);
+        StartHoldLoop(assignmentTypingLoopClip, HoldLoopType.Assignment);
     }
 
     public void StartGradesChangeLoop()
     {
-        StartHoldLoop(gradesChangeLoopClip);
+        StartHoldLoop(gradesChangeLoopClip, HoldLoopType.Grades);
+    }
+
+    public void StartWifiFixLoop()
+    {
+        // Fallback keeps WiFi loop functional even if a dedicated clip is not yet assigned.
+        StartHoldLoop(wifiFixLoopClip != null ? wifiFixLoopClip : assignmentTypingLoopClip, HoldLoopType.Wifi);
     }
 
     public void StopHoldLoopSound()
@@ -219,6 +239,7 @@ public class PlayerSoundFX : NetworkBehaviour
         if (holdLoopSource == null) return;
         holdLoopSource.Stop();
         holdLoopSource.clip = null;
+        currentHoldLoopType = HoldLoopType.None;
     }
 
     public void PlayWalkFootstepSound()
@@ -231,7 +252,7 @@ public class PlayerSoundFX : NetworkBehaviour
         PlayFootstepFromSet(runFootstepClips, runFootstepVolume);
     }
 
-    private void StartHoldLoop(AudioClip clip)
+    private void StartHoldLoop(AudioClip clip, HoldLoopType loopType)
     {
         if (!IsOwner) return;
         if (holdLoopSource == null) return;
@@ -245,7 +266,8 @@ public class PlayerSoundFX : NetworkBehaviour
             return;
 
         holdLoopSource.clip = clip;
-        holdLoopSource.volume = holdLoopVolume * localSfxVolumeMultiplier;
+        currentHoldLoopType = loopType;
+        holdLoopSource.volume = ResolveHoldLoopVolume(loopType) * localSfxVolumeMultiplier;
         holdLoopSource.loop = true;
         holdLoopSource.Play();
     }
@@ -270,7 +292,30 @@ public class PlayerSoundFX : NetworkBehaviour
         localSfxVolumeMultiplier = Mathf.Clamp01(multiplier);
 
         if (holdLoopSource != null && holdLoopSource.isPlaying)
-            holdLoopSource.volume = holdLoopVolume * localSfxVolumeMultiplier;
+            holdLoopSource.volume = ResolveHoldLoopVolume(currentHoldLoopType) * localSfxVolumeMultiplier;
+    }
+
+    public void SetWifiLoopVolume(float volume, bool persist)
+    {
+        if (!IsOwner) return;
+
+        wifiLoopVolume = Mathf.Clamp01(volume);
+
+        if (persist)
+        {
+            PlayerPrefs.SetFloat(PrefWifiLoopVolume, wifiLoopVolume);
+            PlayerPrefs.Save();
+        }
+
+        if (holdLoopSource != null && holdLoopSource.isPlaying && currentHoldLoopType == HoldLoopType.Wifi)
+            holdLoopSource.volume = ResolveHoldLoopVolume(HoldLoopType.Wifi) * localSfxVolumeMultiplier;
+    }
+
+    private float ResolveHoldLoopVolume(HoldLoopType loopType)
+    {
+        return loopType == HoldLoopType.Wifi
+            ? wifiLoopVolume
+            : holdLoopVolume;
     }
 
     private AudioSource CreateAudioSource(string name, bool loop)

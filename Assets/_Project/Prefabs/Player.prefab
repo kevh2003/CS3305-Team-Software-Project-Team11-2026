@@ -405,7 +405,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 934990576
+  GlobalObjectIdHash: 1350446368
   InScenePlacedSourceGlobalObjectIdHash: 1350446368
   DeferredDespawnTick: 0
   Ownership: 1
@@ -743,7 +743,9 @@ MonoBehaviour:
   winVolume: 0.6
   assignmentTypingLoopClip: {fileID: 8300000, guid: c384469e1370d483b896c812e8c84e17, type: 3}
   gradesChangeLoopClip: {fileID: 8300000, guid: 0696c640a06574f8a9185d3094a1099f, type: 3}
+  wifiFixLoopClip: {fileID: 8300000, guid: 17223dd8b24a24c7b985a5c348c4502f, type: 3}
   holdLoopVolume: 0.25
+  wifiLoopVolume: 0.07
   walkFootstepClips:
   - {fileID: 8300000, guid: a4d206ef2f8ff4714bad54234c9c3965, type: 3}
   - {fileID: 8300000, guid: 9d9473d36f44f45c38e2dc73353c9e38, type: 3}

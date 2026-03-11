@@ -89,6 +89,8 @@ public class Interactor : NetworkBehaviour
 
             if (interactable != null && interactable.CanInteract())
             {
+                bool targetChanged = currentInteractable != interactable;
+
                 if (currentInteractable != interactable)
                 {
                     // If swapped targets mid-hold, cancel the hold instantly
@@ -96,11 +98,19 @@ public class Interactor : NetworkBehaviour
                         CancelHold();
 
                     currentInteractable = interactable;
-
                 }
 
                 if (crosshair != null)
+                {
+                    if (targetChanged)
+                        crosshair.HideInteractPrompt();
+
+                    string wifiPrompt = TryGetWifiPromptText(interactable);
+                    if (!string.IsNullOrWhiteSpace(wifiPrompt))
+                        crosshair.SetPromptText(wifiPrompt);
+
                     crosshair.ShowInteractPrompt();
+                }
             }
             else
             {
@@ -334,6 +344,16 @@ public class Interactor : NetworkBehaviour
     {
         if (crosshair != null)
             crosshair.SetPromptText(text);
+    }
+
+    private static string TryGetWifiPromptText(IInteractable interactable)
+    {
+        Component interactableComponent = interactable as Component;
+        if (interactableComponent == null)
+            return null;
+
+        IWifiInteractable wifiInteractable = interactableComponent.GetComponentInParent<IWifiInteractable>();
+        return wifiInteractable?.InteractText;
     }
 
     private void OnDrawGizmosSelected()

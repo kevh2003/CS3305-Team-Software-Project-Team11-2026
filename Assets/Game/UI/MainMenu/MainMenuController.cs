@@ -10,12 +10,16 @@ public sealed class MainMenuController : MonoBehaviour
     private const string LobbySceneName = "02_Lobby";
     private const string PrefSensitivity = "settings_sensitivity";
     private const string PrefFullscreen = "settings_fullscreen";
+    private const string PrefWifiLoopVolume = "settings_wifi_loop_volume";
     private const float MinSensitivity = 0.02f;
     private const float MaxSensitivity = 2.00f;
     private const float DefaultSensitivity = 0.12f;
     private const float MinBrightness = -2.0f;
     private const float MaxBrightness = 2.0f;
     private const float DefaultBrightness = 1f;
+    private const float MinWifiLoopVolume = 0f;
+    private const float MaxWifiLoopVolume = 1f;
+    private const float DefaultWifiLoopVolume = 0.25f;
 
     [Header("Main Buttons")]
     [SerializeField] private Button multiplayerButton;
@@ -41,8 +45,10 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private RectTransform settingsPanel;
     [SerializeField] private TMP_Text brightnessLabel;
     [SerializeField] private TMP_Text sensitivityLabel;
+    [SerializeField] private TMP_Text wifiLoopVolumeLabel;
     [SerializeField] private Slider brightnessSlider;
     [SerializeField] private Slider sensitivitySlider;
+    [SerializeField] private Slider wifiLoopVolumeSlider;
     [SerializeField] private Button fullscreenModeButton;
     [SerializeField] private Button applySettingsButton;
     [SerializeField] private Button closeSettingsButton;
@@ -59,6 +65,7 @@ public sealed class MainMenuController : MonoBehaviour
     private bool isSettingsOpen;
     private float appliedSensitivity = DefaultSensitivity;
     private float appliedBrightness = DefaultBrightness;
+    private float appliedWifiLoopVolume = DefaultWifiLoopVolume;
     private bool appliedFullscreen;
 
     private void OnEnable()
@@ -87,6 +94,7 @@ public sealed class MainMenuController : MonoBehaviour
         WireUi();
         ConfigureSlider(brightnessSlider, MinBrightness, MaxBrightness);
         ConfigureSlider(sensitivitySlider, MinSensitivity, MaxSensitivity);
+        ConfigureSlider(wifiLoopVolumeSlider, MinWifiLoopVolume, MaxWifiLoopVolume);
         LoadSettingsFromPrefs();
         HideMultiplayer();
         HideJoinPrompt();
@@ -112,6 +120,7 @@ public sealed class MainMenuController : MonoBehaviour
         BindButton(applySettingsButton, ApplySettings);
         BindButton(closeSettingsButton, OnCloseButtonClicked);
         BindSlider(brightnessSlider, HandleBrightnessSliderChanged);
+        BindSlider(wifiLoopVolumeSlider, HandleWifiLoopVolumeSliderChanged);
     }
 
     private static void BindButton(Button button, UnityAction action)
@@ -139,6 +148,11 @@ public sealed class MainMenuController : MonoBehaviour
     private void HandleBrightnessSliderChanged(float value)
     {
         GlobalBrightnessManager.SetBrightness(value, false);
+    }
+
+    private void HandleWifiLoopVolumeSliderChanged(float value)
+    {
+        ApplyWifiLoopVolumeToLocalPlayer(Mathf.Clamp(value, MinWifiLoopVolume, MaxWifiLoopVolume), persist: false);
     }
 
     private void SetStatus(string message, float duration = 2.25f)
@@ -310,6 +324,8 @@ public sealed class MainMenuController : MonoBehaviour
         SetActive(brightnessSlider, true);
         SetActive(sensitivityLabel, true);
         SetActive(sensitivitySlider, true);
+        SetActive(wifiLoopVolumeLabel, true);
+        SetActive(wifiLoopVolumeSlider, true);
         SetActive(fullscreenModeButton, true);
         SetActive(applySettingsButton, true);
         SetActive(closeSettingsButton, true);
@@ -325,6 +341,8 @@ public sealed class MainMenuController : MonoBehaviour
         SetActive(brightnessSlider, false);
         SetActive(sensitivityLabel, false);
         SetActive(sensitivitySlider, false);
+        SetActive(wifiLoopVolumeLabel, false);
+        SetActive(wifiLoopVolumeSlider, false);
         SetActive(fullscreenModeButton, false);
         SetActive(applySettingsButton, false);
         SetActive(closeSettingsButton, false);
@@ -505,31 +523,40 @@ public sealed class MainMenuController : MonoBehaviour
         float brightness = brightnessSlider != null
             ? Mathf.Clamp(brightnessSlider.value, MinBrightness, MaxBrightness)
             : DefaultBrightness;
+        float wifiLoopVolume = wifiLoopVolumeSlider != null
+            ? Mathf.Clamp(wifiLoopVolumeSlider.value, MinWifiLoopVolume, MaxWifiLoopVolume)
+            : DefaultWifiLoopVolume;
 
         PlayerPrefs.SetFloat(PrefSensitivity, sensitivity);
+        PlayerPrefs.SetFloat(PrefWifiLoopVolume, wifiLoopVolume);
         PlayerPrefs.SetInt(PrefFullscreen, fullscreenEnabled ? 1 : 0);
         PlayerPrefs.Save();
 
         appliedSensitivity = sensitivity;
         appliedBrightness = brightness;
+        appliedWifiLoopVolume = wifiLoopVolume;
         appliedFullscreen = fullscreenEnabled;
 
         GlobalBrightnessManager.SetBrightness(appliedBrightness, true);
-        ShowTransientStatus($"Settings saved (Sensitivity {sensitivity:0.00}, Brightness {brightness:0.00}).");
+        ApplyWifiLoopVolumeToLocalPlayer(appliedWifiLoopVolume, persist: false);
+        ShowTransientStatus($"Settings saved (Sensitivity {sensitivity:0.00}, Brightness {brightness:0.00}, WiFi Volume {wifiLoopVolume:0.00}).");
     }
 
     private void LoadSettingsFromPrefs()
     {
         appliedSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, DefaultSensitivity), MinSensitivity, MaxSensitivity);
         appliedBrightness = GlobalBrightnessManager.LoadSavedBrightness();
+        appliedWifiLoopVolume = Mathf.Clamp(PlayerPrefs.GetFloat(PrefWifiLoopVolume, DefaultWifiLoopVolume), MinWifiLoopVolume, MaxWifiLoopVolume);
         appliedFullscreen = PlayerPrefs.GetInt(PrefFullscreen, Screen.fullScreen ? 1 : 0) == 1;
         fullscreenEnabled = appliedFullscreen;
 
         if (sensitivitySlider != null) sensitivitySlider.SetValueWithoutNotify(appliedSensitivity);
         if (brightnessSlider != null) brightnessSlider.SetValueWithoutNotify(appliedBrightness);
+        if (wifiLoopVolumeSlider != null) wifiLoopVolumeSlider.SetValueWithoutNotify(appliedWifiLoopVolume);
 
         ApplyFullscreenMode(appliedFullscreen);
         GlobalBrightnessManager.SetBrightness(appliedBrightness, false);
+        ApplyWifiLoopVolumeToLocalPlayer(appliedWifiLoopVolume, persist: false);
         SetButtonLabel(fullscreenModeButton, appliedFullscreen ? "Display: Fullscreen" : "Display: Windowed");
     }
 
@@ -539,11 +566,25 @@ public sealed class MainMenuController : MonoBehaviour
             sensitivitySlider.SetValueWithoutNotify(appliedSensitivity);
         if (brightnessSlider != null)
             brightnessSlider.SetValueWithoutNotify(appliedBrightness);
+        if (wifiLoopVolumeSlider != null)
+            wifiLoopVolumeSlider.SetValueWithoutNotify(appliedWifiLoopVolume);
 
         fullscreenEnabled = appliedFullscreen;
         ApplyFullscreenMode(appliedFullscreen);
         GlobalBrightnessManager.SetBrightness(appliedBrightness, false);
+        ApplyWifiLoopVolumeToLocalPlayer(appliedWifiLoopVolume, persist: false);
         SetButtonLabel(fullscreenModeButton, appliedFullscreen ? "Display: Fullscreen" : "Display: Windowed");
+    }
+
+    private static void ApplyWifiLoopVolumeToLocalPlayer(float volume, bool persist)
+    {
+        LocalPlayerReference local = LocalPlayerReference.Instance;
+        if (local == null) return;
+
+        var soundFx = local.GetComponent<PlayerSoundFX>();
+        if (soundFx == null) return;
+
+        soundFx.SetWifiLoopVolume(volume, persist);
     }
 
     private static void ApplyFullscreenMode(bool enabled)
