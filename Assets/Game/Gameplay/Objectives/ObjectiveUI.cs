@@ -5,6 +5,9 @@ using Unity.Netcode;
 
 public class ObjectiveUI : MonoBehaviour
 {
+    private const string UnlockSecurityOfficeText = "Unlock the security office";
+    private const string InvestigateSecurityOfficeText = "Investigate the security office";
+
     [Header("Ducks Objective")]
     [SerializeField] private Toggle ducksToggle;
     [SerializeField] private TMP_Text ducksLabel;
@@ -83,7 +86,7 @@ public class ObjectiveUI : MonoBehaviour
         if (wifiLabel) wifiLabel.text = "Fix WiFi routers";
         if (assignmentLabel) assignmentLabel.text = "Submit an assignment in Room 1.10";
         if (keyLabel) keyLabel.text = "Find the security office key";
-        if (securityLabel) securityLabel.text = "Unlock the security office";
+        if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
         if (platesLabel) platesLabel.text = "Activate the pressure plates";
         if (timerLabel) timerLabel.text = "Press the yellow button";
         if (elevatorLabel) elevatorLabel.text = "Open the elevator doors";
@@ -170,6 +173,7 @@ public class ObjectiveUI : MonoBehaviour
             if (security == null)
                 security = FindFirstObjectByType<SecurityRoomController>();
 
+            RefreshSecurityDoorUI();
             RefreshPlatesUI();
             RefreshTimerUI();
             RefreshElevatorUI();
@@ -278,16 +282,37 @@ public class ObjectiveUI : MonoBehaviour
 
     private void RefreshSecurityDoorUI()
     {
-        // show only after key collected, until door unlocked
+        // show only after key collected
         if (!state.KeyCollected.Value)
         {
+            if (securityToggle) securityToggle.isOn = false;
+            if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
             SetActiveSafe(securityObjectiveRoot, false);
             return;
         }
 
-        bool complete = state.SecurityDoorUnlocked.Value;
-        SetActiveSafe(securityObjectiveRoot, !complete);
-        if (securityToggle) securityToggle.isOn = complete;
+        // Step 1: unlock the door
+        if (!state.SecurityDoorUnlocked.Value)
+        {
+            if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
+            if (securityToggle) securityToggle.isOn = false;
+            SetActiveSafe(securityObjectiveRoot, true);
+            return;
+        }
+
+        // Step 2: investigate office (until button 1 starts plate phase)
+        bool firstButtonPressed = security != null && security.Stage >= 1;
+        if (!firstButtonPressed)
+        {
+            if (securityLabel) securityLabel.text = InvestigateSecurityOfficeText;
+            if (securityToggle) securityToggle.isOn = false;
+            SetActiveSafe(securityObjectiveRoot, true);
+            return;
+        }
+
+        if (securityToggle) securityToggle.isOn = true;
+        if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
+        SetActiveSafe(securityObjectiveRoot, false);
     }
 
     private void RefreshPlatesUI()
