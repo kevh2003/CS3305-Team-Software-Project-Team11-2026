@@ -38,9 +38,13 @@ public class DropPromptUI : MonoBehaviour
     [Header("Bottom Center Layout")]
     [SerializeField] private Vector2 bottomCenterOffset = new Vector2(0f, 70f);
     [SerializeField] private int fontSize = 32;
+    [Header("CCTV Crosshair")]
+    [SerializeField] private float cctvCrosshairSize = 10f;
+    [SerializeField] private Color cctvCrosshairColor = Color.white;
 
     private Canvas _canvas;
     private Text _text;
+    private Image _cctvCrosshair;
 
     // Two “channels” that can request the prompt
     private bool _inventoryVisible;
@@ -107,6 +111,24 @@ public class DropPromptUI : MonoBehaviour
         rt.sizeDelta = new Vector2(900f, 150f);
 
         _text.gameObject.SetActive(false);
+
+        var crosshairGo = new GameObject("CctvCrosshair", typeof(RectTransform));
+        crosshairGo.transform.SetParent(transform, false);
+
+        _cctvCrosshair = crosshairGo.AddComponent<Image>();
+        _cctvCrosshair.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+        _cctvCrosshair.color = cctvCrosshairColor;
+        _cctvCrosshair.type = Image.Type.Simple;
+        _cctvCrosshair.raycastTarget = false;
+
+        var crosshairRect = _cctvCrosshair.rectTransform;
+        crosshairRect.anchorMin = new Vector2(0.5f, 0.5f);
+        crosshairRect.anchorMax = new Vector2(0.5f, 0.5f);
+        crosshairRect.pivot = new Vector2(0.5f, 0.5f);
+        crosshairRect.anchoredPosition = Vector2.zero;
+        crosshairRect.sizeDelta = Vector2.one * Mathf.Max(2f, cctvCrosshairSize);
+
+        _cctvCrosshair.gameObject.SetActive(false);
     }
 
     private void Refresh()
@@ -115,6 +137,7 @@ public class DropPromptUI : MonoBehaviour
         if (!ShouldShowInThisScene())
         {
             if (_text != null) _text.gameObject.SetActive(false);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
             return;
         }
 
@@ -126,6 +149,7 @@ public class DropPromptUI : MonoBehaviour
         {
             _text.text = _cameraMessage;
             _text.gameObject.SetActive(true);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(true);
             return;
         }
 
@@ -133,11 +157,13 @@ public class DropPromptUI : MonoBehaviour
         {
             _text.text = _inventoryMessage;
             _text.gameObject.SetActive(true);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
             return;
         }
 
         _text.text = "";
         _text.gameObject.SetActive(false);
+        if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
     }
 
     public void SetInventoryVisible(bool visible, string message = "Press Q to drop")

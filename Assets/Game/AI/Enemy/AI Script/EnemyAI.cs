@@ -227,6 +227,14 @@ public class EnemyAI : NetworkBehaviour
     {
         if (isPaused) return;
 
+        // Hard lure lock: do not reacquire or keep chase targets until lure completes.
+        if (isLured)
+        {
+            currentTarget = null;
+            wasChasing = false;
+            return;
+        }
+
         // If current target dies, stop chasing
         if (currentTarget != null)
         {
