@@ -99,6 +99,8 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        CctvSystemManager.Instance?.ServerReleaseIfOwner(clientId);
+
         // try drop items before the player object disappears
         if (NetworkManager.Singleton != null &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
@@ -139,6 +141,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         yield return new WaitForSeconds(0.1f);
 
+        CctvSystemManager.Instance?.ServerResetForNewMatch();
         ResetAllPlayers();
         ResetAllDoors();
         ResetAllEnemies();

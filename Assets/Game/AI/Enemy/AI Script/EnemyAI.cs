@@ -550,14 +550,18 @@ public class EnemyAI : NetworkBehaviour
     public void Lure(Vector3 worldPosition)
     {
         if (!IsServer) return;
-        if (currentTarget != null || isPaused) return;
+        if (isPaused) return;
+
+        // Lure should be able to interrupt chase/search so players can distract enemies.
+        currentTarget = null;
+        wasChasing = false;
+        isSearching = false;
+        isGlancing = false;
 
         preLurePosition = transform.position;
         lureDestination = worldPosition;
         lureEndTime     = 0f;
         isLured         = true;
-        isSearching     = false;
-        isGlancing      = false;
 
         // Lure: set destination immediately (not per-frame)
         agent.SetDestination(lureDestination);
@@ -565,6 +569,33 @@ public class EnemyAI : NetworkBehaviour
         StopAudioClientRpc();
 
         Debug.Log($"{name} lured to {worldPosition}");
+    }
+
+    public bool CanSeeWorldPoint(Vector3 worldPoint, float maxDistance = float.PositiveInfinity, bool requireFacing = false)
+    {
+        Vector3 toPoint = worldPoint - transform.position;
+        float distSqr = toPoint.sqrMagnitude;
+        float safeMaxDistance = maxDistance;
+        if (float.IsNaN(safeMaxDistance) || float.IsInfinity(safeMaxDistance) || safeMaxDistance <= 0f)
+            safeMaxDistance = 10000f;
+
+        float rangeSqr = safeMaxDistance * safeMaxDistance;
+        if (distSqr > rangeSqr) return false;
+        if (distSqr <= 0.0001f) return true;
+
+        Vector3 dir = toPoint.normalized;
+
+        if (requireFacing)
+        {
+            float dot = Vector3.Dot(transform.forward, dir);
+            float cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+            if (dot < cosHalfFov) return false;
+        }
+
+        float dist = Mathf.Sqrt(distSqr);
+        Vector3 origin = transform.position + Vector3.up * 0.2f;
+
+        return !Physics.Raycast(origin, dir, dist, obstacleMask, QueryTriggerInteraction.Ignore);
     }
 
     void HandleLureBehaviour()

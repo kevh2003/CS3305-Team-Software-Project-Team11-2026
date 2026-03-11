@@ -104,7 +104,7 @@ public class DropPromptUI : MonoBehaviour
         rt.anchorMax = new Vector2(0.5f, 0f);
         rt.pivot = new Vector2(0.5f, 0f);
         rt.anchoredPosition = bottomCenterOffset;
-        rt.sizeDelta = new Vector2(900f, 40f);
+        rt.sizeDelta = new Vector2(900f, 150f);
 
         _text.gameObject.SetActive(false);
     }

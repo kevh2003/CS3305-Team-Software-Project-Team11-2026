@@ -116,6 +116,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     public int SelectedAvatarId => _selectedAvatarId.Value;
     public bool IsReadyInLobby => _readyInLobby.Value;
+    public float LookSensitivity => lookSensitivity;
 
     public event System.Action<NetworkPlayer> LobbyStateChanged;
     public static event System.Action<NetworkPlayer> AnyLobbyStateChanged;
@@ -404,6 +405,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (_cc != null) _cc.enabled = true;
     }
 
+
+    /// <summary>
+    /// Called by RedLightGreenLightBoss via ClientRpc to freeze/unfreeze input.
+    /// Only acts on the owning client.
+    /// </summary>
     public void SetFrozen(bool frozen)
     {
         if (!IsOwner) return;
