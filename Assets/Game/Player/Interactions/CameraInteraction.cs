@@ -40,6 +40,10 @@ public class CameraInteraction : MonoBehaviour, IInteractable
     [SerializeField] private float pingCooldownSeconds = 12f;
     [SerializeField] private float lockAcquireTimeoutSeconds = 0.5f;
 
+    [Header("Audio")]
+    [SerializeField, Range(0f, 1f)] private float localSfxVolumeWhileInCctv = 0.5f;
+    [SerializeField] private bool autoAddAudioListenerToCctvCameras = true;
+
     public static bool IsAnyLocalCctvActive { get; private set; }
     public static int LastExitFrame { get; private set; } = -1;
     public static bool WasExitedThisFrame => Time.frameCount == LastExitFrame;
@@ -54,6 +58,9 @@ public class CameraInteraction : MonoBehaviour, IInteractable
     private int _lastDisplayedCooldownSeconds = int.MinValue;
     private bool _waitingForLock = false;
     private float _lastAppliedSensitivity = float.NaN;
+    private AudioListener _playerAudioListener;
+    private PlayerSoundFX _localPlayerSoundFx;
+    private readonly Dictionary<Camera, AudioListener> _cctvAudioListeners = new();
 
     void Start()
     {
@@ -61,6 +68,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         DisableAllCctvCameras();
         _keyboard = Keyboard.current;
         _mouse = Mouse.current;
+        CacheLocalAudioReferences();
     }
 
     void Update()
@@ -204,6 +212,8 @@ public class CameraInteraction : MonoBehaviour, IInteractable
             _activeCameraIndex = Mathf.Clamp(initialCameraIndex, 0, Mathf.Max(0, _resolvedCameras.Count - 1));
         SetActiveCamera(_activeCameraIndex);
         SyncCctvSensitivityFromSettings(force: true);
+        EnableCctvAudioPerspective();
+        ApplyLocalSfxDucking(true);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -224,6 +234,8 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         LastExitFrame = Time.frameCount;
 
         DisableAllCctvCameras();
+        RestorePlayerAudioPerspective();
+        ApplyLocalSfxDucking(false);
 
         if (player != null)
         {
@@ -254,6 +266,11 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
         if (_isViewingCCTV)
             ExitCCTVView();
+        else
+        {
+            RestorePlayerAudioPerspective();
+            ApplyLocalSfxDucking(false);
+        }
     }
 
     private System.Collections.IEnumerator TryEnterWhenLockAcquired(CctvSystemManager system, ulong localClientId)
@@ -366,6 +383,13 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         }
 
         _activeCameraIndex = Mathf.Clamp(initialCameraIndex, 0, Mathf.Max(0, _resolvedCameras.Count - 1));
+
+        for (int i = 0; i < _resolvedCameras.Count; i++)
+        {
+            if (_resolvedCameras[i] != null)
+                GetOrCreateCctvAudioListener(_resolvedCameras[i]);
+        }
+
         return _resolvedCameras.Count > 0;
     }
 
@@ -389,6 +413,19 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
             if (i < _resolvedLooks.Count && _resolvedLooks[i] != null)
                 _resolvedLooks[i].enabled = false;
+
+            if (_resolvedCameras[i] != null)
+            {
+                AudioListener listener = null;
+                if (_cctvAudioListeners.TryGetValue(_resolvedCameras[i], out listener) && listener != null)
+                    listener.enabled = false;
+                else
+                {
+                    listener = _resolvedCameras[i].GetComponent<AudioListener>();
+                    if (listener != null)
+                        listener.enabled = false;
+                }
+            }
         }
     }
 
@@ -416,10 +453,100 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
         if (activeCamera != null) activeCamera.enabled = true;
         if (activeLook != null) activeLook.enabled = true;
+        if (_isViewingCCTV)
+            ActivateCctvAudioListener(activeCamera);
 
         // Keep legacy fields in sync so older gizmos/inspector setup still make sense.
         cctvCamera = activeCamera;
         cctvCameraLook = activeLook;
+    }
+
+    private void CacheLocalAudioReferences()
+    {
+        var local = LocalPlayerReference.Instance;
+        if (local == null) return;
+
+        if (_localPlayerSoundFx == null)
+            _localPlayerSoundFx = local.GetComponent<PlayerSoundFX>();
+
+        if (_playerAudioListener == null && local.PlayerCamera != null)
+            _playerAudioListener = local.PlayerCamera.GetComponent<AudioListener>();
+    }
+
+    private void EnableCctvAudioPerspective()
+    {
+        CacheLocalAudioReferences();
+        if (_playerAudioListener != null)
+            _playerAudioListener.enabled = false;
+
+        ActivateCctvAudioListener(GetActiveCamera());
+    }
+
+    private void RestorePlayerAudioPerspective()
+    {
+        DisableAllCctvAudioListeners();
+        CacheLocalAudioReferences();
+        if (_playerAudioListener != null)
+            _playerAudioListener.enabled = true;
+    }
+
+    private void ApplyLocalSfxDucking(bool inCctv)
+    {
+        CacheLocalAudioReferences();
+        if (_localPlayerSoundFx == null) return;
+
+        float multiplier = inCctv ? localSfxVolumeWhileInCctv : 1f;
+        _localPlayerSoundFx.SetLocalSfxVolumeMultiplier(multiplier);
+    }
+
+    private void ActivateCctvAudioListener(Camera camera)
+    {
+        DisableAllCctvAudioListeners();
+        if (camera == null) return;
+
+        AudioListener listener = GetOrCreateCctvAudioListener(camera);
+        if (listener != null)
+            listener.enabled = true;
+    }
+
+    private void DisableAllCctvAudioListeners()
+    {
+        for (int i = 0; i < _resolvedCameras.Count; i++)
+        {
+            Camera cam = _resolvedCameras[i];
+            if (cam == null) continue;
+
+            AudioListener listener = null;
+            if (_cctvAudioListeners.TryGetValue(cam, out listener) && listener != null)
+                listener.enabled = false;
+            else
+            {
+                listener = cam.GetComponent<AudioListener>();
+                if (listener != null)
+                    listener.enabled = false;
+            }
+        }
+    }
+
+    private AudioListener GetOrCreateCctvAudioListener(Camera camera)
+    {
+        if (camera == null) return null;
+
+        if (_cctvAudioListeners.TryGetValue(camera, out var cached))
+        {
+            if (cached != null) return cached;
+            _cctvAudioListeners.Remove(camera);
+        }
+
+        AudioListener listener = camera.GetComponent<AudioListener>();
+        if (listener == null && autoAddAudioListenerToCctvCameras)
+            listener = camera.gameObject.AddComponent<AudioListener>();
+
+        if (listener != null)
+            listener.enabled = false;
+
+        _cctvAudioListeners[camera] = listener;
+        return listener;
     }
 
     private Camera GetActiveCamera()

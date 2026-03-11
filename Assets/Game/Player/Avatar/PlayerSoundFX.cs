@@ -8,48 +8,48 @@ public class PlayerSoundFX : NetworkBehaviour
     private bool deathSfxPlayedThisLife = false;
 
     [Header("Interact")]
-    public AudioClip interactClip;  //https://opengameart.org/content/click
-    public float interactVolume = 1f;
+    public AudioClip interactClip;
+    public float interactVolume = 0f;
 
     [Header("Damage")]
-    public AudioClip damageClip;    //https://opengameart.org/content/player-hit-damage
-    public float damageVolume = 1f;
+    public AudioClip damageClip;
+    public float damageVolume = 0.09f;
 
     [Header("Death")]
-    public AudioClip deathClip;     //https://opengameart.org/content/8bit-death-whirl
-    public float deathVolume = 1f;
+    public AudioClip deathClip;
+    public float deathVolume = 0.4f;
 
     [Header("Impact")]
     public AudioClip jumpClip;
-    public float jumpVolume = 1f;
-    public AudioClip impactClip; //https://opengameart.org/content/jump-landing-sound
-    public float impactVolume = 1f;
+    public float jumpVolume = 0.1f;
+    public AudioClip impactClip;
+    public float impactVolume = 0.18f;
 
     [Header("Pickups")]
     public AudioClip keyPickupClip;
     public AudioClip torchPickupClip;
-    [Range(0f, 1f)] public float pickupVolume = 1f;
+    [Range(0f, 1f)] public float pickupVolume = 0.15f;
 
     [Header("Utility")]
     public AudioClip torchToggleClip;
-    [Range(0f, 1f)] public float torchToggleVolume = 1f;
+    [Range(0f, 1f)] public float torchToggleVolume = 0.25f;
     public AudioClip cctvUseClip;
-    [Range(0f, 1f)] public float cctvUseVolume = 1f;
+    [Range(0f, 1f)] public float cctvUseVolume = 0.2f;
     public AudioClip duckPickupClip;
-    [Range(0f, 1f)] public float duckPickupVolume = 1f;
+    [Range(0f, 1f)] public float duckPickupVolume = 0.075f;
     public AudioClip winClip;
-    [Range(0f, 1f)] public float winVolume = 1f;
+    [Range(0f, 1f)] public float winVolume = 0.6f;
 
     [Header("Hold Loops")]
     public AudioClip assignmentTypingLoopClip;
     public AudioClip gradesChangeLoopClip;
-    [Range(0f, 1f)] public float holdLoopVolume = 1f;
+    [Range(0f, 1f)] public float holdLoopVolume = 0.25f;
 
     [Header("Footsteps")]
     public AudioClip[] walkFootstepClips;
     public AudioClip[] runFootstepClips;
-    [Range(0f, 1f)] public float walkFootstepVolume = 0.8f;
-    [Range(0f, 1f)] public float runFootstepVolume = 0.9f;
+    [Range(0f, 1f)] public float walkFootstepVolume = 0.05f;
+    [Range(0f, 1f)] public float runFootstepVolume = 0.25f;
     [Range(0f, 0.25f)] public float footstepPitchJitter = 0.06f;
   
     [Header("Sources")]
@@ -58,6 +58,7 @@ public class PlayerSoundFX : NetworkBehaviour
     private AudioSource holdLoopSource; //Looping hold-to-interact sounds
     private AudioSource footstepSource; //One-shot footsteps
     private PlayerHealth health;
+    private float localSfxVolumeMultiplier = 1f;
 
     private void Awake()
     {
@@ -125,7 +126,7 @@ public class PlayerSoundFX : NetworkBehaviour
     {   
         if (!IsOwner) return;
         if (actionSource == null || interactClip == null) return;
-        actionSource.PlayOneShot(interactClip, interactVolume);
+        actionSource.PlayOneShot(interactClip, interactVolume * localSfxVolumeMultiplier);
     }
 
     // Plays when player takes damage
@@ -133,7 +134,7 @@ public class PlayerSoundFX : NetworkBehaviour
     {   
         if (!IsOwner || isDead) return;
         if (bodySource == null || damageClip == null) return;
-        bodySource.PlayOneShot(damageClip, damageVolume);
+        bodySource.PlayOneShot(damageClip, damageVolume * localSfxVolumeMultiplier);
     }
 
     // Plays after death
@@ -141,7 +142,7 @@ public class PlayerSoundFX : NetworkBehaviour
     {   
         if (!IsOwner || deathSfxPlayedThisLife) return;
         if (bodySource == null || deathClip == null) return;
-        bodySource.PlayOneShot(deathClip, deathVolume);
+        bodySource.PlayOneShot(deathClip, deathVolume * localSfxVolumeMultiplier);
         deathSfxPlayedThisLife = true;
     }
 
@@ -150,7 +151,7 @@ public class PlayerSoundFX : NetworkBehaviour
     {
         if (!IsOwner || isDead) return;
         if (bodySource == null || jumpClip == null) return;
-        bodySource.PlayOneShot(jumpClip, jumpVolume);
+        bodySource.PlayOneShot(jumpClip, jumpVolume * localSfxVolumeMultiplier);
     }
 
     // Plays after player falls vertically and hits the ground
@@ -159,7 +160,7 @@ public class PlayerSoundFX : NetworkBehaviour
         if (!IsOwner || isDead) return;
         if (bodySource == null || impactClip == null) return;
 
-        bodySource.PlayOneShot(impactClip, impactVolume);
+        bodySource.PlayOneShot(impactClip, impactVolume * localSfxVolumeMultiplier);
     }
 
     public void PlayPickupItemSound(int itemId, int keyItemId, int torchItemId)
@@ -172,35 +173,35 @@ public class PlayerSoundFX : NetworkBehaviour
         else if (itemId == torchItemId) clip = torchPickupClip;
 
         if (clip != null)
-            actionSource.PlayOneShot(clip, pickupVolume);
+            actionSource.PlayOneShot(clip, pickupVolume * localSfxVolumeMultiplier);
     }
 
     public void PlayTorchToggleSound()
     {
         if (!IsOwner) return;
         if (actionSource == null || torchToggleClip == null) return;
-        actionSource.PlayOneShot(torchToggleClip, torchToggleVolume);
+        actionSource.PlayOneShot(torchToggleClip, torchToggleVolume * localSfxVolumeMultiplier);
     }
 
     public void PlayCctvUseSound()
     {
         if (!IsOwner) return;
         if (actionSource == null || cctvUseClip == null) return;
-        actionSource.PlayOneShot(cctvUseClip, cctvUseVolume);
+        actionSource.PlayOneShot(cctvUseClip, cctvUseVolume * localSfxVolumeMultiplier);
     }
 
     public void PlayDuckPickupSound()
     {
         if (!IsOwner) return;
         if (actionSource == null || duckPickupClip == null) return;
-        actionSource.PlayOneShot(duckPickupClip, duckPickupVolume);
+        actionSource.PlayOneShot(duckPickupClip, duckPickupVolume * localSfxVolumeMultiplier);
     }
 
     public void PlayWinSound()
     {
         if (!IsOwner) return;
         if (actionSource == null || winClip == null) return;
-        actionSource.PlayOneShot(winClip, winVolume);
+        actionSource.PlayOneShot(winClip, winVolume * localSfxVolumeMultiplier);
     }
 
     public void StartAssignmentTypingLoop()
@@ -244,7 +245,7 @@ public class PlayerSoundFX : NetworkBehaviour
             return;
 
         holdLoopSource.clip = clip;
-        holdLoopSource.volume = holdLoopVolume;
+        holdLoopSource.volume = holdLoopVolume * localSfxVolumeMultiplier;
         holdLoopSource.loop = true;
         holdLoopSource.Play();
     }
@@ -259,8 +260,17 @@ public class PlayerSoundFX : NetworkBehaviour
         if (clip == null) return;
 
         footstepSource.pitch = 1f + Random.Range(-footstepPitchJitter, footstepPitchJitter);
-        footstepSource.PlayOneShot(clip, volume);
+        footstepSource.PlayOneShot(clip, volume * localSfxVolumeMultiplier);
         footstepSource.pitch = 1f;
+    }
+
+    public void SetLocalSfxVolumeMultiplier(float multiplier)
+    {
+        if (!IsOwner) return;
+        localSfxVolumeMultiplier = Mathf.Clamp01(multiplier);
+
+        if (holdLoopSource != null && holdLoopSource.isPlaying)
+            holdLoopSource.volume = holdLoopVolume * localSfxVolumeMultiplier;
     }
 
     private AudioSource CreateAudioSource(string name, bool loop)

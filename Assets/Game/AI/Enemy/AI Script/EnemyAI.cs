@@ -52,11 +52,11 @@ public class EnemyAI : NetworkBehaviour
 
     [Tooltip("Volume used when playing the patrol clip.")]
     [Range(0f, 1f)]
-    public float PatrolVolume = 0.4f;
+    public float PatrolVolume = 0.5f;
 
     [Tooltip("Volume used when playing the alert clip.")]
     [Range(0f, 1f)]
-    public float AlertVolume = 1f;
+    public float AlertVolume = 0.85f;
 
     [Tooltip("Volume used when playing the spotted one-shot clip.")]
     [Range(0f, 1f)]

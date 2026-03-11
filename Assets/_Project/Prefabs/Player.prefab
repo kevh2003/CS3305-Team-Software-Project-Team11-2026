@@ -471,27 +471,27 @@ MonoBehaviour:
   interactClip: {fileID: 8300000, guid: 3bbd574e75bb2ea43a942eff41cc8216, type: 3}
   interactVolume: 0
   damageClip: {fileID: 8300000, guid: 0f9de8e4b442d4e21b9371919460a3ba, type: 3}
-  damageVolume: 1
+  damageVolume: 0.09
   deathClip: {fileID: 8300000, guid: edc4374f99678034f9e590e211d65d6d, type: 3}
-  deathVolume: 1
+  deathVolume: 0.4
   jumpClip: {fileID: 8300000, guid: 20ae893e30af7484a8a817d4e1cb4e97, type: 3}
-  jumpVolume: 1
+  jumpVolume: 0.1
   impactClip: {fileID: 8300000, guid: 5a3bcb6c339e5954bbb3cf43b1d107fa, type: 3}
-  impactVolume: 1
+  impactVolume: 0.18
   keyPickupClip: {fileID: 8300000, guid: 606c2dabfa63b4c2a84954032bba9f9d, type: 3}
   torchPickupClip: {fileID: 8300000, guid: 606c2dabfa63b4c2a84954032bba9f9d, type: 3}
-  pickupVolume: 1
+  pickupVolume: 0.15
   torchToggleClip: {fileID: 8300000, guid: e1734b13e00c24c2f8c74ac390cc74c9, type: 3}
-  torchToggleVolume: 1
+  torchToggleVolume: 0.25
   cctvUseClip: {fileID: 8300000, guid: fca5baa39bef34843b7b4489011cfc10, type: 3}
-  cctvUseVolume: 1
+  cctvUseVolume: 0.2
   duckPickupClip: {fileID: 8300000, guid: 28dcf6350b69246999eaefd4a75dcfc9, type: 3}
-  duckPickupVolume: 1
+  duckPickupVolume: 0.075
   winClip: {fileID: 8300000, guid: 548e66248e157451fad5a6a306ff4d69, type: 3}
-  winVolume: 1
+  winVolume: 0.6
   assignmentTypingLoopClip: {fileID: 8300000, guid: c384469e1370d483b896c812e8c84e17, type: 3}
   gradesChangeLoopClip: {fileID: 8300000, guid: 0696c640a06574f8a9185d3094a1099f, type: 3}
-  holdLoopVolume: 1
+  holdLoopVolume: 0.25
   walkFootstepClips:
   - {fileID: 8300000, guid: a4d206ef2f8ff4714bad54234c9c3965, type: 3}
   - {fileID: 8300000, guid: 9d9473d36f44f45c38e2dc73353c9e38, type: 3}
@@ -506,8 +506,8 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 38242921ba3dd4df6b489740804764f5, type: 3}
   - {fileID: 8300000, guid: 3290a2f66ac974a0db8c1743b4b4cbc1, type: 3}
   - {fileID: 8300000, guid: defb8803eaaf7476dba7dee6009f68c3, type: 3}
-  walkFootstepVolume: 0.3
-  runFootstepVolume: 0.9
+  walkFootstepVolume: 0.05
+  runFootstepVolume: 0.25
   footstepPitchJitter: 0.06
 --- !u!114 &4658505290043734610
 MonoBehaviour:

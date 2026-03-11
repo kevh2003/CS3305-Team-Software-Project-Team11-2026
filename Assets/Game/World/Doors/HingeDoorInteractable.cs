@@ -22,9 +22,9 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [SerializeField] private AudioSource doorAudioSource;
     [SerializeField] private AudioClip doorOpenClip;
     [SerializeField] private AudioClip doorCloseClip;
-    [SerializeField, Range(0f, 1f)] private float doorMoveVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float doorMoveVolume = 0.6f;
     [SerializeField] private AudioClip lockedNoKeyClip;
-    [SerializeField, Range(0f, 1f)] private float lockedNoKeyVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float lockedNoKeyVolume = 0.1f;
 
     [Header("AI Blocking")]
     [SerializeField] private bool blockAiPathWhenClosed = true;

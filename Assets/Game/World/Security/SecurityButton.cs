@@ -19,7 +19,7 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     [Header("Audio")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip pressClip;
-    [SerializeField, Range(0f, 1f)] private float pressVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float pressVolume = 0.4f;
 
     private NetworkVariable<int> state = new(
         (int)ButtonState.RedDisabled,
