@@ -5,21 +5,21 @@ using UnityEngine.EventSystems;
 public class DroppingBehaviour : MonoBehaviour, IDropHandler
 {
 
-    private Canvas canvas;
-    private RectTransform rect;
+    private Canvas _canvas;
+    private RectTransform _rect;
 
     
 
     public void Awake()
     {
-        canvas = GetComponentInParent<Canvas>();
-        rect = GetComponent<RectTransform>();
+        _canvas = GetComponentInParent<Canvas>();
+        _rect = GetComponent<RectTransform>();
       
     }
 
     public void Update() // move this to on trigger
     {
-         if(canvas.enabled) {
+         if(_canvas.enabled) {
             // show the cursor 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -45,8 +45,8 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
     public void OnDrop(PointerEventData eventData)
     {
         // get the center of the collision area
-        float x = rect.anchoredPosition.x / canvas.scaleFactor;
-        float y = rect.anchoredPosition.y /  canvas.scaleFactor;
+        float x = _rect.anchoredPosition.x / _canvas.scaleFactor;
+        float y = _rect.anchoredPosition.y /  _canvas.scaleFactor;
 
         if (eventData.pointerDrag.GetComponent<RectTransform>().tag == tag)
         {
