@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 {
@@ -16,6 +17,16 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [SerializeField] private int requiredKeyItemId = 1;
     [SerializeField] private bool isSecurityDoor = false;
     [SerializeField] private float serverInteractRange = 4f;
+
+    [Header("AI Blocking")]
+    [SerializeField] private bool blockAiPathWhenClosed = true;
+    [SerializeField] private bool autoCreateNavMeshObstacle = true;
+    [SerializeField] private NavMeshObstacle navMeshObstacle;
+    [SerializeField] private Collider aiBlockingCollider;
+    [SerializeField] private float fallbackObstacleHeight = 2f;
+    [SerializeField] private float fallbackObstacleThickness = 0.3f;
+    [SerializeField] private bool forceEnemyRepathOnClose = true;
+    [SerializeField] private float repathNotifyRadius = 40f;
 
     // Defaults for resetting each round
     private bool _defaultOpen = false;   // doors start CLOSED by default
@@ -35,6 +46,8 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     {
         if (hingePivot == null)
             hingePivot = transform;
+
+        EnsureNavMeshObstacle();
     }
 
     public override void OnNetworkSpawn()
@@ -56,6 +69,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 
         UpdateTarget();
         ApplyImmediate();
+        RefreshAiBlocker();
     }
 
     public override void OnNetworkDespawn()
@@ -129,6 +143,10 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     private void OnIsOpenChanged(bool previousValue, bool newValue)
     {
         UpdateTarget();
+        RefreshAiBlocker();
+
+        if (IsServer && !newValue && forceEnemyRepathOnClose)
+            StartCoroutine(NotifyEnemiesToRepathAfterClose());
     }
 
     private void ApplyImmediate()
@@ -154,6 +172,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 
         UpdateTarget();
         ApplyImmediate();
+        RefreshAiBlocker();
     }
 
     private bool IsSenderInRange(ulong senderId)
@@ -164,5 +183,198 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
         if (client.PlayerObject == null) return false;
 
         return Vector3.Distance(client.PlayerObject.transform.position, transform.position) <= serverInteractRange;
+    }
+
+    private void EnsureNavMeshObstacle()
+    {
+        if (!blockAiPathWhenClosed)
+            return;
+
+        if (navMeshObstacle == null)
+        {
+            if (hingePivot != null)
+                navMeshObstacle = hingePivot.GetComponent<NavMeshObstacle>();
+            if (navMeshObstacle == null)
+                navMeshObstacle = GetComponent<NavMeshObstacle>();
+        }
+
+        if (navMeshObstacle == null && autoCreateNavMeshObstacle)
+        {
+            var host = hingePivot != null ? hingePivot.gameObject : gameObject;
+            navMeshObstacle = host.AddComponent<NavMeshObstacle>();
+        }
+
+        if (navMeshObstacle == null)
+            return;
+
+        navMeshObstacle.shape = NavMeshObstacleShape.Box;
+        navMeshObstacle.carving = true;
+        navMeshObstacle.carveOnlyStationary = false;
+        navMeshObstacle.carvingMoveThreshold = 0.01f;
+        navMeshObstacle.carvingTimeToStationary = 0f;
+
+        ConfigureObstacleBoundsFromCollider();
+    }
+
+    private void ConfigureObstacleBoundsFromCollider()
+    {
+        if (navMeshObstacle == null)
+            return;
+
+        Transform host = navMeshObstacle.transform;
+        if (!TryResolveBlockingBounds(host, out Bounds bounds))
+        {
+            navMeshObstacle.center = new Vector3(0f, fallbackObstacleHeight * 0.5f, 0f);
+            navMeshObstacle.size = new Vector3(fallbackObstacleThickness, fallbackObstacleHeight, fallbackObstacleThickness);
+            return;
+        }
+
+        Vector3 centerWs = bounds.center;
+        Vector3 centerLocal = host.InverseTransformPoint(centerWs);
+        Vector3 sizeWs = bounds.size;
+        Vector3 hostLossy = host.lossyScale;
+
+        float sizeX = Mathf.Abs(sizeWs.x / (Mathf.Approximately(hostLossy.x, 0f) ? 1f : hostLossy.x));
+        float sizeY = Mathf.Abs(sizeWs.y / (Mathf.Approximately(hostLossy.y, 0f) ? 1f : hostLossy.y));
+        float sizeZ = Mathf.Abs(sizeWs.z / (Mathf.Approximately(hostLossy.z, 0f) ? 1f : hostLossy.z));
+
+        navMeshObstacle.center = centerLocal;
+        navMeshObstacle.size = new Vector3(
+            Mathf.Max(0.05f, sizeX),
+            Mathf.Max(0.05f, sizeY),
+            Mathf.Max(0.05f, sizeZ));
+    }
+
+    private bool TryResolveBlockingBounds(Transform host, out Bounds bounds)
+    {
+        if (aiBlockingCollider != null && !aiBlockingCollider.isTrigger)
+        {
+            bounds = aiBlockingCollider.bounds;
+            return true;
+        }
+
+        Collider candidate = FindFirstSolidCollider(hingePivot);
+        if (candidate != null)
+        {
+            bounds = candidate.bounds;
+            return true;
+        }
+
+        Renderer visual = FindFirstRenderer(hingePivot);
+        if (visual != null)
+        {
+            bounds = visual.bounds;
+            return true;
+        }
+
+        if (host != null)
+        {
+            candidate = FindFirstSolidCollider(host);
+            if (candidate != null)
+            {
+                bounds = candidate.bounds;
+                return true;
+            }
+        }
+
+        candidate = FindFirstSolidCollider(transform);
+        if (candidate != null)
+        {
+            bounds = candidate.bounds;
+            return true;
+        }
+
+        visual = FindFirstRenderer(transform);
+        if (visual != null)
+        {
+            bounds = visual.bounds;
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static Collider FindFirstSolidCollider(Transform root)
+    {
+        if (root == null)
+            return null;
+
+        Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider c = colliders[i];
+            if (c == null || c.isTrigger)
+                continue;
+            return c;
+        }
+
+        return null;
+    }
+
+    private static Renderer FindFirstRenderer(Transform root)
+    {
+        if (root == null)
+            return null;
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer r = renderers[i];
+            if (r == null)
+                continue;
+            return r;
+        }
+
+        return null;
+    }
+
+    private void RefreshAiBlocker()
+    {
+        if (!blockAiPathWhenClosed)
+        {
+            if (navMeshObstacle != null)
+                navMeshObstacle.enabled = false;
+            return;
+        }
+
+        EnsureNavMeshObstacle();
+        if (navMeshObstacle == null)
+            return;
+
+        if (!isOpen.Value)
+            ConfigureObstacleBoundsFromCollider();
+
+        navMeshObstacle.enabled = !isOpen.Value;
+    }
+
+    private System.Collections.IEnumerator NotifyEnemiesToRepathAfterClose()
+    {
+        // Let obstacle + carving settle at least one frame before forcing repath.
+        yield return null;
+        NotifyNearbyEnemiesToRepath();
+        yield return null;
+        NotifyNearbyEnemiesToRepath();
+    }
+
+    private void NotifyNearbyEnemiesToRepath()
+    {
+        if (!IsServer)
+            return;
+
+        float radius = Mathf.Max(1f, repathNotifyRadius);
+        float radiusSqr = radius * radius;
+        var enemies = FindObjectsByType<EnemyAI>(FindObjectsSortMode.None);
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            EnemyAI enemy = enemies[i];
+            if (enemy == null || !enemy.IsSpawned)
+                continue;
+
+            if ((enemy.transform.position - transform.position).sqrMagnitude > radiusSqr)
+                continue;
+
+            enemy.ServerForceRepathNow();
+        }
     }
 }

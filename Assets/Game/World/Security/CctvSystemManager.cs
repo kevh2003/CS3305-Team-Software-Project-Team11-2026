@@ -18,7 +18,7 @@ public class CctvSystemManager : NetworkBehaviour
     [Header("Lure")]
     [SerializeField] private LayerMask lureEnemyMask = ~0;
     [SerializeField] private float maxLureRadius = 30f;
-    [SerializeField] private float lureCooldownSeconds = 20f;
+    [SerializeField] private float lureCooldownSeconds = 10f;
 
     [Header("Ping Marker")]
     [SerializeField] private float lurePingMarkerLifetime = 5f;
