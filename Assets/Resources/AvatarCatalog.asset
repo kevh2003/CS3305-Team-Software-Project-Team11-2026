@@ -19,10 +19,10 @@ MonoBehaviour:
     previewAnimatorController: {fileID: 9100000, guid: a366adf0e9b4f08499ecd1039f9ed1f4, type: 2}
     gameplayPrefab: {fileID: 0}
     gameplayAnimatorController: {fileID: 0}
-    gameplayPositionOffset: {x: 0, y: 0, z: 0}
+    gameplayPositionOffset: {x: 0, y: 0.1, z: 0}
     gameplayEulerOffset: {x: 0, y: 0, z: 0}
     gameplayScaleMultiplier: {x: 0, y: 0, z: 0}
-    cameraLocalOffset: {x: 0, y: 0, z: 0}
+    cameraLocalOffset: {x: 0, y: 0.32, z: 0.032}
     overrideController: 0
     controllerHeight: 0
     controllerRadius: 0
@@ -34,10 +34,55 @@ MonoBehaviour:
     previewAnimatorController: {fileID: 0}
     gameplayPrefab: {fileID: 0}
     gameplayAnimatorController: {fileID: 0}
-    gameplayPositionOffset: {x: 0, y: -0.2, z: 0}
+    gameplayPositionOffset: {x: 0, y: -0.02, z: 0}
     gameplayEulerOffset: {x: 0, y: 0, z: 0}
-    gameplayScaleMultiplier: {x: 0, y: 0, z: 0}
-    cameraLocalOffset: {x: 0.02, y: -0.2, z: 0}
+    gameplayScaleMultiplier: {x: 1, y: 1, z: 1}
+    cameraLocalOffset: {x: 0.02, y: 0.1, z: 0}
+    overrideController: 0
+    controllerHeight: 0
+    controllerRadius: 0
+    controllerCenter: {x: 0, y: 0, z: 0}
+    icon: {fileID: 0}
+  - displayName: Tom
+    previewPrefab: {fileID: 919132149155446097, guid: 4b7533cd9066945ff8c7f8ebcbbf2823, type: 3}
+    previewAnimationClip: {fileID: 7400000, guid: 19a2f24249fe6964fb7d5bf3850a72e7, type: 2}
+    previewAnimatorController: {fileID: 0}
+    gameplayPrefab: {fileID: 0}
+    gameplayAnimatorController: {fileID: 0}
+    gameplayPositionOffset: {x: 0, y: 0.15, z: 0}
+    gameplayEulerOffset: {x: 0, y: 0, z: 0}
+    gameplayScaleMultiplier: {x: 1, y: 1, z: 1}
+    cameraLocalOffset: {x: 0.02, y: 0.32, z: 0}
+    overrideController: 0
+    controllerHeight: 0
+    controllerRadius: 0
+    controllerCenter: {x: 0, y: 0, z: 0}
+    icon: {fileID: 0}
+  - displayName: Anatoly
+    previewPrefab: {fileID: 919132149155446097, guid: f8a5f7822554548d9b2bee7da01ce3ac, type: 3}
+    previewAnimationClip: {fileID: 7400000, guid: 19a2f24249fe6964fb7d5bf3850a72e7, type: 2}
+    previewAnimatorController: {fileID: 0}
+    gameplayPrefab: {fileID: 0}
+    gameplayAnimatorController: {fileID: 0}
+    gameplayPositionOffset: {x: 0, y: 0.08, z: 0}
+    gameplayEulerOffset: {x: 0, y: 0, z: 0}
+    gameplayScaleMultiplier: {x: 0.9, y: 0.9, z: 0.9}
+    cameraLocalOffset: {x: 0.02, y: 0.32, z: 0}
+    overrideController: 0
+    controllerHeight: 0
+    controllerRadius: 0
+    controllerCenter: {x: 0, y: 0, z: 0}
+    icon: {fileID: 0}
+  - displayName: Thomas
+    previewPrefab: {fileID: 919132149155446097, guid: e939f119cec8241fe976e8c7a48e26d1, type: 3}
+    previewAnimationClip: {fileID: 7400000, guid: 19a2f24249fe6964fb7d5bf3850a72e7, type: 2}
+    previewAnimatorController: {fileID: 0}
+    gameplayPrefab: {fileID: 0}
+    gameplayAnimatorController: {fileID: 0}
+    gameplayPositionOffset: {x: 0, y: 0.095, z: 0}
+    gameplayEulerOffset: {x: 0, y: 0, z: 0}
+    gameplayScaleMultiplier: {x: 0.9, y: 0.9, z: 0.9}
+    cameraLocalOffset: {x: 0.02, y: 0.21, z: 0}
     overrideController: 0
     controllerHeight: 0
     controllerRadius: 0

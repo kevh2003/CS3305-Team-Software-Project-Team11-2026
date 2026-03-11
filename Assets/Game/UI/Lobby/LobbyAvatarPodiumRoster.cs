@@ -86,12 +86,14 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         GameObject prefab = null;
         AnimationClip previewClip = null;
         RuntimeAnimatorController previewController = null;
+        Vector3 previewScaleMultiplier = Vector3.one;
 
         if (catalog != null && catalog.TryGet(avatarId, out var entry))
         {
             prefab = entry.previewPrefab;
             previewClip = entry.previewAnimationClip;
             previewController = entry.previewAnimatorController;
+            previewScaleMultiplier = ResolveScaleMultiplier(entry.gameplayScaleMultiplier);
         }
 
         int prefabId = prefab != null ? prefab.GetInstanceID() : 0;
@@ -106,7 +108,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
 
         if (changed)
         {
-            ReplaceSlotModel(slotIndex, prefab, previewClip, previewController);
+            ReplaceSlotModel(slotIndex, prefab, previewClip, previewController, previewScaleMultiplier);
             _slotOwnerIds[slotIndex] = player.OwnerClientId;
             _slotAvatarIds[slotIndex] = avatarId;
             _slotPrefabInstanceIds[slotIndex] = prefabId;
@@ -125,7 +127,8 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         int slotIndex,
         GameObject prefab,
         AnimationClip previewClip,
-        RuntimeAnimatorController previewController)
+        RuntimeAnimatorController previewController,
+        Vector3 previewScaleMultiplier)
     {
         ClearSlotModel(slotIndex);
         if (prefab == null || slots[slotIndex] == null) return;
@@ -133,7 +136,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         var model = Instantiate(prefab, slots[slotIndex]);
         model.transform.localPosition = modelLocalPosition;
         model.transform.localRotation = Quaternion.Euler(modelLocalEuler);
-        model.transform.localScale = modelLocalScale;
+        model.transform.localScale = Vector3.Scale(modelLocalScale, previewScaleMultiplier);
 
         // Podium previews are local visuals only.
         foreach (var netObj in model.GetComponentsInChildren<NetworkObject>(true))
@@ -159,6 +162,19 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
 
         AttachPreviewAnimationPlayer(model, previewClip, previewController);
         _activeModels[slotIndex] = model;
+    }
+
+    private static Vector3 ResolveScaleMultiplier(Vector3 value)
+    {
+        bool allZero = Mathf.Approximately(value.x, 0f)
+                       && Mathf.Approximately(value.y, 0f)
+                       && Mathf.Approximately(value.z, 0f);
+        if (allZero) return Vector3.one;
+
+        return new Vector3(
+            Mathf.Approximately(value.x, 0f) ? 1f : value.x,
+            Mathf.Approximately(value.y, 0f) ? 1f : value.y,
+            Mathf.Approximately(value.z, 0f) ? 1f : value.z);
     }
 
     private static void AttachPreviewAnimationPlayer(
