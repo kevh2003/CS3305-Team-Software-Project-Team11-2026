@@ -21,6 +21,7 @@ public class SecurityButton : NetworkBehaviour, IInteractable
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
+    private NetworkVariable<int>.OnValueChangedDelegate _onStateChanged;
 
     public bool CanInteract() => state.Value == (int)ButtonState.YellowReady;
 
@@ -45,7 +46,23 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        state.OnValueChanged += (_, __) => ApplyVisual();
+
+        _onStateChanged ??= OnStateChanged;
+        state.OnValueChanged += _onStateChanged;
+
+        ApplyVisual();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (_onStateChanged != null)
+            state.OnValueChanged -= _onStateChanged;
+
+        base.OnNetworkDespawn();
+    }
+
+    private void OnStateChanged(int previousValue, int newValue)
+    {
         ApplyVisual();
     }
 

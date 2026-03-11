@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerHealth : NetworkBehaviour
 {
@@ -23,6 +24,7 @@ public class PlayerHealth : NetworkBehaviour
     [Header("Death Behaviour")]
     [SerializeField] private string aliveLayer = "WhatsIsPlayer";
     [SerializeField] private string deadLayer = "DeadPlayer";
+    [SerializeField] private string gameSceneName = "03_Game";
 
     [Tooltip("Scripts to disable when dead (Interactor etc).")]
     [SerializeField] private Behaviour[] disableOnDeath;
@@ -85,16 +87,20 @@ public class PlayerHealth : NetworkBehaviour
             }
         }
 
-        // Hide visuals
-        if (visualsRoot != null)
+        // Avoid forcing lobby visibility; lobby uses dedicated avatar previews instead.
+        bool isGameScene = SceneManager.GetActiveScene().name == gameSceneName;
+        if (isGameScene)
         {
-            visualsRoot.SetActive(!dead);
-        }
-        else
-        {
-            // fallback
-            foreach (var r in GetComponentsInChildren<Renderer>())
-                r.enabled = !dead;
+            if (visualsRoot != null)
+            {
+                visualsRoot.SetActive(!dead);
+            }
+            else
+            {
+                // fallback
+                foreach (var r in GetComponentsInChildren<Renderer>())
+                    r.enabled = !dead;
+            }
         }
     }
 

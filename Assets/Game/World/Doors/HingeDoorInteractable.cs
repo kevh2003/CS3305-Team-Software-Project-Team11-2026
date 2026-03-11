@@ -26,6 +26,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 
     private readonly NetworkVariable<bool> isLocked = new NetworkVariable<bool>(
         false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<bool>.OnValueChangedDelegate _onIsOpenChanged;
 
     private float _current;
     private float _target;
@@ -50,9 +51,19 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
             isOpen.Value = false;
         }
 
-        isOpen.OnValueChanged += (_, __) => UpdateTarget();
+        _onIsOpenChanged ??= OnIsOpenChanged;
+        isOpen.OnValueChanged += _onIsOpenChanged;
+
         UpdateTarget();
         ApplyImmediate();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (_onIsOpenChanged != null)
+            isOpen.OnValueChanged -= _onIsOpenChanged;
+
+        base.OnNetworkDespawn();
     }
 
     public bool CanInteract() => true;
@@ -113,6 +124,11 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     private void UpdateTarget()
     {
         _target = isOpen.Value ? openAngle : 0f;
+    }
+
+    private void OnIsOpenChanged(bool previousValue, bool newValue)
+    {
+        UpdateTarget();
     }
 
     private void ApplyImmediate()

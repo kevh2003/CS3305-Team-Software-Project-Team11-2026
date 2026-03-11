@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Text;
 
 /*
  * LobbyController
@@ -19,9 +20,16 @@ public sealed class LobbyController : MonoBehaviour
     [SerializeField] private Button leaveButton;
     [SerializeField] private TMP_Text statusText;
     [SerializeField] private TMP_Text joinInfoText;
+    [SerializeField] private TMP_Text readySummaryText;
+    [SerializeField] private bool requireAllPlayersReadyToStart = true;
 
     private void Start()
     {
+        if (GetComponent<LobbyAvatarSelectorUI>() == null)
+            gameObject.AddComponent<LobbyAvatarSelectorUI>();
+        if (GetComponent<LobbyAvatarPodiumRoster>() == null)
+            gameObject.AddComponent<LobbyAvatarPodiumRoster>();
+
         if (startGameButton != null)
             startGameButton.onClick.AddListener(StartGame);
 
@@ -32,18 +40,39 @@ public sealed class LobbyController : MonoBehaviour
         InvokeRepeating(nameof(RefreshUI), 0.2f, 0.5f);
     }
 
+    private void OnDestroy()
+    {
+        if (startGameButton != null)
+            startGameButton.onClick.RemoveListener(StartGame);
+
+        if (leaveButton != null)
+            leaveButton.onClick.RemoveListener(Leave);
+    }
+
     private void RefreshUI()
     {
         if (Services.NetSession == null) return;
 
         int count = Services.NetSession.ConnectedPlayers;
+        GetLobbyReadyStats(out int readyCount, out int totalCount, out var players);
         if (playersText != null) playersText.text = $"Players: {count}";
+        if (readySummaryText != null) readySummaryText.text = BuildReadySummaryText(players);
 
         bool isHost = Services.NetSession.IsHost;
-        if (startGameButton != null) startGameButton.gameObject.SetActive(isHost);
+        bool canStart = !requireAllPlayersReadyToStart || (totalCount > 0 && readyCount >= totalCount);
+        if (startGameButton != null)
+        {
+            startGameButton.gameObject.SetActive(isHost);
+            startGameButton.interactable = isHost && canStart;
+        }
 
         if (statusText != null)
-            statusText.text = isHost ? "Host: you can start the game." : "Client: waiting for host.";
+        {
+            if (isHost && requireAllPlayersReadyToStart && !canStart)
+                statusText.text = $"Host: waiting for ready checks ({readyCount}/{Mathf.Max(1, totalCount)}).";
+            else
+                statusText.text = isHost ? "Host: you can start the game." : "Client: waiting for host.";
+        }
 
         if (joinInfoText != null)
         {
@@ -57,6 +86,17 @@ public sealed class LobbyController : MonoBehaviour
     private void StartGame()
     {
         if (Services.NetSession == null || !Services.NetSession.IsHost) return;
+        if (requireAllPlayersReadyToStart)
+        {
+            GetLobbyReadyStats(out int readyCount, out int totalCount, out _);
+            if (totalCount <= 0 || readyCount < totalCount)
+            {
+                if (statusText != null)
+                    statusText.text = $"Host: waiting for ready checks ({readyCount}/{Mathf.Max(1, totalCount)}).";
+                return;
+            }
+        }
+
         Services.NetSession.LoadSceneForAll("03_Game");
     }
 
@@ -67,5 +107,69 @@ public sealed class LobbyController : MonoBehaviour
 
         // Leaving is a local UI action
         SceneManager.LoadScene("01_MainMenu");
+    }
+
+    private static string BuildReadySummaryText(NetworkPlayer[] players)
+    {
+        if (players == null || players.Length == 0)
+            return "No players connected.";
+
+        var sb = new StringBuilder(128);
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            var p = players[i];
+            if (p == null) continue;
+
+            if (sb.Length > 0)
+                sb.Append('\n');
+
+            sb.Append("Player ")
+              .Append(i + 1)
+              .Append(" : ")
+              .Append(p.IsReadyInLobby ? "Ready" : "Not Ready");
+        }
+
+        return sb.ToString();
+    }
+
+    private void GetLobbyReadyStats(out int readyCount, out int totalCount, out NetworkPlayer[] uniquePlayers)
+    {
+        readyCount = 0;
+        totalCount = 0;
+        uniquePlayers = System.Array.Empty<NetworkPlayer>();
+
+        var players = FindObjectsByType<NetworkPlayer>(FindObjectsSortMode.None);
+        if (players == null || players.Length == 0)
+        {
+            if (Services.NetSession != null)
+                totalCount = Mathf.Max(Services.NetSession.ConnectedPlayers, 0);
+            return;
+        }
+
+        System.Array.Sort(players, (a, b) =>
+        {
+            int ownerCompare = a.OwnerClientId.CompareTo(b.OwnerClientId);
+            if (ownerCompare != 0) return ownerCompare;
+            return a.GetInstanceID().CompareTo(b.GetInstanceID());
+        });
+
+        var list = new System.Collections.Generic.List<NetworkPlayer>(players.Length);
+        var seen = new System.Collections.Generic.HashSet<ulong>();
+        for (int i = 0; i < players.Length; i++)
+        {
+            var p = players[i];
+            if (p == null || !p.IsSpawned) continue;
+            if (!seen.Add(p.OwnerClientId)) continue;
+
+            list.Add(p);
+            totalCount++;
+            if (p.IsReadyInLobby) readyCount++;
+        }
+
+        if (totalCount == 0 && Services.NetSession != null)
+            totalCount = Mathf.Max(Services.NetSession.ConnectedPlayers, 0);
+
+        uniquePlayers = list.ToArray();
     }
 }
