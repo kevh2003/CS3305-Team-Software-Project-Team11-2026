@@ -31,13 +31,13 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
     [Header("Lure Settings")]
     [Tooltip("Radius around the clicked point in which enemies will be lured")]
-    public float lureRadius = 15f;
+    public float lureRadius = 20f;
 
     [Tooltip("LayerMask for surfaces the lure raycast can hit (e.g. Ground, Floor)")]
     public LayerMask lureSurfaceMask = ~0;   // All layers by default; restrict in Inspector
 
     [Tooltip("Seconds between lure pings while using CCTV")]
-    [SerializeField] private float pingCooldownSeconds = 20f;
+    [SerializeField] private float pingCooldownSeconds = 12f;
     [SerializeField] private float lockAcquireTimeoutSeconds = 0.5f;
 
     public static bool IsAnyLocalCctvActive { get; private set; }
@@ -154,7 +154,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
             return false;
         }
 
-        if (_waitingForLock || _isViewingCCTV)
+        if (_waitingForLock || _isViewingCCTV || IsAnyLocalCctvActive)
             return false;
 
         var system = CctvSystemManager.Instance;
@@ -169,6 +169,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
             return false;
         }
 
+        _waitingForLock = true;
         StartCoroutine(TryEnterWhenLockAcquired(system, localClientId));
         return false;
     }
@@ -177,12 +178,16 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
     void EnterCCTVView()
     {
+        if (IsAnyLocalCctvActive && !_isViewingCCTV)
+            return;
+
         var player = LocalPlayerReference.Instance;
         if (player == null) return;
         if (!BuildCameraList()) return;
 
         _isViewingCCTV = true;
         IsAnyLocalCctvActive = true;
+        player.GetComponent<PlayerSoundFX>()?.PlayCctvUseSound();
 
         if (player.PlayerInput != null)
             player.PlayerInput.enabled = false;
@@ -253,7 +258,6 @@ public class CameraInteraction : MonoBehaviour, IInteractable
 
     private System.Collections.IEnumerator TryEnterWhenLockAcquired(CctvSystemManager system, ulong localClientId)
     {
-        _waitingForLock = true;
         system.RequestEnterCctvServerRpc();
 
         float timeout = Mathf.Max(0.1f, lockAcquireTimeoutSeconds);

@@ -27,6 +27,11 @@ public class DuckInteractable : NetworkBehaviour, IInteractable
         if (collectedServerSide) return;
         collectedServerSide = true;
 
+        PlayDuckPickupForCollectorClientRpc(new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { senderId } }
+        });
+
         if (ObjectiveState.Instance != null)
             ObjectiveState.Instance.ServerRegisterDuck();
 
@@ -36,6 +41,12 @@ public class DuckInteractable : NetworkBehaviour, IInteractable
             NetworkObject.Despawn(false);
         else
             gameObject.SetActive(false);
+    }
+
+    [ClientRpc]
+    private void PlayDuckPickupForCollectorClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        LocalPlayerReference.Instance?.GetComponent<PlayerSoundFX>()?.PlayDuckPickupSound();
     }
 
     [ClientRpc]

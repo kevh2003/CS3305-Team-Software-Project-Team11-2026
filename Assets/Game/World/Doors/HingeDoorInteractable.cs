@@ -18,6 +18,14 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     [SerializeField] private bool isSecurityDoor = false;
     [SerializeField] private float serverInteractRange = 4f;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource doorAudioSource;
+    [SerializeField] private AudioClip doorOpenClip;
+    [SerializeField] private AudioClip doorCloseClip;
+    [SerializeField, Range(0f, 1f)] private float doorMoveVolume = 1f;
+    [SerializeField] private AudioClip lockedNoKeyClip;
+    [SerializeField, Range(0f, 1f)] private float lockedNoKeyVolume = 1f;
+
     [Header("AI Blocking")]
     [SerializeField] private bool blockAiPathWhenClosed = true;
     [SerializeField] private bool autoCreateNavMeshObstacle = true;
@@ -47,6 +55,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
         if (hingePivot == null)
             hingePivot = transform;
 
+        EnsureDoorAudioSource();
         EnsureNavMeshObstacle();
     }
 
@@ -116,6 +125,14 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
                 }
                 else
                 {
+                    if (isSecurityDoor && lockedNoKeyClip != null)
+                    {
+                        var denyParams = new ClientRpcParams
+                        {
+                            Send = new ClientRpcSendParams { TargetClientIds = new[] { senderId } }
+                        };
+                        PlayLockedNoKeyClientRpc(denyParams);
+                    }
                     return; // no key
                 }
             }
@@ -144,6 +161,7 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
     {
         UpdateTarget();
         RefreshAiBlocker();
+        PlayDoorMoveAudio(newValue);
 
         if (IsServer && !newValue && forceEnemyRepathOnClose)
             StartCoroutine(NotifyEnemiesToRepathAfterClose());
@@ -376,5 +394,41 @@ public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 
             enemy.ServerForceRepathNow();
         }
+    }
+
+    [ClientRpc]
+    private void PlayLockedNoKeyClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        PlayDoorClip(lockedNoKeyClip, lockedNoKeyVolume);
+    }
+
+    private void PlayDoorMoveAudio(bool opened)
+    {
+        AudioClip clip = opened ? doorOpenClip : doorCloseClip;
+        PlayDoorClip(clip, doorMoveVolume);
+    }
+
+    private void PlayDoorClip(AudioClip clip, float volume)
+    {
+        if (clip == null) return;
+        EnsureDoorAudioSource();
+        if (doorAudioSource == null) return;
+        doorAudioSource.PlayOneShot(clip, volume);
+    }
+
+    private void EnsureDoorAudioSource()
+    {
+        if (doorAudioSource != null) return;
+
+        Transform host = hingePivot != null ? hingePivot : transform;
+        doorAudioSource = host.GetComponent<AudioSource>();
+        if (doorAudioSource == null)
+            doorAudioSource = host.gameObject.AddComponent<AudioSource>();
+
+        doorAudioSource.playOnAwake = false;
+        doorAudioSource.spatialBlend = 1f;
+        doorAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        doorAudioSource.minDistance = 1f;
+        doorAudioSource.maxDistance = 20f;
     }
 }
