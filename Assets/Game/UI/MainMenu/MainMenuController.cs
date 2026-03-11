@@ -539,7 +539,7 @@ public sealed class MainMenuController : MonoBehaviour
 
         GlobalBrightnessManager.SetBrightness(appliedBrightness, true);
         ApplyWifiLoopVolumeToLocalPlayer(appliedWifiLoopVolume, persist: false);
-        ShowTransientStatus($"Settings saved (Sensitivity {sensitivity:0.00}, Brightness {brightness:0.00}, WiFi Volume {wifiLoopVolume:0.00}).");
+        ShowTransientStatus($"Settings saved (Sensitivity {sensitivity:0.00}, Brightness {brightness:0.00}).");
     }
 
     private void LoadSettingsFromPrefs()
