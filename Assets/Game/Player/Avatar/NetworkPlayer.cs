@@ -31,9 +31,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [Header("Jump / Gravity")]
     [SerializeField] private float jumpHeight = 1.6f;
     [SerializeField] private float gravity = -25f;
+    [SerializeField] private float minFallDistanceForImpactSound = 3f;
     private bool _wasAirborne = false;
     private float _airborneStartY = 0f;
-    private const float _minFallHeight = 3f;
 
     [Header("Sprint / Stamina")]
     [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed here
@@ -52,6 +52,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [SerializeField] private Vector3 sprintCameraLocalOffset = new Vector3(0f, -0.05f, 0.13f);
     [SerializeField] private float sprintOffsetEnterSpeed = 14f;
     [SerializeField] private float sprintOffsetExitSpeed = 10f;
+
+    [Header("Footsteps")]
+    [SerializeField] private float walkStepInterval = 0.48f;
+    [SerializeField] private float runStepInterval = 0.34f;
 
     // Exposed for UI later (0..1)
     public float Stamina01 => (maxStaminaSeconds <= 0f) ? 0f : Mathf.Clamp01(_staminaSeconds / maxStaminaSeconds);
@@ -92,6 +96,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private float _bobTime;
     private float _currentBobOffset;
     private Vector3 _currentSprintCameraOffset;
+    private float _footstepTimer;
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
@@ -290,8 +295,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             float fallDistance = _airborneStartY - transform.position.y;
 
-            if (fallDistance >= _minFallHeight)
-                soundFX.PlayImpactSound();
+            if (fallDistance >= minFallDistanceForImpactSound)
+                soundFX?.PlayImpactSound();
         }
 
         _wasAirborne = !grounded;
@@ -301,6 +306,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
             _jumpTimer = _jumpCooldown;
+            soundFX?.PlayJumpSound();
         }
 
         // Sprint / stamina
@@ -334,8 +340,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _verticalVelocity += gravity * Time.deltaTime;
         Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
+        UpdateFootsteps(isMoving, grounded);
 
-        // Mouse look
+        // Mouse/controller look from Input Actions
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
         transform.Rotate(0f, look.x, 0f);
 
@@ -385,6 +392,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _bobTime = 0f;
         _currentBobOffset = 0f;
         _currentSprintCameraOffset = Vector3.zero;
+        _footstepTimer = 0f;
 
         if (playerCamera != null)
         {
@@ -442,6 +450,32 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _currentSprintCameraOffset = Vector3.Lerp(_currentSprintCameraOffset, targetSprintOffset, sprintLerpSpeed * Time.deltaTime);
 
         playerCamera.transform.localPosition = _cameraBaseLocalPos + _currentSprintCameraOffset + new Vector3(0f, _currentBobOffset, 0f);
+    }
+
+    private void UpdateFootsteps(bool isMoving, bool grounded)
+    {
+        if (!IsOwner || soundFX == null)
+            return;
+
+        bool canStep = !_frozen && grounded && isMoving;
+        if (!canStep)
+        {
+            _footstepTimer = 0f;
+            return;
+        }
+
+        _footstepTimer += Time.deltaTime;
+        float stepInterval = _isSprinting ? runStepInterval : walkStepInterval;
+        stepInterval = Mathf.Max(0.08f, stepInterval);
+
+        if (_footstepTimer < stepInterval)
+            return;
+
+        _footstepTimer = 0f;
+        if (_isSprinting)
+            soundFX.PlayRunFootstepSound();
+        else
+            soundFX.PlayWalkFootstepSound();
     }
 
     private void InitializeAvatarDefaults()

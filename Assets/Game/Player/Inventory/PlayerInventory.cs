@@ -15,6 +15,7 @@ public class PlayerInventory : NetworkBehaviour
 
     [Header("Torch Networking")]
     [SerializeField] private int torchItemId = 2;
+    [SerializeField] private int keyItemId = 1;
     [SerializeField] private bool remoteTorchAnchorToCamera = true;
     [SerializeField] private Vector3 remoteTorchLocalOffset = new Vector3(0.08f, -0.24f, 0.03f);
     [SerializeField] private Vector3 remoteTorchLocalEuler = new Vector3(4f, 0f, 0f);
@@ -63,6 +64,7 @@ public class PlayerInventory : NetworkBehaviour
     private bool _lastSentTorchEquipped;
     private bool _lastSentTorchOn;
     private NetworkPlayer _networkPlayer;
+    private PlayerSoundFX _soundFX;
     private float _remoteTorchSmoothedPitch;
     private Transform _remoteTorchAnchor;
 
@@ -74,6 +76,7 @@ public class PlayerInventory : NetworkBehaviour
         handItems = new GameObject[hotbarSlots];
         inputActions = new PlayerInputActions();
         _networkPlayer = GetComponent<NetworkPlayer>();
+        _soundFX = GetComponent<PlayerSoundFX>();
 
         BuildDatabaseLookup();
     }
@@ -429,6 +432,7 @@ public class PlayerInventory : NetworkBehaviour
             handItems[slot].SetActive(false);
         }
 
+        _soundFX?.PlayPickupItemSound(itemId, keyItemId, torchItemId);
         UpdateHandDisplay();
         UpdateInventoryDropPrompt();
         SyncTorchStateIfOwner(force: true);

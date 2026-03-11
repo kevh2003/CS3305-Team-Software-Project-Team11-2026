@@ -244,6 +244,7 @@ public class Interactor : NetworkBehaviour
         // show starting prompt immediately
         TrySetInteractPrompt("Submitting... 0% (hold E)");
         soundFX?.PlayInteractSound();
+        soundFX?.StartAssignmentTypingLoop();
 
         holdRoutine = StartCoroutine(HoldToSubmitRoutine(pc));
     }
@@ -255,6 +256,8 @@ public class Interactor : NetworkBehaviour
             StopCoroutine(holdRoutine);
             holdRoutine = null;
         }
+
+        soundFX?.StopHoldLoopSound();
 
         holdingPc = null;
         holdingGrades = null;
@@ -343,6 +346,11 @@ public class Interactor : NetworkBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        CancelHold();
+    }
+
     private void StartHoldGrades(GradesRackInteractable g)
     {
         CancelHold();
@@ -361,6 +369,7 @@ public class Interactor : NetworkBehaviour
         // show starting prompt immediately
         TrySetInteractPrompt("Changing grades... 0%");
         soundFX?.PlayInteractSound();
+        soundFX?.StartGradesChangeLoop();
 
         holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(g));
     }

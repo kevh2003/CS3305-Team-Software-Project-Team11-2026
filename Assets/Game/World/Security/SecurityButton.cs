@@ -16,6 +16,11 @@ public class SecurityButton : NetworkBehaviour, IInteractable
     [SerializeField] private int buttonIndex = 1; // 1,2,3
     [SerializeField] private float serverInteractRange = 4f;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip pressClip;
+    [SerializeField, Range(0f, 1f)] private float pressVolume = 1f;
+
     private NetworkVariable<int> state = new(
         (int)ButtonState.RedDisabled,
         NetworkVariableReadPermission.Everyone,
@@ -40,6 +45,7 @@ public class SecurityButton : NetworkBehaviour, IInteractable
         if (controller == null) return;
         if (state.Value != (int)ButtonState.YellowReady) return;
 
+        PlayPressAudioClientRpc();
         controller.ServerOnButtonPressed(buttonIndex, senderId);
     }
 
@@ -50,6 +56,7 @@ public class SecurityButton : NetworkBehaviour, IInteractable
         _onStateChanged ??= OnStateChanged;
         state.OnValueChanged += _onStateChanged;
 
+        EnsureAudioSource();
         ApplyVisual();
     }
 
@@ -81,6 +88,15 @@ public class SecurityButton : NetworkBehaviour, IInteractable
         state.Value = (int)newState;
     }
 
+    [ClientRpc]
+    private void PlayPressAudioClientRpc()
+    {
+        if (pressClip == null) return;
+        EnsureAudioSource();
+        if (audioSource == null) return;
+        audioSource.PlayOneShot(pressClip, pressVolume);
+    }
+
     private bool IsSenderInRange(ulong senderId)
     {
         var nm = NetworkManager.Singleton;
@@ -89,5 +105,20 @@ public class SecurityButton : NetworkBehaviour, IInteractable
         if (client.PlayerObject == null) return false;
 
         return Vector3.Distance(client.PlayerObject.transform.position, transform.position) <= serverInteractRange;
+    }
+
+    private void EnsureAudioSource()
+    {
+        if (audioSource != null) return;
+
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 1f;
+        audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        audioSource.minDistance = 1f;
+        audioSource.maxDistance = 15f;
     }
 }

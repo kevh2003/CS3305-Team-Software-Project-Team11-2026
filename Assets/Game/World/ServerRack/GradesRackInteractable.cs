@@ -87,6 +87,7 @@ public class GradesRackInteractable : NetworkBehaviour, IInteractable
     [ClientRpc]
     private void ShowYouWinClientRpc()
     {
+        LocalPlayerReference.Instance?.GetComponent<PlayerSoundFX>()?.PlayWinSound();
         PlayerHealthUI.ShowYouWin();
     }
 
