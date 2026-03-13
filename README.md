@@ -1,6 +1,5 @@
 # CS3305 Group 11: Dead By Deadline
 
-*Full in depth report inside docs/report.md  
 *See bottom of this readme for 'How to Install and Play'
 
 ### Contributors
