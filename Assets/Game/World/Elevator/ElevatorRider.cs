@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Netcode;
 
 [RequireComponent(typeof(CharacterController))]
+// Applies moving-platform deltas to the local player controller each frame.
 public class ElevatorRider : NetworkBehaviour
 {
     private CharacterController _cc;

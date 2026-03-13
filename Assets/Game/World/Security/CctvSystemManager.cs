@@ -3,6 +3,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(NetworkObject))]
+// Coordinates CCTV ownership and server-side lure pings for enemies.
 public class CctvSystemManager : NetworkBehaviour
 {
     private const ulong NoCctvUser = ulong.MaxValue;

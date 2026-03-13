@@ -1,3 +1,4 @@
+// Common interaction contract consumed by Interactor.
 public interface IInteractable
 {
     public bool CanInteract();

@@ -4,10 +4,7 @@ using UnityEngine.EventSystems;
 /*
 Usage - Attach this script to the UI element you want to be draggable.
 Ensure there is a CanvasGroup component attached to the same UI element for proper functionality.
-Match the tag on this object with thet collision area
-
-
-
+Match the tag on this object with that collision area
 */
 
 public class DraggingBehaviour : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -35,7 +32,7 @@ public class DraggingBehaviour : MonoBehaviour, IBeginDragHandler, IDragHandler,
         if (locked && _canvasGroup != null)
         {  
             _canvasGroup.alpha = 1f;
-            _canvasGroup.blocksRaycasts = false; // need to change when unlocked
+            _canvasGroup.blocksRaycasts = false; // needs to change when unlocked
         }
     }
 

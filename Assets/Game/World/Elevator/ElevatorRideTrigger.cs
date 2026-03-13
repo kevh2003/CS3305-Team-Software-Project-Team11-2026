@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Assigns/clears the current moving platform for riders entering this trigger.
 public class ElevatorRideTrigger : MonoBehaviour
 {
     [SerializeField] private Transform platformRoot;

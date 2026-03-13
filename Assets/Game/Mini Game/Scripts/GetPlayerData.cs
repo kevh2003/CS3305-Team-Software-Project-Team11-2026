@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// Legacy WiFi interaction prompt/input path kept for compatibility.
 public class GetPlayerData : MonoBehaviour
 {
     [Header("Legacy Mode")]

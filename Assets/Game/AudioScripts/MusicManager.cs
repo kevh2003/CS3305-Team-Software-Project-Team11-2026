@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Persists across scenes and selects/fades background music per game phase.
 public class MusicManager : MonoBehaviour
 {
     public static MusicManager Instance;

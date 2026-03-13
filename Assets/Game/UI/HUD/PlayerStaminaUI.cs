@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+// Builds and updates the owning player's stamina block HUD.
 public class PlayerStaminaUI : NetworkBehaviour
 {
     [Header("Scene names")]
@@ -110,9 +111,6 @@ public class PlayerStaminaUI : NetworkBehaviour
         {
             bool on = i < visibleBlocks;
             blocks[i].color = on ? blockOnColor : blockOffColor;
-
-            // If you prefer them to fully disappear:
-            // blocks[i].enabled = on;
         }
     }
 

@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
 
+// Binds objective toggles/counts to the replicated ObjectiveState values.
 public class ObjectiveUI : MonoBehaviour
 {
     private const string UnlockSecurityOfficeText = "Unlock the security office";

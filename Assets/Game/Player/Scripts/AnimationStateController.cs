@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Drives walk/run animator booleans from smoothed movement speed.
 public class AnimationStateController : MonoBehaviour
 {
     private enum MoveAnimState

@@ -4,6 +4,7 @@ using UnityEngine.AI;
 using Unity.Netcode;
 
 [RequireComponent(typeof(AudioSource))]
+// Server-side enemy brain handling detection, chase, search and lure states.
 public class EnemyAI : NetworkBehaviour
 {
     [Header("Attack Settings")]
@@ -17,7 +18,7 @@ public class EnemyAI : NetworkBehaviour
 
     [Header("Search Settings")]
     private float lastSeenTime = -999f;
-    [SerializeField] private float loseSightGrace = 1.0f; // seconds before switching to searching
+    [SerializeField] private float loseSightGrace = 1.0f;
     public float alertedDetectionMultiplier = 1.5f;
     public float alertedViewAngle = 240f;
     public float searchDuration = 10f;
@@ -41,31 +42,16 @@ public class EnemyAI : NetworkBehaviour
     private int lureGlanceDirection = 1;
 
     [Header("Audio")]
-    [Tooltip("Looping clip played while the enemy is patrolling. Quieter and calmer.")]
     public AudioClip PatrolClip;
-
-    [Tooltip("Looping clip played while the enemy is chasing a player.")]
     public AudioClip AlertClip;
-
-    [Tooltip("One-shot played when the enemy first spots a player.")]
     public AudioClip SpottedClip;
-
-    [Tooltip("Volume used when playing the patrol clip.")]
     [Range(0f, 1f)]
     public float PatrolVolume = 0.5f;
-
-    [Tooltip("Volume used when playing the alert clip.")]
     [Range(0f, 1f)]
     public float AlertVolume = 0.85f;
-
-    [Tooltip("Volume used when playing the spotted one-shot clip.")]
     [Range(0f, 1f)]
     public float SpottedVolume = 0.85f;
-
-    [Tooltip("How far the sounds carry in world units.")]
     public float HeardRadius = 30f;
-
-    [Tooltip("Crossfade amount used when looping chase audio to hide loop seams.")]
     [SerializeField, Range(0f, 0.5f)] private float alertLoopCrossfadeSeconds = 0.08f;
     [SerializeField] private bool smoothAlertLoop = true;
 
@@ -75,7 +61,7 @@ public class EnemyAI : NetworkBehaviour
     public Transform currentTarget;
     private NavMeshAgent agent;
 
-    // Single shared AudioSource — clip and volume are swapped depending on state
+    // Single shared AudioSource - clip and volume are swapped depending on state
     private AudioSource enemyAudioSource;
     private AudioSource enemyAudioBlendSource;
     private Coroutine alertLoopRoutine;
@@ -109,6 +95,7 @@ public class EnemyAI : NetworkBehaviour
 
     // Performance : throttle chase destination updates
     private float _nextRepathTime;
+    private NavMeshPath _reusablePath;
 
     void Awake()
     {
@@ -128,6 +115,7 @@ public class EnemyAI : NetworkBehaviour
         _cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
 
         ConfigureAudioSource();
+        _reusablePath = new NavMeshPath();
     }
 
     public override void OnNetworkSpawn()
@@ -135,7 +123,6 @@ public class EnemyAI : NetworkBehaviour
         base.OnNetworkSpawn();
 
         // Only the host/server runs the AI update loop.
-        // Clients have no business running pathfinding or detection.
         if (!IsServer) return;
 
         // Safety: avoid stacking UpdateTarget invokes if this NetworkObject respawns/match restarts
@@ -169,7 +156,7 @@ public class EnemyAI : NetworkBehaviour
     void Update()
     {
         // All movement and AI logic is server-only.
-        // On a LAN listen server the host runs this locally — clients skip it entirely.
+        // On a LAN the host runs this locally - clients skip it entirely.
         if (!IsServer) return;
 
         if (isPaused) return;
@@ -184,14 +171,13 @@ public class EnemyAI : NetworkBehaviour
         if (currentTarget != null)
         {
             // Chase the player
-            // Performance : don't SetDestination every frame
             if (Time.time >= _nextRepathTime)
             {
                 _nextRepathTime = Time.time + chaseRepathRate;
 
                 Vector3 targetPos = currentTarget.position;
 
-                // If player is off the NavMesh (e.g., on a box), chase the closest NavMesh point instead
+                // If player is off the NavMesh (e.g. on a tree), chase the closest NavMesh point instead
                 if (NavMesh.SamplePosition(targetPos, out var hit, 10f, NavMesh.AllAreas))
                 {
                     targetPos = hit.position;
@@ -400,9 +386,12 @@ public class EnemyAI : NetworkBehaviour
             snapped = hit.position;
 
         // If we can compute a path, use the last reachable corner
-        var path = new NavMeshPath();
-        if (agent.CalculatePath(snapped, path) && path.status != NavMeshPathStatus.PathInvalid && path.corners.Length > 0)
-            return path.corners[path.corners.Length - 1];
+        if (agent.CalculatePath(snapped, _reusablePath)
+            && _reusablePath.status != NavMeshPathStatus.PathInvalid
+            && _reusablePath.corners.Length > 0)
+        {
+            return _reusablePath.corners[_reusablePath.corners.Length - 1];
+        }
 
         // Fallback: go to snapped anyway
         return snapped;

@@ -1,6 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Items/Item Definition")]
+// ScriptableObject describing a pickup/held item and its visual assets.
 public class ItemDefinition : ScriptableObject
 {
     public int itemId;              

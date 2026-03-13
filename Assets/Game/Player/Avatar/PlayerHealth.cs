@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Server-authoritative health and death flow, including team wipe game-over checks.
 public class PlayerHealth : NetworkBehaviour
 {
     [Header("Health")]
@@ -141,8 +142,7 @@ public class PlayerHealth : NetworkBehaviour
                 inv.DropAllItemsOnDeathServer();
             }
 
-            // Assignment requires every player, so a dead player that hasn't completed it shouldn't soft-lock it
-            // This reduces RequiredSubmitCount by 1 IF this player was required and not submitted yet. - kev
+            // Prevent assignment soft-lock if this player dies before submitting.
             if (ObjectiveState.Instance != null)
             {
                 ObjectiveState.Instance.ServerHandlePlayerDeath(OwnerClientId);
@@ -187,7 +187,7 @@ public class PlayerHealth : NetworkBehaviour
             if (!all[i].IsDead.Value) return;
         }
 
-        // Everyone is dead :O
+        // Everyone is dead.
         s_gameOverTriggered = true;
 
         ShowGameOverClientRpc();

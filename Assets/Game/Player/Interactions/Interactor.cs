@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
 
+// Owner-side interaction probe that routes taps/holds to interactable targets.
 public class Interactor : NetworkBehaviour
 {
     private const int MaxProbeHits = 16;
@@ -251,6 +252,9 @@ public class Interactor : NetworkBehaviour
 
         holdingPc = pc;
 
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient && pc.IsSpawned)
+            pc.BeginSubmitHoldServerRpc();
+
         // show starting prompt immediately
         TrySetInteractPrompt("Submitting... 0% (hold E)");
         soundFX?.PlayInteractSound();
@@ -261,6 +265,15 @@ public class Interactor : NetworkBehaviour
 
     private void CancelHold()
     {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        {
+            if (holdingPc != null && holdingPc.IsSpawned)
+                holdingPc.CancelSubmitHoldServerRpc();
+
+            if (holdingGrades != null && holdingGrades.IsSpawned)
+                holdingGrades.CancelGradeHoldServerRpc();
+        }
+
         if (holdRoutine != null)
         {
             StopCoroutine(holdRoutine);
@@ -385,6 +398,9 @@ public class Interactor : NetworkBehaviour
         }
 
         holdingGrades = g;
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient && g.IsSpawned)
+            g.BeginGradeHoldServerRpc();
 
         // show starting prompt immediately
         TrySetInteractPrompt("Changing grades... 0%");

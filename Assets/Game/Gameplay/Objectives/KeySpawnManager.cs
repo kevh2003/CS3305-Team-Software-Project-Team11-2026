@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem; // editor-only debug hotkey (Input System)
 #endif
 
+// Spawns and resets the networked key when objective state events require it.
 public class KeySpawnManager : MonoBehaviour
 {
     [Header("References")]
@@ -17,6 +18,7 @@ public class KeySpawnManager : MonoBehaviour
     [SerializeField] private Transform[] keySpawnPoints;
 
     private bool _subscribed;
+    private Coroutine _subscribeRoutine;
 
 #if UNITY_EDITOR
     [Header("Editor Debug")]
@@ -33,12 +35,35 @@ public class KeySpawnManager : MonoBehaviour
 
     private void OnEnable()
     {
-        TrySubscribe();
+        if (_subscribeRoutine == null)
+            _subscribeRoutine = StartCoroutine(SubscribeWhenReady());
     }
 
     private void OnDisable()
     {
+        if (_subscribeRoutine != null)
+        {
+            StopCoroutine(_subscribeRoutine);
+            _subscribeRoutine = null;
+        }
         Unsubscribe();
+    }
+
+    private System.Collections.IEnumerator SubscribeWhenReady()
+    {
+        while (!_subscribed)
+        {
+            if (objectiveState == null)
+                objectiveState = ObjectiveState.Instance != null ? ObjectiveState.Instance : FindFirstObjectByType<ObjectiveState>();
+
+            TrySubscribe();
+            if (_subscribed)
+                break;
+
+            yield return null;
+        }
+
+        _subscribeRoutine = null;
     }
 
     private void TrySubscribe()
@@ -152,7 +177,7 @@ public class KeySpawnManager : MonoBehaviour
             return;
         }
 
-        // Optional: remove previous debug key
+        // Remove previous debug key.
         if (_lastDebugSpawnedKey != null && _lastDebugSpawnedKey.IsSpawned)
             _lastDebugSpawnedKey.Despawn(true);
 

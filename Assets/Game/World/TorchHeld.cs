@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// Local flashlight state and toggle handling for the held torch item.
 public class TorchHeld : MonoBehaviour
 {
     [SerializeField] private Light torchLight;

@@ -39,6 +39,10 @@ public sealed class PauseMenuController : MonoBehaviour
     private float _appliedSensitivity = DefaultSensitivity;
     private float _appliedBrightness;
     private float _appliedWifiLoopVolume = DefaultWifiLoopVolume;
+    private bool _inputEnabledBeforeOpen;
+    private CursorLockMode _cursorLockBeforeOpen;
+    private bool _cursorVisibleBeforeOpen;
+    private bool _openedInGameScene;
 
     private void Awake()
     {
@@ -90,6 +94,10 @@ public sealed class PauseMenuController : MonoBehaviour
 
     private void Open()
     {
+        _openedInGameScene = SceneManager.GetActiveScene().name == "03_Game";
+        _cursorLockBeforeOpen = Cursor.lockState;
+        _cursorVisibleBeforeOpen = Cursor.visible;
+
         SetOpen(true);
 
         bool isHost = IsHost();
@@ -99,7 +107,9 @@ public sealed class PauseMenuController : MonoBehaviour
 
         // Disable local player controls while menu is open
         var input = LocalPlayerReference.Instance.PlayerInput;
-        if (input != null) input.enabled = false;
+        _inputEnabledBeforeOpen = input != null && input.enabled;
+        if (input != null)
+            input.enabled = false;
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -109,16 +119,24 @@ public sealed class PauseMenuController : MonoBehaviour
     {
         SetOpen(false);
 
-        // Only re-enable input if player is in Game scene
+        bool inGameScene = SceneManager.GetActiveScene().name == "03_Game";
+        bool localModalActive = CameraInteraction.IsAnyLocalCctvActive || StartGame.IsAnyLocalWifiMinigameActive;
+
+        // Restore input only if it was previously enabled and no modal interaction currently owns control.
         var input = LocalPlayerReference.Instance != null ? LocalPlayerReference.Instance.PlayerInput : null;
         if (input != null)
-            input.enabled = (SceneManager.GetActiveScene().name == "03_Game");
+            input.enabled = inGameScene && _inputEnabledBeforeOpen && !localModalActive;
 
-        // Re-lock cursor if still in game
-        if (SceneManager.GetActiveScene().name == "03_Game")
+        // Preserve camera/minigame cursor policy, otherwise restore expected gameplay/menu cursor state.
+        if (localModalActive || (inGameScene && _openedInGameScene))
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+        }
+        else
+        {
+            Cursor.lockState = _cursorLockBeforeOpen;
+            Cursor.visible = _cursorVisibleBeforeOpen;
         }
     }
 

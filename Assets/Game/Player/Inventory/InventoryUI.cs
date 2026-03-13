@@ -5,6 +5,7 @@ using Unity.Netcode;
 using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(PlayerInventory))]
+// Builds the owning player's hotbar UI and keeps it synced with inventory state.
 public class InventoryUI : NetworkBehaviour
 {
     [Header("Scene gating")]
@@ -83,7 +84,7 @@ public class InventoryUI : NetworkBehaviour
 
     private void CreateHotbarPanel()
     {
-        // If we already have one, don’t recreate
+        // If we already have one, don't recreate
         if (inventory.hotbarPanel != null)
             return;
 
@@ -178,8 +179,6 @@ public class InventoryUI : NetworkBehaviour
 
     public void SetSelectedSlot(int index)
     {
-        // Optional helper if you want an external highlight system later.
-        // PlayerInventory already adds Outline to slot images, so this can be empty.
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -202,7 +201,6 @@ public class InventoryUI : NetworkBehaviour
         if (inventory != null && inventory.hotbarPanel != null)
             inventory.hotbarPanel.SetActive(showUI);
 
-        // If you want held item hidden on death/menu, you can also do:
         if (inventory != null && inventory.handPosition != null)
         {
             foreach (Transform child in inventory.handPosition)

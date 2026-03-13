@@ -13,7 +13,6 @@ public class DropPromptUI : MonoBehaviour
     private static DropPromptUI _instance;
     private static bool _isQuitting;
 
-    // Change this if your gameplay scene name differs
     private const string GAME_SCENE_NAME = "03_Game";
 
     public static DropPromptUI Instance

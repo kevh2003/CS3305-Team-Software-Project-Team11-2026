@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
+// Server-authoritative state machine for the security-room objective flow.
 public class SecurityRoomController : NetworkBehaviour
 {
     [Header("Buttons")]

@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// Switches to final-level music when the local player reaches the trigger.
 public class FinalLevelTrigger : MonoBehaviour
 {
     private bool triggered = false;

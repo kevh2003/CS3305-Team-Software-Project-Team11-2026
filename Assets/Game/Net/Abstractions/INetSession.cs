@@ -44,6 +44,7 @@ public readonly struct LanServerInfo
     }
 }
 
+// Abstraction used by menu/gameplay code for LAN and Relay session flow.
 public interface INetSession
 {
     bool IsHost { get; }

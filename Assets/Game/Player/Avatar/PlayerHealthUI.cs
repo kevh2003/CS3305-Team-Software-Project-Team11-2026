@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+// Builds and updates the owning player's health HUD and end-state message.
 public class PlayerHealthUI : NetworkBehaviour
 {
     [Header("Scene names")]

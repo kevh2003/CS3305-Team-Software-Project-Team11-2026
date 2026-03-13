@@ -1,5 +1,7 @@
 using UnityEngine;
 
+
+// Used for showing player previews in the Lobby scene for selectable players/characters
 [DisallowMultipleComponent]
 public sealed class PreviewAnimationPlayer : MonoBehaviour
 {

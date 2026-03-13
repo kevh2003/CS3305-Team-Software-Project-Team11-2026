@@ -4,6 +4,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(EnemyAI))]
+// Applies enemy damage on the server with cooldown and dead-target guards.
 public class EnemyAttack : NetworkBehaviour
 {
     [Header("Attack")]
@@ -13,7 +14,7 @@ public class EnemyAttack : NetworkBehaviour
     private EnemyAI enemyAI;
     private bool isAttacking = false;
 
-    // Per-target safety guard (prevents "double hits" due to multiple colliders/events) -kev
+    // Per-target safety guard to prevent repeated hits from multiple colliders/events.
     private readonly Dictionary<ulong, float> lastHitTime = new();
 
     private void Awake()

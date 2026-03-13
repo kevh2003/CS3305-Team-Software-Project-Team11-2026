@@ -3,6 +3,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
+// Networked pressure plate state, occupancy tracking, and visual feedback.
 public class PressurePlate : NetworkBehaviour
 {
     [Header("Identity")]
@@ -68,7 +69,7 @@ public class PressurePlate : NetworkBehaviour
         var col = GetComponent<Collider>();
         if (col != null) col.isTrigger = true;
 
-        // Prevent “flash” in editor before network vars apply
+        // Prevent "flash" in editor before network vars apply
         UpdateVisuals();
     }
 
@@ -150,7 +151,9 @@ public class PressurePlate : NetworkBehaviour
     {
         if (!IsServer) return;
         if (!isPowered.Value) return;
-        if (!IsPlayerCollider(other)) return;
+        if (!IsAlivePlayerCollider(other)) return;
+
+        ServerCleanupOrphanedPlayers();
 
         playersOnPlate.Add(other);
 
@@ -168,6 +171,7 @@ public class PressurePlate : NetworkBehaviour
         if (!isPowered.Value) return;
         if (!IsPlayerCollider(other)) return;
 
+        ServerCleanupOrphanedPlayers();
         playersOnPlate.Remove(other);
 
         // If latched, stay active even if people leave
@@ -190,6 +194,25 @@ public class PressurePlate : NetworkBehaviour
 
         Transform root = col.transform.root;
         return root != null && root.CompareTag(playerTag);
+    }
+
+    private bool IsAlivePlayerCollider(Collider col)
+    {
+        if (!IsPlayerCollider(col))
+            return false;
+
+        if (col == null)
+            return false;
+
+        Transform root = col.transform.root;
+        if (root == null)
+            return false;
+
+        var health = root.GetComponent<PlayerHealth>();
+        if (health != null && health.IsSpawned && health.IsDead.Value)
+            return false;
+
+        return true;
     }
 
     private void UpdateVisuals()
@@ -236,7 +259,7 @@ public class PressurePlate : NetworkBehaviour
 
         if (playersOnPlate.Count == 0) return;
 
-        playersOnPlate.RemoveWhere(c => c == null || c.gameObject == null);
+        playersOnPlate.RemoveWhere(c => c == null || c.gameObject == null || !IsAlivePlayerCollider(c));
 
         // If not latched, active should reflect whether anyone is still on it
         if (!isLatched.Value)
@@ -278,7 +301,7 @@ public class PressurePlate : NetworkBehaviour
         {
             var c = hits[i];
             if (c == null) continue;
-            if (!IsPlayerCollider(c)) continue;
+            if (!IsAlivePlayerCollider(c)) continue;
 
             playersOnPlate.Add(c);
         }

@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Server-authoritative match progression state replicated to all clients.
 public class ObjectiveState : NetworkBehaviour
 {
     public static ObjectiveState Instance { get; private set; }
@@ -154,7 +155,6 @@ public class ObjectiveState : NetworkBehaviour
         return total <= 0 || WifiFixedCount.Value >= total;
     }
 
-    // Keeping rpc version for now - kev
     [ServerRpc(RequireOwnership = false)]
     public void RegisterDuckServerRpc(ServerRpcParams rpcParams = default)
     {
@@ -268,7 +268,7 @@ public class ObjectiveState : NetworkBehaviour
         GradesChanged.Value = false;
     }
 
-    // --- Post-key setters (server authoritative) ---
+    //Post-key setters (server authoritative)
 
     public void ServerMarkKeyCollected()
     {

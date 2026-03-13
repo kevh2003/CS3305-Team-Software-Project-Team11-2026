@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
+// One button in the security puzzle sequence with replicated color/state.
 public class SecurityButton : NetworkBehaviour, IInteractable
 {
     public enum ButtonState { RedDisabled = 0, YellowReady = 1, GreenDone = 2 }

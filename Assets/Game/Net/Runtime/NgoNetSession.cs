@@ -98,21 +98,32 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
         return ok ? NetStartResult.Success : NetStartResult.TransportError;
     }
 
+    private bool PrepareForSynchronousStart()
+    {
+        if (networkManager == null) return false;
+        if (networkManager.ShutdownInProgress) return false;
+
+        if (networkManager.IsListening || networkManager.IsClient || networkManager.IsServer)
+            networkManager.Shutdown();
+
+        // Synchronous start paths cannot await frame-based shutdown completion.
+        return !networkManager.ShutdownInProgress;
+    }
+
     public NetStartResult HostLanAutoPort(out ushort chosenPort)
     {
         chosenPort = 0;
 
         if (transport == null || networkManager == null)
             return NetStartResult.NotInitialized;
-        if (networkManager.ShutdownInProgress)
+        if (!PrepareForSynchronousStart())
             return NetStartResult.TransportError;
-
-        // If already running, cleanly stop first
-        if (networkManager.IsListening || networkManager.IsClient || networkManager.IsServer)
-            networkManager.Shutdown();
 
         for (int i = 0; i <= maxAttempts; i++)
         {
+            if (networkManager.ShutdownInProgress)
+                return NetStartResult.TransportError;
+
             ushort portToTry = (ushort)(basePort + i);
 
             Debug.Log($"[NetSession] Trying to host on port {portToTry}...");
@@ -137,7 +148,7 @@ public sealed class NgoNetSession : MonoBehaviour, INetSession
     {
         if (transport == null || networkManager == null) return NetStartResult.NotInitialized;
         if (string.IsNullOrWhiteSpace(address)) return NetStartResult.InvalidInput;
-        if (networkManager.ShutdownInProgress) return NetStartResult.TransportError;
+        if (!PrepareForSynchronousStart()) return NetStartResult.TransportError;
 
         LastOnlineJoinCode = string.Empty;
         transport.SetConnectionData(address, port);
