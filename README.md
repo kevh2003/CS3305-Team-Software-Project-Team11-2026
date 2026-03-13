@@ -1,7 +1,3 @@
----
-title: 'CS3305 Group 11: Dead By Deadline'
----
-
 # CS3305 Group 11: Dead By Deadline
 
 *Full in depth report inside docs/report.md  
