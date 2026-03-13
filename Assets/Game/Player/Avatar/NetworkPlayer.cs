@@ -31,9 +31,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [Header("Jump / Gravity")]
     [SerializeField] private float jumpHeight = 1.6f;
     [SerializeField] private float gravity = -25f;
+    [SerializeField] private float minFallDistanceForImpactSound = 3f;
     private bool _wasAirborne = false;
     private float _airborneStartY = 0f;
-    private const float _minFallHeight = 3f;
 
     [Header("Sprint / Stamina")]
     [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed here
@@ -53,6 +53,10 @@ public sealed class NetworkPlayer : NetworkBehaviour
     [SerializeField] private float sprintOffsetEnterSpeed = 14f;
     [SerializeField] private float sprintOffsetExitSpeed = 10f;
 
+    [Header("Footsteps")]
+    [SerializeField] private float walkStepInterval = 0.48f;
+    [SerializeField] private float runStepInterval = 0.34f;
+
     // Exposed for UI later (0..1)
     public float Stamina01 => (maxStaminaSeconds <= 0f) ? 0f : Mathf.Clamp01(_staminaSeconds / maxStaminaSeconds);
     public Transform PlayerCameraTransform => playerCamera != null ? playerCamera.transform : null;
@@ -71,6 +75,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     [Header("Avatar Selection")]
     [SerializeField] private AvatarCatalog avatarCatalog;
+    [SerializeField] private Transform avatarVisualRoot;
 
     private float _staminaSeconds;
     private bool _isSprinting;
@@ -87,9 +92,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private float _pitch;
     private bool _inGameScene;
     private Vector3 _cameraBaseLocalPos;
+    private Vector3 _defaultCameraLocalPos;
     private float _bobTime;
     private float _currentBobOffset;
     private Vector3 _currentSprintCameraOffset;
+    private float _footstepTimer;
 
     private CharacterController _cc;
     private PlayerInput _playerInput;
@@ -100,9 +107,21 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private bool _hasOwnerHeadScale;
     private float _lastSyncedPitch = float.NaN;
     private float _nextPitchSyncTime;
+    private bool _avatarDefaultsInitialized;
+    private Transform _defaultAvatarVisualRoot;
+    private Vector3 _defaultAvatarLocalPosition;
+    private Quaternion _defaultAvatarLocalRotation;
+    private Vector3 _defaultAvatarLocalScale = Vector3.one;
+    private RuntimeAnimatorController _defaultAvatarAnimatorController;
+    private float _defaultControllerHeight = 2f;
+    private float _defaultControllerRadius = 0.5f;
+    private Vector3 _defaultControllerCenter = Vector3.zero;
+    private GameObject _runtimeAvatarInstance;
+    private GameObject _runtimeAvatarSourcePrefab;
 
     public int SelectedAvatarId => _selectedAvatarId.Value;
     public bool IsReadyInLobby => _readyInLobby.Value;
+    public float LookSensitivity => lookSensitivity;
 
     public event System.Action<NetworkPlayer> LobbyStateChanged;
     public static event System.Action<NetworkPlayer> AnyLobbyStateChanged;
@@ -126,9 +145,11 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (playerCamera != null)
         {
             _cameraBaseLocalPos = playerCamera.transform.localPosition;
+            _defaultCameraLocalPos = _cameraBaseLocalPos;
             _defaultNearClipPlane = playerCamera.nearClipPlane;
         }
 
+        InitializeAvatarDefaults();
         CacheOwnerHiddenRenderers();
         CacheOwnerHeadTransform();
     }
@@ -164,6 +185,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
             _selectedAvatarId.Value = Mathf.Clamp(_selectedAvatarId.Value, 0, max);
         }
 
+        ApplySelectedAvatarPresentation();
         ApplySceneState(SceneManager.GetActiveScene().name);
         NotifyLobbyStateChanged();
 
@@ -175,6 +197,12 @@ public sealed class NetworkPlayer : NetworkBehaviour
     {
         _selectedAvatarId.OnValueChanged -= OnSelectedAvatarChanged;
         _readyInLobby.OnValueChanged -= OnReadyStateChanged;
+        if (_runtimeAvatarInstance != null)
+        {
+            Destroy(_runtimeAvatarInstance);
+            _runtimeAvatarInstance = null;
+            _runtimeAvatarSourcePrefab = null;
+        }
         base.OnNetworkDespawn();
     }
 
@@ -228,7 +256,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
             Cursor.visible = false;
 
             if (playerCamera != null)
-                _cameraBaseLocalPos = playerCamera.transform.localPosition;
+                playerCamera.transform.localPosition = _cameraBaseLocalPos;
             _currentSprintCameraOffset = Vector3.zero;
             if (isOwner)
                 SyncLookPitch(force: true);
@@ -267,8 +295,8 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             float fallDistance = _airborneStartY - transform.position.y;
 
-            if (fallDistance >= _minFallHeight)
-                soundFX.PlayImpactSound();
+            if (fallDistance >= minFallDistanceForImpactSound)
+                soundFX?.PlayImpactSound();
         }
 
         _wasAirborne = !grounded;
@@ -278,6 +306,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         {
             _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
             _jumpTimer = _jumpCooldown;
+            soundFX?.PlayJumpSound();
         }
 
         // Sprint / stamina
@@ -311,8 +340,9 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _verticalVelocity += gravity * Time.deltaTime;
         Vector3 velocity = (moveWorld * finalSpeed) + (Vector3.up * _verticalVelocity);
         _cc.Move(velocity * Time.deltaTime);
+        UpdateFootsteps(isMoving, grounded);
 
-        // Mouse look
+        // Mouse/controller look from Input Actions
         Vector2 look = _look.ReadValue<Vector2>() * lookSensitivity;
         transform.Rotate(0f, look.x, 0f);
 
@@ -362,6 +392,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         _bobTime = 0f;
         _currentBobOffset = 0f;
         _currentSprintCameraOffset = Vector3.zero;
+        _footstepTimer = 0f;
 
         if (playerCamera != null)
         {
@@ -421,9 +452,224 @@ public sealed class NetworkPlayer : NetworkBehaviour
         playerCamera.transform.localPosition = _cameraBaseLocalPos + _currentSprintCameraOffset + new Vector3(0f, _currentBobOffset, 0f);
     }
 
+    private void UpdateFootsteps(bool isMoving, bool grounded)
+    {
+        if (!IsOwner || soundFX == null)
+            return;
+
+        bool canStep = !_frozen && grounded && isMoving;
+        if (!canStep)
+        {
+            _footstepTimer = 0f;
+            return;
+        }
+
+        _footstepTimer += Time.deltaTime;
+        float stepInterval = _isSprinting ? runStepInterval : walkStepInterval;
+        stepInterval = Mathf.Max(0.08f, stepInterval);
+
+        if (_footstepTimer < stepInterval)
+            return;
+
+        _footstepTimer = 0f;
+        if (_isSprinting)
+            soundFX.PlayRunFootstepSound();
+        else
+            soundFX.PlayWalkFootstepSound();
+    }
+
+    private void InitializeAvatarDefaults()
+    {
+        if (_avatarDefaultsInitialized) return;
+
+        _defaultControllerHeight = _cc != null ? _cc.height : _defaultControllerHeight;
+        _defaultControllerRadius = _cc != null ? _cc.radius : _defaultControllerRadius;
+        _defaultControllerCenter = _cc != null ? _cc.center : _defaultControllerCenter;
+
+        if (playerCamera != null)
+        {
+            _cameraBaseLocalPos = playerCamera.transform.localPosition;
+            _defaultCameraLocalPos = _cameraBaseLocalPos;
+        }
+
+        if (avatarVisualRoot == null)
+            avatarVisualRoot = FindDefaultAvatarVisualRoot();
+
+        _defaultAvatarVisualRoot = avatarVisualRoot;
+        if (_defaultAvatarVisualRoot != null)
+        {
+            _defaultAvatarLocalPosition = _defaultAvatarVisualRoot.localPosition;
+            _defaultAvatarLocalRotation = _defaultAvatarVisualRoot.localRotation;
+            _defaultAvatarLocalScale = _defaultAvatarVisualRoot.localScale;
+
+            Animator animator = _defaultAvatarVisualRoot.GetComponentInChildren<Animator>(true);
+            if (animator != null)
+                _defaultAvatarAnimatorController = animator.runtimeAnimatorController;
+        }
+
+        _avatarDefaultsInitialized = true;
+    }
+
+    private Transform FindDefaultAvatarVisualRoot()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform child = transform.GetChild(i);
+            if (child == null) continue;
+            if (playerCamera != null && child == playerCamera.transform) continue;
+            if (child.GetComponent<Camera>() != null) continue;
+            if (child.GetComponent<Canvas>() != null) continue;
+            if (child.GetComponentInChildren<Renderer>(true) == null) continue;
+            return child;
+        }
+
+        return null;
+    }
+
+    private void ApplySelectedAvatarPresentation()
+    {
+        InitializeAvatarDefaults();
+
+        AvatarCatalog catalog = ResolveAvatarCatalog();
+        AvatarCatalog.AvatarEntry entry = default;
+        bool hasEntry = catalog != null && catalog.TryGet(_selectedAvatarId.Value, out entry);
+
+        GameObject desiredPrefab = null;
+        if (hasEntry)
+            desiredPrefab = entry.gameplayPrefab != null ? entry.gameplayPrefab : entry.previewPrefab;
+
+        bool useDefaultAvatar = _selectedAvatarId.Value <= 0 || desiredPrefab == null;
+        if (useDefaultAvatar)
+        {
+            if (_runtimeAvatarInstance != null)
+            {
+                Destroy(_runtimeAvatarInstance);
+                _runtimeAvatarInstance = null;
+                _runtimeAvatarSourcePrefab = null;
+            }
+
+            if (_defaultAvatarVisualRoot != null)
+            {
+                _defaultAvatarVisualRoot.gameObject.SetActive(true);
+                ApplyAvatarTransform(_defaultAvatarVisualRoot, hasEntry ? entry : default);
+                ApplyAnimatorController(_defaultAvatarVisualRoot, hasEntry ? entry.gameplayAnimatorController : null);
+                EnsureAnimationStateController(_defaultAvatarVisualRoot);
+                avatarVisualRoot = _defaultAvatarVisualRoot;
+            }
+        }
+        else
+        {
+            if (_defaultAvatarVisualRoot != null)
+                _defaultAvatarVisualRoot.gameObject.SetActive(false);
+
+            if (_runtimeAvatarInstance == null || _runtimeAvatarSourcePrefab != desiredPrefab)
+            {
+                if (_runtimeAvatarInstance != null)
+                    Destroy(_runtimeAvatarInstance);
+
+                _runtimeAvatarInstance = Instantiate(desiredPrefab, transform);
+                _runtimeAvatarInstance.name = desiredPrefab.name + "_Avatar";
+                _runtimeAvatarSourcePrefab = desiredPrefab;
+            }
+
+            Transform runtimeVisual = _runtimeAvatarInstance.transform;
+            ApplyAvatarTransform(runtimeVisual, entry);
+
+            RuntimeAnimatorController controller = entry.gameplayAnimatorController != null
+                ? entry.gameplayAnimatorController
+                : _defaultAvatarAnimatorController;
+            ApplyAnimatorController(runtimeVisual, controller);
+            EnsureAnimationStateController(runtimeVisual);
+            avatarVisualRoot = runtimeVisual;
+        }
+
+        ApplyAvatarCameraAndController(hasEntry ? entry : default);
+
+        CacheOwnerHiddenRenderers();
+        CacheOwnerHeadTransform();
+
+        bool ownerBodyShouldBeVisible = !IsOwner || !hideOwnerBodyInFirstPerson;
+        SetOwnerBodyVisible(_inGameScene && ownerBodyShouldBeVisible);
+        ApplyOwnerHeadVisibility(_inGameScene && IsOwner && hideOwnerHeadInFirstPerson);
+    }
+
+    private void ApplyAvatarTransform(Transform visualRoot, AvatarCatalog.AvatarEntry entry)
+    {
+        if (visualRoot == null || _defaultAvatarVisualRoot == null) return;
+
+        visualRoot.SetParent(transform, false);
+        visualRoot.localPosition = _defaultAvatarLocalPosition + entry.gameplayPositionOffset;
+        visualRoot.localRotation = _defaultAvatarLocalRotation * Quaternion.Euler(entry.gameplayEulerOffset);
+        visualRoot.localScale = Vector3.Scale(_defaultAvatarLocalScale, ResolveScaleMultiplier(entry.gameplayScaleMultiplier));
+    }
+
+    private static Vector3 ResolveScaleMultiplier(Vector3 value)
+    {
+        bool allZero = Mathf.Approximately(value.x, 0f)
+                       && Mathf.Approximately(value.y, 0f)
+                       && Mathf.Approximately(value.z, 0f);
+        if (allZero) return Vector3.one;
+
+        return new Vector3(
+            Mathf.Approximately(value.x, 0f) ? 1f : value.x,
+            Mathf.Approximately(value.y, 0f) ? 1f : value.y,
+            Mathf.Approximately(value.z, 0f) ? 1f : value.z);
+    }
+
+    private void ApplyAvatarCameraAndController(AvatarCatalog.AvatarEntry entry)
+    {
+        _cameraBaseLocalPos = _defaultCameraLocalPos + entry.cameraLocalOffset;
+        if (playerCamera != null)
+            playerCamera.transform.localPosition = _cameraBaseLocalPos + _currentSprintCameraOffset + new Vector3(0f, _currentBobOffset, 0f);
+
+        if (_cc == null) return;
+
+        if (entry.overrideController)
+        {
+            _cc.height = Mathf.Max(0.2f, entry.controllerHeight);
+            _cc.radius = Mathf.Max(0.05f, entry.controllerRadius);
+            _cc.center = entry.controllerCenter;
+            return;
+        }
+
+        _cc.height = _defaultControllerHeight;
+        _cc.radius = _defaultControllerRadius;
+        _cc.center = _defaultControllerCenter;
+    }
+
+    private static void ApplyAnimatorController(Transform visualRoot, RuntimeAnimatorController controller)
+    {
+        if (visualRoot == null || controller == null) return;
+
+        Animator animator = visualRoot.GetComponent<Animator>();
+        if (animator == null)
+            animator = visualRoot.GetComponentInChildren<Animator>(true);
+        if (animator == null)
+            animator = visualRoot.gameObject.AddComponent<Animator>();
+
+        animator.runtimeAnimatorController = controller;
+    }
+
+    private static void EnsureAnimationStateController(Transform visualRoot)
+    {
+        if (visualRoot == null) return;
+
+        Animator animator = visualRoot.GetComponent<Animator>();
+        if (animator == null)
+            animator = visualRoot.GetComponentInChildren<Animator>(true);
+        if (animator == null) return;
+
+        if (animator.GetComponent<AnimationStateController>() == null)
+            animator.gameObject.AddComponent<AnimationStateController>();
+    }
+
     private void CacheOwnerHiddenRenderers()
     {
-        if (ownerHiddenVisualRoot == null)
+        if (avatarVisualRoot != null)
+        {
+            ownerHiddenVisualRoot = avatarVisualRoot;
+        }
+        else if (ownerHiddenVisualRoot == null || !ownerHiddenVisualRoot.IsChildOf(transform))
         {
             var animator = GetComponentInChildren<Animator>(true);
             if (animator != null)
@@ -448,7 +694,14 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private void CacheOwnerHeadTransform()
     {
-        var animator = GetComponentInChildren<Animator>(true);
+        _ownerHeadTransform = null;
+        _hasOwnerHeadScale = false;
+
+        Animator animator = null;
+        if (avatarVisualRoot != null)
+            animator = avatarVisualRoot.GetComponentInChildren<Animator>(true);
+        if (animator == null)
+            animator = GetComponentInChildren<Animator>(true);
         if (animator == null) return;
 
         if (animator.isHuman)
@@ -526,6 +779,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
 
     private void OnSelectedAvatarChanged(int previousValue, int newValue)
     {
+        ApplySelectedAvatarPresentation();
         NotifyLobbyStateChanged();
     }
 

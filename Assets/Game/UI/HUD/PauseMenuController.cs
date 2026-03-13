@@ -7,11 +7,15 @@ using Unity.Netcode;
 public sealed class PauseMenuController : MonoBehaviour
 {
     private const string PrefSensitivity = "settings_sensitivity";
+    private const string PrefWifiLoopVolume = "settings_wifi_loop_volume";
     private const float MinSensitivity = 0.02f;
     private const float MaxSensitivity = 2.00f;
     private const float DefaultSensitivity = 0.12f;
     private const float MinBrightness = -2.0f;
     private const float MaxBrightness = 2.0f;
+    private const float MinWifiLoopVolume = 0f;
+    private const float MaxWifiLoopVolume = 1f;
+    private const float DefaultWifiLoopVolume = 0.25f;
 
     [Header("Scene Names")]
     [SerializeField] private string lobbySceneName = "02_Lobby";
@@ -26,6 +30,7 @@ public sealed class PauseMenuController : MonoBehaviour
     [SerializeField] private GameObject optionsPanel;
     [SerializeField] private Slider brightnessSlider;
     [SerializeField] private Slider sensitivitySlider;
+    [SerializeField] private Slider wifiLoopVolumeSlider;
     [SerializeField] private Button applyOptionsButton;
     [SerializeField] private Button closeOptionsButton;
 
@@ -33,6 +38,7 @@ public sealed class PauseMenuController : MonoBehaviour
     private bool _optionsLoaded;
     private float _appliedSensitivity = DefaultSensitivity;
     private float _appliedBrightness;
+    private float _appliedWifiLoopVolume = DefaultWifiLoopVolume;
 
     private void Awake()
     {
@@ -56,6 +62,14 @@ public sealed class PauseMenuController : MonoBehaviour
             sensitivitySlider.minValue = MinSensitivity;
             sensitivitySlider.maxValue = MaxSensitivity;
             sensitivitySlider.wholeNumbers = false;
+        }
+
+        if (wifiLoopVolumeSlider != null)
+        {
+            wifiLoopVolumeSlider.minValue = MinWifiLoopVolume;
+            wifiLoopVolumeSlider.maxValue = MaxWifiLoopVolume;
+            wifiLoopVolumeSlider.wholeNumbers = false;
+            wifiLoopVolumeSlider.onValueChanged.AddListener(PreviewWifiLoopVolume);
         }
 
         SetOpen(false);
@@ -179,6 +193,7 @@ public sealed class PauseMenuController : MonoBehaviour
     {
         _appliedBrightness = Mathf.Clamp(GlobalBrightnessManager.LoadSavedBrightness(), MinBrightness, MaxBrightness);
         _appliedSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, DefaultSensitivity), MinSensitivity, MaxSensitivity);
+        _appliedWifiLoopVolume = Mathf.Clamp(PlayerPrefs.GetFloat(PrefWifiLoopVolume, DefaultWifiLoopVolume), MinWifiLoopVolume, MaxWifiLoopVolume);
         _optionsLoaded = true;
 
         if (brightnessSlider != null)
@@ -186,11 +201,18 @@ public sealed class PauseMenuController : MonoBehaviour
 
         if (sensitivitySlider != null)
             sensitivitySlider.SetValueWithoutNotify(_appliedSensitivity);
+        if (wifiLoopVolumeSlider != null)
+            wifiLoopVolumeSlider.SetValueWithoutNotify(_appliedWifiLoopVolume);
     }
 
     private void PreviewBrightness(float value)
     {
         GlobalBrightnessManager.SetBrightness(Mathf.Clamp(value, MinBrightness, MaxBrightness), false);
+    }
+
+    private void PreviewWifiLoopVolume(float value)
+    {
+        ApplyWifiLoopVolumeToLocalPlayer(Mathf.Clamp(value, MinWifiLoopVolume, MaxWifiLoopVolume), persist: false);
     }
 
     private void ApplyOptions()
@@ -201,15 +223,21 @@ public sealed class PauseMenuController : MonoBehaviour
         float brightness = brightnessSlider != null
             ? Mathf.Clamp(brightnessSlider.value, MinBrightness, MaxBrightness)
             : Mathf.Clamp(GlobalBrightnessManager.GetCurrentBrightness(), MinBrightness, MaxBrightness);
+        float wifiLoopVolume = wifiLoopVolumeSlider != null
+            ? Mathf.Clamp(wifiLoopVolumeSlider.value, MinWifiLoopVolume, MaxWifiLoopVolume)
+            : Mathf.Clamp(PlayerPrefs.GetFloat(PrefWifiLoopVolume, DefaultWifiLoopVolume), MinWifiLoopVolume, MaxWifiLoopVolume);
 
         PlayerPrefs.SetFloat(PrefSensitivity, sensitivity);
+        PlayerPrefs.SetFloat(PrefWifiLoopVolume, wifiLoopVolume);
         PlayerPrefs.Save();
 
         _appliedSensitivity = sensitivity;
         _appliedBrightness = brightness;
+        _appliedWifiLoopVolume = wifiLoopVolume;
         _optionsLoaded = true;
 
         ApplySensitivityToLocalPlayer(sensitivity);
+        ApplyWifiLoopVolumeToLocalPlayer(wifiLoopVolume, persist: false);
         GlobalBrightnessManager.SetBrightness(_appliedBrightness, true);
     }
 
@@ -221,8 +249,11 @@ public sealed class PauseMenuController : MonoBehaviour
             brightnessSlider.SetValueWithoutNotify(_appliedBrightness);
         if (sensitivitySlider != null)
             sensitivitySlider.SetValueWithoutNotify(_appliedSensitivity);
+        if (wifiLoopVolumeSlider != null)
+            wifiLoopVolumeSlider.SetValueWithoutNotify(_appliedWifiLoopVolume);
 
         ApplySensitivityToLocalPlayer(_appliedSensitivity);
+        ApplyWifiLoopVolumeToLocalPlayer(_appliedWifiLoopVolume, persist: false);
         GlobalBrightnessManager.SetBrightness(_appliedBrightness, false);
     }
 
@@ -235,6 +266,17 @@ public sealed class PauseMenuController : MonoBehaviour
         var cameraMovements = local.GetComponentsInChildren<CameraMovement>(true);
         for (int i = 0; i < cameraMovements.Length; i++)
             cameraMovements[i].SetSensitivity(value);
+    }
+
+    private static void ApplyWifiLoopVolumeToLocalPlayer(float volume, bool persist)
+    {
+        LocalPlayerReference local = LocalPlayerReference.Instance;
+        if (local == null) return;
+
+        var soundFx = local.GetComponent<PlayerSoundFX>();
+        if (soundFx == null) return;
+
+        soundFx.SetWifiLoopVolume(volume, persist);
     }
 
     private static bool IsHost()

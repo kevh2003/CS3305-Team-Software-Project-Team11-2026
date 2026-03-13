@@ -17,6 +17,9 @@ public class PCInteractable : NetworkBehaviour, IInteractable
 
     public bool CanInteract()
     {
+        if (ObjectiveState.Instance != null && !ObjectiveState.Instance.IsWifiObjectiveCompleteClient())
+            return false;
+
         // If client already submitted this round, don't allow interacting again
         if (ObjectiveState.Instance != null && NetworkManager.Singleton != null)
         {
@@ -45,6 +48,12 @@ public class PCInteractable : NetworkBehaviour, IInteractable
         if (ObjectiveState.Instance == null)
         {
             Debug.LogWarning("[PCInteractable] ObjectiveState missing, cannot submit assignment.");
+            return;
+        }
+
+        if (!ObjectiveState.Instance.IsWifiObjectiveCompleteServer())
+        {
+            Debug.LogWarning($"[PCInteractable] Reject submit from {senderId}: WiFi objective not complete.");
             return;
         }
 

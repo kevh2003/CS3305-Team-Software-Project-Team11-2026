@@ -15,6 +15,7 @@ public class PlayerInventory : NetworkBehaviour
 
     [Header("Torch Networking")]
     [SerializeField] private int torchItemId = 2;
+    [SerializeField] private int keyItemId = 1;
     [SerializeField] private bool remoteTorchAnchorToCamera = true;
     [SerializeField] private Vector3 remoteTorchLocalOffset = new Vector3(0.08f, -0.24f, 0.03f);
     [SerializeField] private Vector3 remoteTorchLocalEuler = new Vector3(4f, 0f, 0f);
@@ -63,6 +64,7 @@ public class PlayerInventory : NetworkBehaviour
     private bool _lastSentTorchEquipped;
     private bool _lastSentTorchOn;
     private NetworkPlayer _networkPlayer;
+    private PlayerSoundFX _soundFX;
     private float _remoteTorchSmoothedPitch;
     private Transform _remoteTorchAnchor;
 
@@ -74,6 +76,7 @@ public class PlayerInventory : NetworkBehaviour
         handItems = new GameObject[hotbarSlots];
         inputActions = new PlayerInputActions();
         _networkPlayer = GetComponent<NetworkPlayer>();
+        _soundFX = GetComponent<PlayerSoundFX>();
 
         BuildDatabaseLookup();
     }
@@ -207,7 +210,14 @@ public class PlayerInventory : NetworkBehaviour
 
     private void OnHotbar0(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(0);
     private void OnHotbar1(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => SelectSlot(1);
-    private void OnDrop(UnityEngine.InputSystem.InputAction.CallbackContext ctx) => DropSelectedItem();
+    private void OnDrop(UnityEngine.InputSystem.InputAction.CallbackContext ctx)
+    {
+        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame ||
+            StartGame.IsAnyLocalWifiMinigameActive || StartGame.WasExitedThisFrame)
+            return;
+
+        DropSelectedItem();
+    }
 
 
     public void SetAnchors(Transform hand, Transform drop)
@@ -258,7 +268,12 @@ public class PlayerInventory : NetworkBehaviour
         if (!IsOwner) return;
 
         // fallback Q
-        if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+        if (!CameraInteraction.IsAnyLocalCctvActive &&
+            !CameraInteraction.WasExitedThisFrame &&
+            !StartGame.IsAnyLocalWifiMinigameActive &&
+            !StartGame.WasExitedThisFrame &&
+            Keyboard.current != null &&
+            Keyboard.current.qKey.wasPressedThisFrame)
             DropSelectedItem();
 
         SyncTorchStateIfOwner();
@@ -305,11 +320,17 @@ public class PlayerInventory : NetworkBehaviour
 
         bool holdingItemInSelectedSlot =
             (selectedSlot >= 0 && selectedSlot < hotbarSlots && itemIds[selectedSlot] != EMPTY);
+        bool selectedTorch =
+            holdingItemInSelectedSlot && itemIds[selectedSlot] == torchItemId;
 
         _inventoryPromptVisible = holdingItemInSelectedSlot;
 
+        string promptMessage = selectedTorch
+            ? "Press Q to drop\nPress T to toggle torch"
+            : "Press Q to drop";
+
         // Safe: Instance can be null during shutdown
-        DropPromptUI.Instance?.SetInventoryVisible(holdingItemInSelectedSlot, "Press Q to drop");
+        DropPromptUI.Instance?.SetInventoryVisible(holdingItemInSelectedSlot, promptMessage);
     }
 
     void UpdateHandDisplay()
@@ -414,6 +435,7 @@ public class PlayerInventory : NetworkBehaviour
             handItems[slot].SetActive(false);
         }
 
+        _soundFX?.PlayPickupItemSound(itemId, keyItemId, torchItemId);
         UpdateHandDisplay();
         UpdateInventoryDropPrompt();
         SyncTorchStateIfOwner(force: true);
@@ -422,6 +444,9 @@ public class PlayerInventory : NetworkBehaviour
     public void DropSelectedItem()
     {
         if (!IsOwner) return;
+        if (CameraInteraction.IsAnyLocalCctvActive || CameraInteraction.WasExitedThisFrame ||
+            StartGame.IsAnyLocalWifiMinigameActive || StartGame.WasExitedThisFrame)
+            return;
         if (selectedSlot < 0 || selectedSlot >= hotbarSlots) return;
         if (itemIds[selectedSlot] == EMPTY) return;
 

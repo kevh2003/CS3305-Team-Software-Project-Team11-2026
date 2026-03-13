@@ -99,6 +99,9 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         if (!IsServer) return;
 
+        CctvSystemManager.Instance?.ServerReleaseIfOwner(clientId);
+        StartGame.ServerReleaseAllIfOwner(clientId);
+
         // try drop items before the player object disappears
         if (NetworkManager.Singleton != null &&
             NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client) &&
@@ -139,9 +142,11 @@ public sealed class MatchStartResetter : NetworkBehaviour
     {
         yield return new WaitForSeconds(0.1f);
 
+        CctvSystemManager.Instance?.ServerResetForNewMatch();
         ResetAllPlayers();
         ResetAllDoors();
         ResetAllEnemies();
+        ResetAllWifiTasks();
         var puzzles = FindObjectsByType<SecurityRoomController>(FindObjectsSortMode.None);
         foreach (var p in puzzles)
             p.ServerResetForNewRound();
@@ -170,9 +175,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             // new round
             obj.DucksFound.Value = 0; // reset ducks count
-            // pre-key "extra tasks" gate (future-proofing)
-            obj.PreKeyExtraRequired.Value = 0;    // set to N amount of additional tasks
-            obj.PreKeyExtraCompleted.Value = 0;   // reset progress
+            obj.ServerResetWifiForNewRound();
             obj.ServerResetKeyGateForNewRound();  // reset the pre-key gate for this new round
             obj.ServerBeginRoundRoster(); // lock roster + reset assignment submission tracking
             obj.ServerResetPostKeyObjectivesForNewRound();
@@ -181,6 +184,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             // lobby scene
             obj.DucksFound.Value = 0; // reset ducks
+            obj.ServerResetWifiForNewRound();
             obj.ServerResetAssignmentForLobby(); // unlock/reset assignment so late joiners can participate next round
             obj.ServerResetKeyGateForNewRound();// reset pre-key gate in lobby as an additional safety measure
             obj.ServerResetPostKeyObjectivesForNewRound();
@@ -315,6 +319,16 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             if (e != null)
                 e.ServerResetForNewMatch();
+        }
+    }
+
+    private void ResetAllWifiTasks()
+    {
+        var wifiTasks = FindObjectsByType<StartGame>(FindObjectsSortMode.None);
+        foreach (var task in wifiTasks)
+        {
+            if (task != null)
+                task.ServerResetForNewRound();
         }
     }
 }

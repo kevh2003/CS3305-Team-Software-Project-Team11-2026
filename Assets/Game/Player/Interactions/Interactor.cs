@@ -89,6 +89,8 @@ public class Interactor : NetworkBehaviour
 
             if (interactable != null && interactable.CanInteract())
             {
+                bool targetChanged = currentInteractable != interactable;
+
                 if (currentInteractable != interactable)
                 {
                     // If swapped targets mid-hold, cancel the hold instantly
@@ -96,11 +98,19 @@ public class Interactor : NetworkBehaviour
                         CancelHold();
 
                     currentInteractable = interactable;
-
                 }
 
                 if (crosshair != null)
+                {
+                    if (targetChanged)
+                        crosshair.HideInteractPrompt();
+
+                    string wifiPrompt = TryGetWifiPromptText(interactable);
+                    if (!string.IsNullOrWhiteSpace(wifiPrompt))
+                        crosshair.SetPromptText(wifiPrompt);
+
                     crosshair.ShowInteractPrompt();
+                }
             }
             else
             {
@@ -244,6 +254,7 @@ public class Interactor : NetworkBehaviour
         // show starting prompt immediately
         TrySetInteractPrompt("Submitting... 0% (hold E)");
         soundFX?.PlayInteractSound();
+        soundFX?.StartAssignmentTypingLoop();
 
         holdRoutine = StartCoroutine(HoldToSubmitRoutine(pc));
     }
@@ -255,6 +266,8 @@ public class Interactor : NetworkBehaviour
             StopCoroutine(holdRoutine);
             holdRoutine = null;
         }
+
+        soundFX?.StopHoldLoopSound();
 
         holdingPc = null;
         holdingGrades = null;
@@ -333,6 +346,16 @@ public class Interactor : NetworkBehaviour
             crosshair.SetPromptText(text);
     }
 
+    private static string TryGetWifiPromptText(IInteractable interactable)
+    {
+        Component interactableComponent = interactable as Component;
+        if (interactableComponent == null)
+            return null;
+
+        IWifiInteractable wifiInteractable = interactableComponent.GetComponentInParent<IWifiInteractable>();
+        return wifiInteractable?.InteractText;
+    }
+
     private void OnDrawGizmosSelected()
     {
         if (InteractSource != null)
@@ -341,6 +364,11 @@ public class Interactor : NetworkBehaviour
             Gizmos.DrawRay(InteractSource.position, InteractSource.forward * InteractRange);
             Gizmos.DrawWireSphere(InteractSource.position + (InteractSource.forward * InteractRange), InteractProbeRadius);
         }
+    }
+
+    private void OnDisable()
+    {
+        CancelHold();
     }
 
     private void StartHoldGrades(GradesRackInteractable g)
@@ -361,6 +389,7 @@ public class Interactor : NetworkBehaviour
         // show starting prompt immediately
         TrySetInteractPrompt("Changing grades... 0%");
         soundFX?.PlayInteractSound();
+        soundFX?.StartGradesChangeLoop();
 
         holdRoutine = StartCoroutine(HoldToChangeGradesRoutine(g));
     }

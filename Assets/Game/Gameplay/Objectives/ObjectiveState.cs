@@ -1,13 +1,16 @@
 using Unity.Netcode;
 using UnityEngine;
-using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class ObjectiveState : NetworkBehaviour
 {
     public static ObjectiveState Instance { get; private set; }
 
     [SerializeField] private int ducksTotal = 12;
+    [SerializeField] private int wifiTotal = 4;
+
     public int DucksTotal => ducksTotal;
+    public int WifiTotal => Mathf.Max(0, wifiTotal);
 
     public NetworkVariable<int> DucksFound = new(
         0,
@@ -27,6 +30,12 @@ public class ObjectiveState : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    public NetworkVariable<int> WifiFixedCount = new(
+        0,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     public NetworkVariable<bool> MatchRosterLocked = new(
         false,
         NetworkVariableReadPermission.Everyone,
@@ -36,29 +45,6 @@ public class ObjectiveState : NetworkBehaviour
     // Pre-key gate state
     public NetworkVariable<bool> KeySpawned = new(
         false,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-    // Optional future-proofing: extra “pre-key” tasks we may add later
-    // If you add new tasks, set PreKeyExtraRequired to N and increment PreKeyExtraCompleted as each completes
-    // see MatchStartResetter.cs for this method. And add the following to your new task script - kev
-
-    //if (!IsServer) return;
-
-    //if (ObjectiveState.Instance != null)
-    //{
-    //    ObjectiveState.Instance.PreKeyExtraCompleted.Value++;
-    //}
-
-    public NetworkVariable<int> PreKeyExtraRequired = new(
-        0,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-    public NetworkVariable<int> PreKeyExtraCompleted = new(
-        0,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
@@ -88,10 +74,6 @@ public class ObjectiveState : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
-    [Header("CCTV Lure")]
-    [SerializeField] private LayerMask lureEnemyMask = ~0;
-    [SerializeField] private float maxLureRadius = 30f;
-
     // MUST be initialized at declaration for Netcode
     private NetworkList<ulong> requiredSubmitters = new();
     private NetworkList<ulong> submitted = new();
@@ -110,6 +92,15 @@ public class ObjectiveState : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+
+        if (IsServer)
+            WarnIfWifiNodesMissing();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     // client helpers
@@ -130,6 +121,37 @@ public class ObjectiveState : NetworkBehaviour
         if (!IsServer) return;
         if (DucksFound.Value >= ducksTotal) return;
         DucksFound.Value++;
+    }
+
+    public void ServerResetWifiForNewRound()
+    {
+        if (!IsServer) return;
+        WifiFixedCount.Value = 0;
+    }
+
+    public void ServerRegisterWifiFix()
+    {
+        if (!IsServer) return;
+
+        int total = WifiTotal;
+        if (total <= 0) return;
+        if (WifiFixedCount.Value >= total) return;
+
+        WifiFixedCount.Value++;
+    }
+
+    public bool IsWifiObjectiveCompleteClient()
+    {
+        int total = WifiTotal;
+        return total <= 0 || WifiFixedCount.Value >= total;
+    }
+
+    public bool IsWifiObjectiveCompleteServer()
+    {
+        if (!IsServer) return false;
+
+        int total = WifiTotal;
+        return total <= 0 || WifiFixedCount.Value >= total;
     }
 
     // Keeping rpc version for now - kev
@@ -217,26 +239,23 @@ public class ObjectiveState : NetworkBehaviour
         if (!IsServer) return false;
 
         bool ducksComplete = DucksFound.Value >= DucksTotal;
+        bool wifiComplete = IsWifiObjectiveCompleteServer();
         bool assignmentComplete = (RequiredSubmitCount.Value > 0 && CurrentSubmitCount.Value >= RequiredSubmitCount.Value);
-
-        bool extrasOk = (PreKeyExtraRequired.Value <= 0) || (PreKeyExtraCompleted.Value >= PreKeyExtraRequired.Value);
-
-        return ducksComplete && assignmentComplete && extrasOk;
+        return ducksComplete && wifiComplete && assignmentComplete;
     }
 
     public bool ArePreKeyObjectivesCompleteClient()
     {
         bool ducksComplete = DucksFound.Value >= DucksTotal;
+        bool wifiComplete = IsWifiObjectiveCompleteClient();
         bool assignmentComplete = (RequiredSubmitCount.Value > 0 && CurrentSubmitCount.Value >= RequiredSubmitCount.Value);
-        bool extrasOk = (PreKeyExtraRequired.Value <= 0) || (PreKeyExtraCompleted.Value >= PreKeyExtraRequired.Value);
-        return ducksComplete && assignmentComplete && extrasOk;
+        return ducksComplete && wifiComplete && assignmentComplete;
     }
 
     public void ServerResetKeyGateForNewRound()
     {
         if (!IsServer) return;
         KeySpawned.Value = false;
-        PreKeyExtraCompleted.Value = 0;
     }
 
     public void ServerResetPostKeyObjectivesForNewRound()
@@ -247,44 +266,6 @@ public class ObjectiveState : NetworkBehaviour
         SecurityDoorUnlocked.Value = false;
         ElevatorOpened.Value = false;
         GradesChanged.Value = false;
-    }
-
-    public void ServerLureEnemiesAtPoint(Vector3 point, float radius)
-    {
-        if (!IsServer) return;
-
-        float safeRadius = Mathf.Clamp(radius, 0.5f, maxLureRadius);
-        Collider[] hits = Physics.OverlapSphere(point, safeRadius, lureEnemyMask, QueryTriggerInteraction.Ignore);
-        var seen = new HashSet<EnemyAI>();
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            var c = hits[i];
-            if (c == null) continue;
-
-            var enemy = c.GetComponentInParent<EnemyAI>();
-            if (enemy == null) continue;
-            if (!seen.Add(enemy)) continue;
-
-            enemy.Lure(point);
-        }
-    }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void RequestLureEnemiesServerRpc(Vector3 point, float radius, ServerRpcParams rpcParams = default)
-    {
-        if (!IsServer) return;
-        if (!MatchRosterLocked.Value) return; // only allow lure requests during active rounds
-
-        ulong senderId = rpcParams.Receive.SenderClientId;
-        if (NetworkManager.Singleton == null) return;
-        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderId, out var sender)) return;
-        if (sender.PlayerObject == null) return;
-
-        var ph = sender.PlayerObject.GetComponent<PlayerHealth>();
-        if (ph != null && ph.IsDead.Value) return;
-
-        ServerLureEnemiesAtPoint(point, radius);
     }
 
     // --- Post-key setters (server authoritative) ---
@@ -311,5 +292,19 @@ public class ObjectiveState : NetworkBehaviour
     {
         if (!IsServer) return;
         GradesChanged.Value = true;
+    }
+
+    private void WarnIfWifiNodesMissing()
+    {
+        if (SceneManager.GetActiveScene().name != "03_Game") return;
+
+        int total = WifiTotal;
+        if (total <= 0) return;
+
+        int found = FindObjectsByType<StartGame>(FindObjectsSortMode.None).Length;
+        if (found < total)
+        {
+            Debug.LogWarning($"[ObjectiveState] WiFi objective expects {total} nodes, but only found {found} StartGame objects in scene.");
+        }
     }
 }

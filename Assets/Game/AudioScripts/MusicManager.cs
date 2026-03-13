@@ -12,6 +12,12 @@ public class MusicManager : MonoBehaviour
     public AudioClip gameplayMusic;
     public AudioClip finalLevelMusic;
 
+    [Header("Track Volumes")]
+    [SerializeField, Range(0f, 1f)] private float menuVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float lobbyVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float gameplayVolume = 0.9f;
+    [SerializeField, Range(0f, 1f)] private float finalLevelVolume = 0.7f;
+
     [Header("Scene Names")]
     [SerializeField] private string mainMenuSceneName = "01_MainMenu";
     [SerializeField] private string lobbySceneName = "02_Lobby";
@@ -61,24 +67,36 @@ public class MusicManager : MonoBehaviour
     {
         if (scene.name == mainMenuSceneName)
         {
-            PlayMusic(menuMusic != null ? menuMusic : lobbyMusic);
+            AudioClip clip = menuMusic != null ? menuMusic : lobbyMusic;
+            PlayMusic(clip, menuVolume);
         }
         else if (scene.name == lobbySceneName)
         {
-            PlayMusic(lobbyMusic);
+            PlayMusic(lobbyMusic, lobbyVolume);
         }
         else if (scene.name == gameSceneName)
         {
-            PlayMusic(gameplayMusic);
+            PlayMusic(gameplayMusic, gameplayVolume);
         }
     }
 
     public void PlayMusic(AudioClip clip)
     {
+        PlayMusic(clip, 1f);
+    }
+
+    public void PlayMusic(AudioClip clip, float trackVolumeMultiplier)
+    {
         if (audioSource == null) return;
 
+        float targetVolume = baseVolume * Mathf.Clamp01(trackVolumeMultiplier);
+
         // Keep continuous playback when the selected clip is already active.
-        if (audioSource.clip == clip && audioSource.isPlaying) return;
+        if (audioSource.clip == clip && audioSource.isPlaying)
+        {
+            audioSource.volume = targetVolume;
+            return;
+        }
 
         if (transitionRoutine != null)
             StopCoroutine(transitionRoutine);
@@ -86,20 +104,20 @@ public class MusicManager : MonoBehaviour
         if (trackFadeSeconds <= 0f || !audioSource.isPlaying)
         {
             audioSource.clip = clip;
-            audioSource.volume = baseVolume;
+            audioSource.volume = targetVolume;
             if (clip != null) audioSource.Play();
             return;
         }
 
-        transitionRoutine = StartCoroutine(FadeToClip(clip));
+        transitionRoutine = StartCoroutine(FadeToClip(clip, targetVolume));
     }
 
     public void PlayFinalLevelMusic()
     {
-        PlayMusic(finalLevelMusic);
+        PlayMusic(finalLevelMusic, finalLevelVolume);
     }
 
-    private IEnumerator FadeToClip(AudioClip nextClip)
+    private IEnumerator FadeToClip(AudioClip nextClip, float nextTargetVolume)
     {
         float startVolume = audioSource.volume;
         float fadeDuration = Mathf.Max(0.001f, trackFadeSeconds);
@@ -128,10 +146,10 @@ public class MusicManager : MonoBehaviour
         for (float t = 0f; t < fadeDuration; t += Time.unscaledDeltaTime)
         {
             float p = t / fadeDuration;
-            audioSource.volume = Mathf.Lerp(0f, baseVolume, p);
+            audioSource.volume = Mathf.Lerp(0f, nextTargetVolume, p);
             yield return null;
         }
-        audioSource.volume = baseVolume;
+        audioSource.volume = nextTargetVolume;
         transitionRoutine = null;
     }
 }

@@ -76,11 +76,22 @@ public sealed class LobbyController : MonoBehaviour
 
         if (joinInfoText != null)
         {
-            if (Services.NetSession.IsHost && Services.NetSession is NgoNetSession ngo && ngo.LastHostPort != 0)
-                joinInfoText.text = $"Hosting on {ngo.LastHostIp}:{ngo.LastHostPort}";
-            else
-                joinInfoText.text = "";
+            joinInfoText.text = BuildHostJoinInfo();
         }
+    }
+
+    private static string BuildHostJoinInfo()
+    {
+        if (Services.NetSession == null || !Services.NetSession.IsHost || Services.NetSession is not NgoNetSession ngo)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(ngo.LastOnlineJoinCode))
+            return $"Room Code: {ngo.LastOnlineJoinCode}";
+
+        if (ngo.LastHostPort != 0)
+            return $"Hosting on {ngo.LastHostIp}:{ngo.LastHostPort}";
+
+        return string.Empty;
     }
 
     private void StartGame()

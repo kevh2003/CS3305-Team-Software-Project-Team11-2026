@@ -47,16 +47,27 @@ public class EnemyAI : NetworkBehaviour
     [Tooltip("Looping clip played while the enemy is chasing a player.")]
     public AudioClip AlertClip;
 
+    [Tooltip("One-shot played when the enemy first spots a player.")]
+    public AudioClip SpottedClip;
+
     [Tooltip("Volume used when playing the patrol clip.")]
     [Range(0f, 1f)]
-    public float PatrolVolume = 0.4f;
+    public float PatrolVolume = 0.5f;
 
     [Tooltip("Volume used when playing the alert clip.")]
     [Range(0f, 1f)]
-    public float AlertVolume = 1f;
+    public float AlertVolume = 0.85f;
+
+    [Tooltip("Volume used when playing the spotted one-shot clip.")]
+    [Range(0f, 1f)]
+    public float SpottedVolume = 0.85f;
 
     [Tooltip("How far the sounds carry in world units.")]
     public float HeardRadius = 30f;
+
+    [Tooltip("Crossfade amount used when looping chase audio to hide loop seams.")]
+    [SerializeField, Range(0f, 0.5f)] private float alertLoopCrossfadeSeconds = 0.08f;
+    [SerializeField] private bool smoothAlertLoop = true;
 
     [Header("References")]
     [SerializeField] private LayerMask whatIsPlayer;
@@ -66,6 +77,18 @@ public class EnemyAI : NetworkBehaviour
 
     // Single shared AudioSource — clip and volume are swapped depending on state
     private AudioSource enemyAudioSource;
+    private AudioSource enemyAudioBlendSource;
+    private Coroutine alertLoopRoutine;
+    private float _lastSpottedSfxServerTime = -999f;
+
+    private enum AudioMode
+    {
+        None,
+        Patrol,
+        Alert
+    }
+
+    private AudioMode currentAudioMode = AudioMode.None;
 
     [Header("Movement Speed")]
     [SerializeField] private float chaseSpeed = 5.5f;
@@ -91,6 +114,7 @@ public class EnemyAI : NetworkBehaviour
     {
         agent            = GetComponent<NavMeshAgent>();
         enemyAudioSource = GetComponent<AudioSource>();
+        enemyAudioBlendSource = CreateBlendSource(enemyAudioSource);
 
         agent.stoppingDistance = attackRange * 0.9f;
         agent.updateRotation   = true;
@@ -132,8 +156,14 @@ public class EnemyAI : NetworkBehaviour
         if (IsServer)
             CancelInvoke(nameof(UpdateTarget));
 
-        // Everyone: stop audio so it can't "stick" across scene/match transitions
-        StopAudioClientRpc();
+        // Stop audio so it can't "stick" across scene/match transitions.
+        if (IsServer)
+            StopAudioClientRpc();
+
+        currentAudioMode = AudioMode.None;
+        StopAlertLoopPlaybackLocal();
+        if (enemyAudioSource != null)
+            enemyAudioSource.Stop();
     }
 
     void Update()
@@ -144,7 +174,7 @@ public class EnemyAI : NetworkBehaviour
 
         if (isPaused) return;
 
-        // Lure takes priority over patrol but not over direct player sighting
+        // Lure takes priority over all other states while active.
         if (isLured && currentTarget == null)
         {
             HandleLureBehaviour();
@@ -227,6 +257,14 @@ public class EnemyAI : NetworkBehaviour
     {
         if (isPaused) return;
 
+        // Hard lure lock: do not reacquire or keep chase targets until lure completes.
+        if (isLured)
+        {
+            currentTarget = null;
+            wasChasing = false;
+            return;
+        }
+
         // If current target dies, stop chasing
         if (currentTarget != null)
         {
@@ -299,9 +337,10 @@ public class EnemyAI : NetworkBehaviour
             if (playerCollider == null) continue;
 
             var ph = playerCollider.GetComponentInParent<PlayerHealth>();
-            if (ph != null && ph.IsDead.Value) continue;
+            if (ph == null || ph.IsDead.Value) continue;
 
-            Vector3 toPlayer = playerCollider.transform.position - transform.position;
+            Transform candidateTarget = ph.transform;
+            Vector3 toPlayer = candidateTarget.position - transform.position;
             float distSqr = toPlayer.sqrMagnitude;
             if (distSqr > rangeSqr) continue;
 
@@ -315,7 +354,7 @@ public class EnemyAI : NetworkBehaviour
             if (distSqr < closestDistSqr)
             {
                 closestDistSqr = distSqr;
-                closestPlayer = playerCollider.transform;
+                closestPlayer = candidateTarget;
             }
         }
 
@@ -340,6 +379,12 @@ public class EnemyAI : NetworkBehaviour
 
             // Ensure chase audio starts
             PlayClipClientRpc(false);
+
+            if (justSpotted && Time.time - _lastSpottedSfxServerTime >= 0.2f)
+            {
+                _lastSpottedSfxServerTime = Time.time;
+                PlaySpottedSfxClientRpc();
+            }
         }
         else
         {
@@ -397,56 +442,199 @@ public class EnemyAI : NetworkBehaviour
     {
         if (enemyAudioSource == null) return;
 
-        AudioClip nextClip;
-        float nextVol;
-
         if (usePatrol)
         {
-            if (PatrolClip == null)
-            {
-                Debug.LogWarning($"EnemyAI: No PatrolClip assigned on {gameObject.name}!");
+            if (currentAudioMode == AudioMode.Patrol)
                 return;
-            }
-            nextClip = PatrolClip;
-            nextVol = PatrolVolume;
-        }
-        else
-        {
-            if (AlertClip == null)
-            {
-                Debug.LogWarning($"EnemyAI: No AlertClip assigned on {gameObject.name}!");
-                return;
-            }
-            nextClip = AlertClip;
-            nextVol = AlertVolume;
+
+            currentAudioMode = AudioMode.Patrol;
+            StopAlertLoopPlaybackLocal();
+            PlayLoopingClip(enemyAudioSource, PatrolClip, PatrolVolume);
+            return;
         }
 
-        // If clip already playing, don't restart it
-        if (enemyAudioSource.isPlaying && enemyAudioSource.clip == nextClip)
+        if (currentAudioMode == AudioMode.Alert)
             return;
 
-        enemyAudioSource.volume = nextVol;
-        enemyAudioSource.clip = nextClip;
+        currentAudioMode = AudioMode.Alert;
 
-        enemyAudioSource.Play();
+        if (smoothAlertLoop && CanUseSmoothedAlertLoop())
+        {
+            StartAlertLoopPlaybackLocal();
+            return;
+        }
+
+        StopAlertLoopPlaybackLocal();
+        PlayLoopingClip(enemyAudioSource, AlertClip, AlertVolume);
+    }
+
+    [ClientRpc]
+    private void PlaySpottedSfxClientRpc()
+    {
+        if (SpottedClip == null || enemyAudioSource == null)
+            return;
+
+        enemyAudioSource.PlayOneShot(SpottedClip, SpottedVolume);
     }
 
     [ClientRpc]
     private void StopAudioClientRpc()
     {
-        if (enemyAudioSource == null) return;
-        enemyAudioSource.Stop();
+        currentAudioMode = AudioMode.None;
+        StopAlertLoopPlaybackLocal();
+        if (enemyAudioSource != null)
+            enemyAudioSource.Stop();
     }
 
     private void ConfigureAudioSource()
     {
-        enemyAudioSource.spatialBlend = 1f;                     // Full 3D spatial audio
-        enemyAudioSource.rolloffMode  = AudioRolloffMode.Logarithmic;
-        enemyAudioSource.maxDistance  = HeardRadius;
-        enemyAudioSource.minDistance  = 1f;                     // Full volume within 1 unit
-        enemyAudioSource.playOnAwake  = false;
-        enemyAudioSource.loop         = true;                   // Both clips loop continuously
-        enemyAudioSource.dopplerLevel = 0f;
+        ConfigureSpatialAudioSource(enemyAudioSource);
+        ConfigureSpatialAudioSource(enemyAudioBlendSource);
+        if (enemyAudioBlendSource != null)
+            enemyAudioBlendSource.loop = false;
+    }
+
+    private static AudioSource CreateBlendSource(AudioSource template)
+    {
+        if (template == null)
+            return null;
+
+        var go = new GameObject("EnemyAlertBlendSource");
+        go.transform.SetParent(template.transform, false);
+        return go.AddComponent<AudioSource>();
+    }
+
+    private void ConfigureSpatialAudioSource(AudioSource source)
+    {
+        if (source == null)
+            return;
+
+        source.spatialBlend = 1f;
+        source.rolloffMode = AudioRolloffMode.Logarithmic;
+        source.maxDistance = HeardRadius;
+        source.minDistance = 1f;
+        source.playOnAwake = false;
+        source.loop = true;
+        source.dopplerLevel = 0f;
+    }
+
+    private void PlayLoopingClip(AudioSource source, AudioClip clip, float volume)
+    {
+        if (source == null)
+            return;
+
+        if (clip == null)
+        {
+            Debug.LogWarning($"EnemyAI: Missing loop clip on {gameObject.name}.");
+            return;
+        }
+
+        bool shouldRestart = !source.isPlaying || source.clip != clip || !source.loop;
+
+        if (shouldRestart)
+            source.Stop();
+
+        source.loop = true;
+        source.volume = volume;
+        source.clip = clip;
+        if (shouldRestart)
+            source.Play();
+    }
+
+    private bool CanUseSmoothedAlertLoop()
+    {
+        if (AlertClip == null || enemyAudioBlendSource == null)
+            return false;
+
+        float fade = Mathf.Clamp(alertLoopCrossfadeSeconds, 0f, 0.5f);
+        return fade > 0.005f && AlertClip.length > fade * 2f + 0.02f;
+    }
+
+    private void StartAlertLoopPlaybackLocal()
+    {
+        StopAlertLoopPlaybackLocal();
+
+        if (enemyAudioSource == null || enemyAudioBlendSource == null || AlertClip == null)
+            return;
+
+        enemyAudioSource.Stop();
+        enemyAudioBlendSource.Stop();
+
+        enemyAudioSource.loop = false;
+        enemyAudioBlendSource.loop = false;
+        enemyAudioSource.clip = AlertClip;
+        enemyAudioBlendSource.clip = AlertClip;
+        enemyAudioSource.volume = AlertVolume;
+        enemyAudioBlendSource.volume = 0f;
+        enemyAudioSource.Play();
+
+        alertLoopRoutine = StartCoroutine(AlertLoopCrossfadeRoutine());
+    }
+
+    private void StopAlertLoopPlaybackLocal()
+    {
+        if (alertLoopRoutine != null)
+        {
+            StopCoroutine(alertLoopRoutine);
+            alertLoopRoutine = null;
+        }
+
+        if (enemyAudioBlendSource != null)
+            enemyAudioBlendSource.Stop();
+    }
+
+    private IEnumerator AlertLoopCrossfadeRoutine()
+    {
+        AudioSource current = enemyAudioSource;
+        AudioSource next = enemyAudioBlendSource;
+        float crossfade = Mathf.Clamp(alertLoopCrossfadeSeconds, 0.01f, 0.5f);
+
+        while (currentAudioMode == AudioMode.Alert && AlertClip != null)
+        {
+            if (!current.isPlaying)
+            {
+                current.clip = AlertClip;
+                current.loop = false;
+                current.volume = AlertVolume;
+                current.Play();
+            }
+
+            float switchAt = Mathf.Max(0.01f, AlertClip.length - crossfade);
+            while (currentAudioMode == AudioMode.Alert && current.isPlaying && current.time < switchAt)
+                yield return null;
+
+            if (currentAudioMode != AudioMode.Alert)
+                break;
+
+            next.Stop();
+            next.clip = AlertClip;
+            next.loop = false;
+            next.volume = 0f;
+            next.Play();
+
+            float t = 0f;
+            while (currentAudioMode == AudioMode.Alert && t < crossfade)
+            {
+                t += Time.deltaTime;
+                float alpha = Mathf.Clamp01(t / crossfade);
+                current.volume = Mathf.Lerp(AlertVolume, 0f, alpha);
+                next.volume = Mathf.Lerp(0f, AlertVolume, alpha);
+                yield return null;
+            }
+
+            current.Stop();
+            current.volume = AlertVolume;
+
+            var tmp = current;
+            current = next;
+            next = tmp;
+        }
+
+        if (enemyAudioSource != null)
+            enemyAudioSource.volume = AlertVolume;
+        if (enemyAudioBlendSource != null)
+            enemyAudioBlendSource.volume = 0f;
+        alertLoopRoutine = null;
     }
 
     void StartSearching()
@@ -531,6 +719,7 @@ public class EnemyAI : NetworkBehaviour
 
         isLured = false;
         lureEndTime = 0f;
+        _lastSpottedSfxServerTime = -999f;
         glanceTimer = 0f;
         glanceDirection = 1;
 
@@ -550,14 +739,18 @@ public class EnemyAI : NetworkBehaviour
     public void Lure(Vector3 worldPosition)
     {
         if (!IsServer) return;
-        if (currentTarget != null || isPaused) return;
+        if (isPaused) return;
+
+        // Lure should be able to interrupt chase/search so players can distract enemies.
+        currentTarget = null;
+        wasChasing = false;
+        isSearching = false;
+        isGlancing = false;
 
         preLurePosition = transform.position;
         lureDestination = worldPosition;
         lureEndTime     = 0f;
         isLured         = true;
-        isSearching     = false;
-        isGlancing      = false;
 
         // Lure: set destination immediately (not per-frame)
         agent.SetDestination(lureDestination);
@@ -565,6 +758,64 @@ public class EnemyAI : NetworkBehaviour
         StopAudioClientRpc();
 
         Debug.Log($"{name} lured to {worldPosition}");
+    }
+
+    public bool CanSeeWorldPoint(Vector3 worldPoint, float maxDistance = float.PositiveInfinity, bool requireFacing = false)
+    {
+        Vector3 toPoint = worldPoint - transform.position;
+        float distSqr = toPoint.sqrMagnitude;
+        float safeMaxDistance = maxDistance;
+        if (float.IsNaN(safeMaxDistance) || float.IsInfinity(safeMaxDistance) || safeMaxDistance <= 0f)
+            safeMaxDistance = 10000f;
+
+        float rangeSqr = safeMaxDistance * safeMaxDistance;
+        if (distSqr > rangeSqr) return false;
+        if (distSqr <= 0.0001f) return true;
+
+        Vector3 dir = toPoint.normalized;
+
+        if (requireFacing)
+        {
+            float dot = Vector3.Dot(transform.forward, dir);
+            float cosHalfFov = Mathf.Cos(viewAngle * 0.5f * Mathf.Deg2Rad);
+            if (dot < cosHalfFov) return false;
+        }
+
+        float dist = Mathf.Sqrt(distSqr);
+        Vector3 origin = transform.position + Vector3.up * 0.2f;
+
+        return !Physics.Raycast(origin, dir, dist, obstacleMask, QueryTriggerInteraction.Ignore);
+    }
+
+    public void ServerForceRepathNow()
+    {
+        if (!IsServer || agent == null || isPaused)
+            return;
+
+        _nextRepathTime = 0f;
+
+        if (currentTarget != null)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(GetBestReachablePoint(currentTarget.position));
+            return;
+        }
+
+        if (isLured)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(lureDestination);
+            return;
+        }
+
+        if (isSearching)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(lastKnownPosition);
+            return;
+        }
+
+        agent.ResetPath();
     }
 
     void HandleLureBehaviour()

@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Local-only UI helper. Creates an overlay canvas and shows a single bottom-center prompt.
-/// Supports two reasons: Inventory (Press Q to drop) and CCTV (Press Q to exit).
-/// CCTV takes priority when active.
+/// Supports three reasons: Inventory (Press Q to drop), CCTV (Press Q to exit), and WiFi (Press Q to exit).
+/// CCTV takes priority, then WiFi, then inventory.
 /// Hides automatically outside the game scene.
 /// </summary>
 public class DropPromptUI : MonoBehaviour
@@ -32,22 +32,30 @@ public class DropPromptUI : MonoBehaviour
         }
     }
 
+    public static DropPromptUI Existing => _instance;
+
     [Header("Canvas")]
     [SerializeField] private int sortingOrder = 5000;
 
     [Header("Bottom Center Layout")]
     [SerializeField] private Vector2 bottomCenterOffset = new Vector2(0f, 70f);
     [SerializeField] private int fontSize = 32;
+    [Header("CCTV Crosshair")]
+    [SerializeField] private float cctvCrosshairSize = 10f;
+    [SerializeField] private Color cctvCrosshairColor = Color.white;
 
     private Canvas _canvas;
     private Text _text;
+    private Image _cctvCrosshair;
 
-    // Two “channels” that can request the prompt
+    // Three channels that can request the prompt.
     private bool _inventoryVisible;
     private bool _cameraVisible;
+    private bool _wifiVisible;
 
     private string _inventoryMessage = "Press Q to drop";
     private string _cameraMessage = "Press Q to exit";
+    private string _wifiMessage = "Press Q to exit";
 
     private void Awake()
     {
@@ -104,9 +112,27 @@ public class DropPromptUI : MonoBehaviour
         rt.anchorMax = new Vector2(0.5f, 0f);
         rt.pivot = new Vector2(0.5f, 0f);
         rt.anchoredPosition = bottomCenterOffset;
-        rt.sizeDelta = new Vector2(900f, 40f);
+        rt.sizeDelta = new Vector2(900f, 150f);
 
         _text.gameObject.SetActive(false);
+
+        var crosshairGo = new GameObject("CctvCrosshair", typeof(RectTransform));
+        crosshairGo.transform.SetParent(transform, false);
+
+        _cctvCrosshair = crosshairGo.AddComponent<Image>();
+        _cctvCrosshair.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+        _cctvCrosshair.color = cctvCrosshairColor;
+        _cctvCrosshair.type = Image.Type.Simple;
+        _cctvCrosshair.raycastTarget = false;
+
+        var crosshairRect = _cctvCrosshair.rectTransform;
+        crosshairRect.anchorMin = new Vector2(0.5f, 0.5f);
+        crosshairRect.anchorMax = new Vector2(0.5f, 0.5f);
+        crosshairRect.pivot = new Vector2(0.5f, 0.5f);
+        crosshairRect.anchoredPosition = Vector2.zero;
+        crosshairRect.sizeDelta = Vector2.one * Mathf.Max(2f, cctvCrosshairSize);
+
+        _cctvCrosshair.gameObject.SetActive(false);
     }
 
     private void Refresh()
@@ -114,18 +140,31 @@ public class DropPromptUI : MonoBehaviour
         // Hide in lobby/menus no matter what anyone requests
         if (!ShouldShowInThisScene())
         {
+            _inventoryVisible = false;
+            _cameraVisible = false;
+            _wifiVisible = false;
             if (_text != null) _text.gameObject.SetActive(false);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
             return;
         }
 
         EnsureBuilt();
         if (_text == null) return; // safety
 
-        // Priority: CCTV > Inventory
+        // Priority: CCTV > WiFi > Inventory
         if (_cameraVisible)
         {
             _text.text = _cameraMessage;
             _text.gameObject.SetActive(true);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(true);
+            return;
+        }
+
+        if (_wifiVisible)
+        {
+            _text.text = _wifiMessage;
+            _text.gameObject.SetActive(true);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
             return;
         }
 
@@ -133,11 +172,13 @@ public class DropPromptUI : MonoBehaviour
         {
             _text.text = _inventoryMessage;
             _text.gameObject.SetActive(true);
+            if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
             return;
         }
 
         _text.text = "";
         _text.gameObject.SetActive(false);
+        if (_cctvCrosshair != null) _cctvCrosshair.gameObject.SetActive(false);
     }
 
     public void SetInventoryVisible(bool visible, string message = "Press Q to drop")
@@ -153,6 +194,14 @@ public class DropPromptUI : MonoBehaviour
         _cameraVisible = visible;
         if (!string.IsNullOrWhiteSpace(message))
             _cameraMessage = message;
+        Refresh();
+    }
+
+    public void SetWifiVisible(bool visible, string message = "Press Q to exit")
+    {
+        _wifiVisible = visible;
+        if (!string.IsNullOrWhiteSpace(message))
+            _wifiMessage = message;
         Refresh();
     }
 

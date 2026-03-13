@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -18,32 +17,6 @@ public class DroppingBehaviour : MonoBehaviour, IDropHandler
       
     }
 
-    public void Update()
-    {
-         if(_canvas.enabled) {
-
-            // show the cursor 
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-            // lock the player camera
-            NetworkPlayer player = GetComponentInParent<NetworkPlayer>();
-            player.lookSensitivity = 0;
-
-        } else
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-            // lock the player camera
-            NetworkPlayer player = GetComponentInParent<NetworkPlayer>();
-            player.lookSensitivity = 0;
-
-        }
-
-    }
-
-    
     public void OnDrop(PointerEventData eventData)
     {
         // get the center of the collision area

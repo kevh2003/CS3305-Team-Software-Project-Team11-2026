@@ -5,11 +5,20 @@ using Unity.Netcode;
 
 public class ObjectiveUI : MonoBehaviour
 {
+    private const string UnlockSecurityOfficeText = "Unlock the security office";
+    private const string InvestigateSecurityOfficeText = "Investigate the security office";
+
     [Header("Ducks Objective")]
     [SerializeField] private Toggle ducksToggle;
     [SerializeField] private TMP_Text ducksLabel;
     [SerializeField] private TMP_Text ducksCountText;
     [SerializeField] private GameObject ducksObjectiveRoot;
+
+    [Header("WiFi Objective")]
+    [SerializeField] private Toggle wifiToggle;
+    [SerializeField] private TMP_Text wifiLabel;
+    [SerializeField] private TMP_Text wifiCountText;
+    [SerializeField] private GameObject wifiObjectiveRoot;
 
     [Header("Assignment Objective")]
     [SerializeField] private Toggle assignmentToggle;
@@ -63,6 +72,7 @@ public class ObjectiveUI : MonoBehaviour
     {
         // toggles read-only
         SetToggleReadOnly(ducksToggle);
+        SetToggleReadOnly(wifiToggle);
         SetToggleReadOnly(assignmentToggle);
         SetToggleReadOnly(keyToggle);
         SetToggleReadOnly(securityToggle);
@@ -73,9 +83,10 @@ public class ObjectiveUI : MonoBehaviour
 
         // static labels
         if (ducksLabel) ducksLabel.text = "Find rubber ducks";
+        if (wifiLabel) wifiLabel.text = "Fix WiFi routers";
         if (assignmentLabel) assignmentLabel.text = "Submit an assignment in Room 1.10";
         if (keyLabel) keyLabel.text = "Find the security office key";
-        if (securityLabel) securityLabel.text = "Unlock the security office";
+        if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
         if (platesLabel) platesLabel.text = "Activate the pressure plates";
         if (timerLabel) timerLabel.text = "Press the yellow button";
         if (elevatorLabel) elevatorLabel.text = "Open the elevator doors";
@@ -91,7 +102,8 @@ public class ObjectiveUI : MonoBehaviour
 
         // default visibility
         SetActiveSafe(ducksObjectiveRoot, true);
-        SetActiveSafe(assignmentObjectiveRoot, true);
+        SetActiveSafe(wifiObjectiveRoot, true);
+        SetActiveSafe(assignmentObjectiveRoot, false);
 
         SetActiveSafe(keyObjectiveRoot, false);
         SetActiveSafe(securityObjectiveRoot, false);
@@ -112,10 +124,9 @@ public class ObjectiveUI : MonoBehaviour
 
         // subscribe to relevant ObjectiveState vars
         state.DucksFound.OnValueChanged += _onIntChanged;
+        state.WifiFixedCount.OnValueChanged += _onIntChanged;
         state.CurrentSubmitCount.OnValueChanged += _onIntChanged;
         state.RequiredSubmitCount.OnValueChanged += _onIntChanged;
-        state.PreKeyExtraCompleted.OnValueChanged += _onIntChanged;
-        state.PreKeyExtraRequired.OnValueChanged += _onIntChanged;
 
         state.KeySpawned.OnValueChanged += _onBoolChanged;
         state.KeyCollected.OnValueChanged += _onBoolChanged;
@@ -134,10 +145,9 @@ public class ObjectiveUI : MonoBehaviour
         if (_onIntChanged != null)
         {
             state.DucksFound.OnValueChanged -= _onIntChanged;
+            state.WifiFixedCount.OnValueChanged -= _onIntChanged;
             state.CurrentSubmitCount.OnValueChanged -= _onIntChanged;
             state.RequiredSubmitCount.OnValueChanged -= _onIntChanged;
-            state.PreKeyExtraCompleted.OnValueChanged -= _onIntChanged;
-            state.PreKeyExtraRequired.OnValueChanged -= _onIntChanged;
         }
 
         if (_onBoolChanged != null)
@@ -152,8 +162,6 @@ public class ObjectiveUI : MonoBehaviour
 
     private void Update()
     {
-        // SecurityRoomController values aren’t events here (stage vars are private NetworkVariables),
-        // so we poll while the post-key phase is active.
         if (state == null) return;
 
         bool shouldPoll =
@@ -165,6 +173,7 @@ public class ObjectiveUI : MonoBehaviour
             if (security == null)
                 security = FindFirstObjectByType<SecurityRoomController>();
 
+            RefreshSecurityDoorUI();
             RefreshPlatesUI();
             RefreshTimerUI();
             RefreshElevatorUI();
@@ -182,6 +191,7 @@ public class ObjectiveUI : MonoBehaviour
             security = FindFirstObjectByType<SecurityRoomController>();
 
         RefreshDucksUI();
+        RefreshWifiUI();
         RefreshAssignmentUI();
         RefreshKeyUI();
         RefreshSecurityDoorUI();
@@ -207,8 +217,32 @@ public class ObjectiveUI : MonoBehaviour
         SetActiveSafe(ducksObjectiveRoot, !complete);
     }
 
+    private void RefreshWifiUI()
+    {
+        int total = state.WifiTotal;
+        int fixedCount = state.WifiFixedCount.Value;
+        bool complete = total <= 0 || fixedCount >= total;
+
+        if (wifiToggle) wifiToggle.isOn = complete;
+        if (wifiCountText)
+            wifiCountText.text = total > 0
+                ? (complete ? $"{total}/{total}" : $"{fixedCount}/{total}")
+                : "";
+
+        SetActiveSafe(wifiObjectiveRoot, !complete);
+    }
+
     private void RefreshAssignmentUI()
     {
+        bool wifiComplete = state.IsWifiObjectiveCompleteClient();
+        if (!wifiComplete)
+        {
+            if (assignmentToggle) assignmentToggle.isOn = false;
+            if (assignmentCountText) assignmentCountText.text = "";
+            SetActiveSafe(assignmentObjectiveRoot, false);
+            return;
+        }
+
         int submitted = state.CurrentSubmitCount.Value;
         int required = state.RequiredSubmitCount.Value;
 
@@ -224,7 +258,8 @@ public class ObjectiveUI : MonoBehaviour
                 : "";
         }
 
-        SetActiveSafe(assignmentObjectiveRoot, !complete);
+        bool show = activeRound && !complete;
+        SetActiveSafe(assignmentObjectiveRoot, show);
 
         if (assignmentObjectiveRoot != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(assignmentObjectiveRoot.GetComponent<RectTransform>());
@@ -247,16 +282,37 @@ public class ObjectiveUI : MonoBehaviour
 
     private void RefreshSecurityDoorUI()
     {
-        // show only after key collected, until door unlocked
+        // show only after key collected
         if (!state.KeyCollected.Value)
         {
+            if (securityToggle) securityToggle.isOn = false;
+            if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
             SetActiveSafe(securityObjectiveRoot, false);
             return;
         }
 
-        bool complete = state.SecurityDoorUnlocked.Value;
-        SetActiveSafe(securityObjectiveRoot, !complete);
-        if (securityToggle) securityToggle.isOn = complete;
+        // Step 1: unlock the door
+        if (!state.SecurityDoorUnlocked.Value)
+        {
+            if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
+            if (securityToggle) securityToggle.isOn = false;
+            SetActiveSafe(securityObjectiveRoot, true);
+            return;
+        }
+
+        // Step 2: investigate office (until button 1 starts plate phase)
+        bool firstButtonPressed = security != null && security.Stage >= 1;
+        if (!firstButtonPressed)
+        {
+            if (securityLabel) securityLabel.text = InvestigateSecurityOfficeText;
+            if (securityToggle) securityToggle.isOn = false;
+            SetActiveSafe(securityObjectiveRoot, true);
+            return;
+        }
+
+        if (securityToggle) securityToggle.isOn = true;
+        if (securityLabel) securityLabel.text = UnlockSecurityOfficeText;
+        SetActiveSafe(securityObjectiveRoot, false);
     }
 
     private void RefreshPlatesUI()

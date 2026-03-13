@@ -42,11 +42,10 @@ public class CameraMovement : MonoBehaviour
         var mouse = Mouse.current;
         if (mouse == null) return; // No mouse connected
 
-        // Read mouse delta (how much the mouse moved this frame)
         Vector2 mouseDelta = mouse.delta.ReadValue();
 
-        // Apply sensitivity - adjusted to feel similar to old Input.GetAxis
-        float adjustedSensitivity = sensitivity * 0.1f;
+        // Apply sensitivity
+        float adjustedSensitivity = sensitivity * 1.0f;
         
         rotationX -= mouseDelta.y * adjustedSensitivity;
         rotationX = Mathf.Clamp(rotationX, minY, maxY);
