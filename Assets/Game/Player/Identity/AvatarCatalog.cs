@@ -12,6 +12,10 @@ public sealed class AvatarCatalog : ScriptableObject
         public GameObject previewPrefab;
         public AnimationClip previewAnimationClip;
         public RuntimeAnimatorController previewAnimatorController;
+        [Header("Lobby Preview")]
+        public Vector3 previewPositionOffset;
+        public Vector3 previewEulerOffset;
+        public Vector3 previewScaleMultiplier;
         [Header("Gameplay")]
         public GameObject gameplayPrefab;
         public RuntimeAnimatorController gameplayAnimatorController;

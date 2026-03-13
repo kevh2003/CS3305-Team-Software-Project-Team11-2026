@@ -100,6 +100,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
         if (!IsServer) return;
 
         CctvSystemManager.Instance?.ServerReleaseIfOwner(clientId);
+        StartGame.ServerReleaseAllIfOwner(clientId);
 
         // try drop items before the player object disappears
         if (NetworkManager.Singleton != null &&

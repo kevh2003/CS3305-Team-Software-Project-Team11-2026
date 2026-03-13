@@ -132,6 +132,7 @@ public class PlayerHealth : NetworkBehaviour
             IsDead.Value = true;
 
             CctvSystemManager.Instance?.ServerReleaseIfOwner(OwnerClientId);
+            StartGame.ServerReleaseAllIfOwner(OwnerClientId);
 
             // Drop all inventory items on death
             var inv = GetComponent<PlayerInventory>();

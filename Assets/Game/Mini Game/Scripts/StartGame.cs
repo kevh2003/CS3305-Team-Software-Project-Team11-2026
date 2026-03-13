@@ -1,10 +1,14 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using Unity.Netcode;
 
 public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 {
+    private const ulong NoWifiUser = ulong.MaxValue;
+    private const int NumberOfParts = 4; // the number of wifi components that need to be locked
+
     public static bool IsAnyLocalWifiMinigameActive { get; private set; }
     public static int LastExitFrame { get; private set; } = -1;
     public static bool WasExitedThisFrame => Time.frameCount == LastExitFrame;
@@ -19,11 +23,13 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 
     [Header("Wifi Game Status")]
     public bool completed = false;
-    private const int _numberOfParts = 4; // the number of wifi components that need to be locked
     private bool _completionRequestSent;
 
     [Header("Server Validation")]
     [SerializeField] private float serverInteractRange = 6f;
+
+    [Header("Locking")]
+    [SerializeField] private float lockAcquireTimeoutSeconds = 0.5f;
 
     [Header("Status Light")]
     [SerializeField] private Light statusLight;
@@ -40,11 +46,20 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         NetworkVariableWritePermission.Server
     );
 
+    private NetworkVariable<ulong> inUseByClientId = new(
+        NoWifiUser,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
     private Collider _interactionCollider;
 
     [Header("Interactable")]
     private string text = "Press E to fix WiFi";
     public string InteractText => text;
+
+    private bool _waitingForLock;
+    private Coroutine _lockAcquireRoutine;
 
     private void Awake()
     {
@@ -56,24 +71,42 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+
         wifiCompleted.OnValueChanged += OnWifiCompletedChanged;
+        inUseByClientId.OnValueChanged += OnInUseByClientChanged;
+
+        if (IsServer)
+        {
+            if (wifiCompleted.Value)
+                inUseByClientId.Value = NoWifiUser;
+            else if (!IsClientAlive(inUseByClientId.Value))
+                inUseByClientId.Value = NoWifiUser;
+        }
+
         ApplyCompletionState(wifiCompleted.Value);
+        RefreshInteractText();
         ResetLocalWifiInteractionState();
     }
 
     public override void OnNetworkDespawn()
     {
+        CancelLockAcquire();
+
         if (_miniGameCanvas != null)
             CloseMiniGame(resetCanvas: true);
         else
             ResetLocalWifiInteractionState();
 
         wifiCompleted.OnValueChanged -= OnWifiCompletedChanged;
+        inUseByClientId.OnValueChanged -= OnInUseByClientChanged;
+
         base.OnNetworkDespawn();
     }
 
     private void OnDisable()
     {
+        CancelLockAcquire();
+
         if (_miniGameCanvas != null)
             CloseMiniGame(resetCanvas: true);
         else if (ActiveLocalInstance == this && IsAnyLocalWifiMinigameActive)
@@ -93,25 +126,58 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         if (interactor == null || !interactor.IsOwner)
             return false;
 
+        if (wifiCompleted.Value)
+            return false;
+
+        if (_miniGameCanvas != null || IsAnyLocalWifiMinigameActive || _waitingForLock)
+            return false;
+
         CharacterController controller = interactor.GetComponent<CharacterController>();
         if (controller == null)
             return false;
 
-        Interact(controller);
-        return _miniGameCanvas != null;
+        if (!TryGetLocalClientId(out ulong localClientId))
+        {
+            // Fallback path (single-player/editor setups without net runtime).
+            Interact(controller);
+            return _miniGameCanvas != null;
+        }
+
+        if (IsInUseByAnotherClient(localClientId))
+        {
+            RefreshInteractText();
+            return false;
+        }
+
+        CancelLockAcquire();
+        _waitingForLock = true;
+        RefreshInteractText();
+        _lockAcquireRoutine = StartCoroutine(TryEnterWhenLockAcquired(controller, localClientId));
+        return false;
     }
 
     public void Interact(CharacterController player)
     {
+        if (player == null) return;
         if (wifiCompleted.Value) return;
         if (IsAnyLocalWifiMinigameActive) return;
-        if (_miniGameCanvas) return;
+        if (_miniGameCanvas != null) return;
 
+        // In networked play, only the lock owner can open this station locally.
+        if (TryGetLocalClientId(out ulong localClientId) && inUseByClientId.Value != localClientId)
+            return;
+
+        OpenMiniGameLocal(player);
+    }
+
+    private void OpenMiniGameLocal(CharacterController player)
+    {
         // getting the mini game canvas from the player prefab
         Canvas[] canvas = player.GetComponentsInChildren<Canvas>(true);
-        foreach (Canvas can in canvas)
+        for (int i = 0; i < canvas.Length; i++)
         {
-            if (can.name == "Mini Game Canvas")
+            Canvas can = canvas[i];
+            if (can != null && can.name == "Mini Game Canvas")
             {
                 _miniGameCanvas = can;
                 break;
@@ -136,8 +202,6 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             nPlayer.SetLookSensitivity(0f);
         }
 
-        // Keep center prompt text for future interactions.
-        text = "Press E to fix WiFi";
         _completionRequestSent = false;
         _player = player;
         _soundFX = player.GetComponent<PlayerSoundFX>();
@@ -146,6 +210,9 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         IsAnyLocalWifiMinigameActive = true;
         ActiveLocalInstance = this;
         DropPromptUI.Instance?.SetWifiVisible(true, "Press Q to exit");
+
+        _waitingForLock = false;
+        RefreshInteractText();
     }
 
     private void Update()
@@ -155,13 +222,20 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             && (_player == null || (_playerHealth != null && _playerHealth.IsDead.Value) || _miniGameCanvas == null))
         {
             if (_miniGameCanvas != null)
+            {
                 CloseMiniGame(resetCanvas: true);
+            }
             else
             {
+                if (IsSpawned && NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+                    ReleaseWifiServerRpc();
+
                 ResetLocalWifiInteractionState();
                 _player = null;
                 _soundFX = null;
                 _playerHealth = null;
+                _waitingForLock = false;
+                RefreshInteractText();
             }
             return;
         }
@@ -172,6 +246,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             && Keyboard.current.qKey.wasPressedThisFrame)
         {
             Quit();
+            return;
         }
 
         // checking if it is complete
@@ -180,13 +255,70 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             if (HasAllPartsLocked())
             {
                 _completionRequestSent = true;
-
-                if (IsServer)
-                    ServerMarkCompleted();
-                else
-                    MarkCompletedServerRpc();
+                MarkCompletedServerRpc();
             }
         }
+    }
+
+    private IEnumerator TryEnterWhenLockAcquired(CharacterController player, ulong localClientId)
+    {
+        RequestEnterWifiServerRpc();
+
+        float timeout = Mathf.Max(0.1f, lockAcquireTimeoutSeconds);
+        float deadline = Time.time + timeout;
+
+        while (Time.time < deadline)
+        {
+            if (this == null || !isActiveAndEnabled)
+                yield break;
+
+            if (wifiCompleted.Value)
+                break;
+
+            if (!IsSpawned || NetworkManager.Singleton == null || !NetworkManager.Singleton.IsClient)
+                break;
+
+            if (IsInUseByClient(localClientId))
+            {
+                _waitingForLock = false;
+                _lockAcquireRoutine = null;
+                RefreshInteractText();
+                Interact(player);
+                yield break;
+            }
+
+            if (IsInUseByAnotherClient(localClientId))
+                break;
+
+            yield return null;
+        }
+
+        _waitingForLock = false;
+        _lockAcquireRoutine = null;
+        RefreshInteractText();
+    }
+
+    private void CancelLockAcquire()
+    {
+        if (_lockAcquireRoutine != null)
+        {
+            StopCoroutine(_lockAcquireRoutine);
+            _lockAcquireRoutine = null;
+        }
+
+        _waitingForLock = false;
+        RefreshInteractText();
+    }
+
+    public bool IsInUseByClient(ulong clientId)
+    {
+        return inUseByClientId.Value == clientId;
+    }
+
+    public bool IsInUseByAnotherClient(ulong clientId)
+    {
+        ulong current = inUseByClientId.Value;
+        return current != NoWifiUser && current != clientId;
     }
 
     private void Quit()
@@ -301,6 +433,33 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     }
 
     [ServerRpc(RequireOwnership = false)]
+    private void RequestEnterWifiServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+        if (wifiCompleted.Value) return;
+
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (!IsSenderInRange(senderId))
+            return;
+
+        if (!TryNormalizeLockOwner(senderId))
+            return;
+
+        if (inUseByClientId.Value == NoWifiUser || inUseByClientId.Value == senderId)
+            inUseByClientId.Value = senderId;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void ReleaseWifiServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (!IsServer) return;
+
+        ulong senderId = rpcParams.Receive.SenderClientId;
+        if (inUseByClientId.Value == senderId)
+            inUseByClientId.Value = NoWifiUser;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
     private void MarkCompletedServerRpc(ServerRpcParams rpcParams = default)
     {
         if (!IsServer) return;
@@ -309,6 +468,12 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         if (!IsSenderInRange(senderId))
         {
             Debug.LogWarning($"[StartGame] Reject WiFi completion from {senderId}: out of range.");
+            return;
+        }
+
+        if (!TryNormalizeLockOwner(senderId) || inUseByClientId.Value != senderId)
+        {
+            Debug.LogWarning($"[StartGame] Reject WiFi completion from {senderId}: lock not owned.");
             return;
         }
 
@@ -321,6 +486,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         if (wifiCompleted.Value) return;
 
         wifiCompleted.Value = true;
+        inUseByClientId.Value = NoWifiUser;
 
         if (ObjectiveState.Instance != null)
             ObjectiveState.Instance.ServerRegisterWifiFix();
@@ -329,7 +495,31 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     public void ServerResetForNewRound()
     {
         if (!IsServer) return;
+
         wifiCompleted.Value = false;
+        inUseByClientId.Value = NoWifiUser;
+        _completionRequestSent = false;
+    }
+
+    public void ServerReleaseIfOwner(ulong clientId)
+    {
+        if (!IsServer) return;
+        if (inUseByClientId.Value == clientId)
+            inUseByClientId.Value = NoWifiUser;
+    }
+
+    public static void ServerReleaseAllIfOwner(ulong clientId)
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer)
+            return;
+
+        var wifiTasks = FindObjectsByType<StartGame>(FindObjectsSortMode.None);
+        for (int i = 0; i < wifiTasks.Length; i++)
+        {
+            StartGame task = wifiTasks[i];
+            if (task != null)
+                task.ServerReleaseIfOwner(clientId);
+        }
     }
 
     private void OnWifiCompletedChanged(bool oldValue, bool newValue)
@@ -338,12 +528,29 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 
         if (_miniGameCanvas != null)
             CloseMiniGame(resetCanvas: true);
+        else
+            RefreshInteractText();
+    }
+
+    private void OnInUseByClientChanged(ulong oldValue, ulong newValue)
+    {
+        RefreshInteractText();
+
+        if (_miniGameCanvas == null)
+            return;
+
+        ulong localClientId = GetLocalClientIdOrNone();
+        if (localClientId == NoWifiUser)
+            return;
+
+        // Lock was lost (death/disconnect/reset/completion), close local minigame safely.
+        if (newValue != localClientId)
+            CloseMiniGame(resetCanvas: true);
     }
 
     private void ApplyCompletionState(bool isComplete)
     {
         completed = isComplete;
-        text = isComplete ? "WiFi fixed" : "Press E to fix WiFi";
         _completionRequestSent = false;
 
         if (_interactionCollider == null)
@@ -353,6 +560,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             _interactionCollider.enabled = !isComplete;
 
         ApplyStatusLight(isComplete);
+        RefreshInteractText();
     }
 
     private void EnsureStatusLight()
@@ -392,19 +600,26 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         int counter = 0;
         Image[] images = _miniGameCanvas.GetComponentsInChildren<Image>(true);
 
-        foreach (Image image in images)
+        for (int i = 0; i < images.Length; i++)
         {
+            Image image = images[i];
+            if (image == null) continue;
+
             DraggingBehaviour drag = image.GetComponent<DraggingBehaviour>();
             if (drag != null && drag.locked)
                 counter++;
         }
 
-        return counter >= _numberOfParts;
+        return counter >= NumberOfParts;
     }
 
     private void CloseMiniGame(bool resetCanvas)
     {
-        if (_miniGameCanvas == null) return;
+        if (_miniGameCanvas == null)
+        {
+            CancelLockAcquire();
+            return;
+        }
 
         _soundFX?.StopHoldLoopSound();
 
@@ -422,6 +637,9 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        if (IsSpawned && NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            ReleaseWifiServerRpc();
+
         if (_player != null)
         {
             NetworkPlayer networkPlayer = _player.gameObject.GetComponent<NetworkPlayer>();
@@ -432,7 +650,9 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         _player = null;
         _soundFX = null;
         _playerHealth = null;
-        text = wifiCompleted.Value ? "WiFi fixed" : "Press E to fix WiFi";
+
+        CancelLockAcquire();
+        RefreshInteractText();
     }
 
     private static void ResetLocalWifiInteractionState()
@@ -460,5 +680,81 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         }
 
         return (transform.position - playerPos).sqrMagnitude <= maxSqr;
+    }
+
+    private bool TryNormalizeLockOwner(ulong requestingClientId)
+    {
+        if (!IsServer)
+            return false;
+
+        ulong current = inUseByClientId.Value;
+        if (current == NoWifiUser)
+            return true;
+
+        if (!IsClientAlive(current))
+            inUseByClientId.Value = NoWifiUser;
+
+        current = inUseByClientId.Value;
+        return current == NoWifiUser || current == requestingClientId;
+    }
+
+    private bool IsClientAlive(ulong clientId)
+    {
+        if (clientId == NoWifiUser)
+            return false;
+
+        var nm = NetworkManager.Singleton;
+        if (nm == null)
+            return false;
+
+        if (!nm.ConnectedClients.TryGetValue(clientId, out var client) || client.PlayerObject == null)
+            return false;
+
+        var health = client.PlayerObject.GetComponent<PlayerHealth>();
+        if (health != null && health.IsDead.Value)
+            return false;
+
+        return true;
+    }
+
+    private ulong GetLocalClientIdOrNone()
+    {
+        return TryGetLocalClientId(out ulong localClientId) ? localClientId : NoWifiUser;
+    }
+
+    private static bool TryGetLocalClientId(out ulong localClientId)
+    {
+        localClientId = NoWifiUser;
+
+        var nm = NetworkManager.Singleton;
+        if (nm == null || !nm.IsClient)
+            return false;
+
+        localClientId = nm.LocalClientId;
+        return true;
+    }
+
+    private void RefreshInteractText()
+    {
+        if (wifiCompleted.Value)
+        {
+            text = "WiFi fixed";
+            return;
+        }
+
+        if (_waitingForLock)
+        {
+            text = "Connecting...";
+            return;
+        }
+
+        ulong localClientId = GetLocalClientIdOrNone();
+        if (localClientId != NoWifiUser && IsInUseByAnotherClient(localClientId))
+        {
+            text = "WiFi in use";
+            return;
+        }
+
+        text = "Press E to fix WiFi";
     }
 }

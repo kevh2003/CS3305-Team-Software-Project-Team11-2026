@@ -60,7 +60,7 @@ public class EnemyAI : NetworkBehaviour
 
     [Tooltip("Volume used when playing the spotted one-shot clip.")]
     [Range(0f, 1f)]
-    public float SpottedVolume = 1f;
+    public float SpottedVolume = 0.85f;
 
     [Tooltip("How far the sounds carry in world units.")]
     public float HeardRadius = 30f;
@@ -337,9 +337,10 @@ public class EnemyAI : NetworkBehaviour
             if (playerCollider == null) continue;
 
             var ph = playerCollider.GetComponentInParent<PlayerHealth>();
-            if (ph != null && ph.IsDead.Value) continue;
+            if (ph == null || ph.IsDead.Value) continue;
 
-            Vector3 toPlayer = playerCollider.transform.position - transform.position;
+            Transform candidateTarget = ph.transform;
+            Vector3 toPlayer = candidateTarget.position - transform.position;
             float distSqr = toPlayer.sqrMagnitude;
             if (distSqr > rangeSqr) continue;
 
@@ -353,7 +354,7 @@ public class EnemyAI : NetworkBehaviour
             if (distSqr < closestDistSqr)
             {
                 closestDistSqr = distSqr;
-                closestPlayer = playerCollider.transform;
+                closestPlayer = candidateTarget;
             }
         }
 

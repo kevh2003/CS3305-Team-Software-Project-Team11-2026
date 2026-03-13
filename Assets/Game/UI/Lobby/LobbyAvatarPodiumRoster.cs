@@ -23,6 +23,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
     private int[] _slotPrefabInstanceIds = System.Array.Empty<int>();
     private int[] _slotAnimationClipInstanceIds = System.Array.Empty<int>();
     private int[] _slotControllerInstanceIds = System.Array.Empty<int>();
+    private int[] _slotPreviewPlacementHashes = System.Array.Empty<int>();
 
     private void OnEnable()
     {
@@ -86,6 +87,8 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         GameObject prefab = null;
         AnimationClip previewClip = null;
         RuntimeAnimatorController previewController = null;
+        Vector3 previewPositionOffset = Vector3.zero;
+        Vector3 previewEulerOffset = Vector3.zero;
         Vector3 previewScaleMultiplier = Vector3.one;
 
         if (catalog != null && catalog.TryGet(avatarId, out var entry))
@@ -93,27 +96,43 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
             prefab = entry.previewPrefab;
             previewClip = entry.previewAnimationClip;
             previewController = entry.previewAnimatorController;
-            previewScaleMultiplier = ResolveScaleMultiplier(entry.gameplayScaleMultiplier);
+            previewPositionOffset = entry.previewPositionOffset;
+            previewEulerOffset = entry.previewEulerOffset;
+
+            Vector3 gameplayScaleFallback = ResolveScaleMultiplier(entry.gameplayScaleMultiplier);
+            previewScaleMultiplier = IsZeroVector(entry.previewScaleMultiplier)
+                ? gameplayScaleFallback
+                : ResolveScaleMultiplier(entry.previewScaleMultiplier);
         }
 
         int prefabId = prefab != null ? prefab.GetInstanceID() : 0;
         int clipId = previewClip != null ? previewClip.GetInstanceID() : 0;
         int controllerId = previewController != null ? previewController.GetInstanceID() : 0;
+        int previewPlacementHash = ComputePreviewPlacementHash(previewPositionOffset, previewEulerOffset, previewScaleMultiplier);
         bool changed =
             _slotOwnerIds[slotIndex] != player.OwnerClientId ||
             _slotAvatarIds[slotIndex] != avatarId ||
             _slotPrefabInstanceIds[slotIndex] != prefabId ||
             _slotAnimationClipInstanceIds[slotIndex] != clipId ||
-            _slotControllerInstanceIds[slotIndex] != controllerId;
+            _slotControllerInstanceIds[slotIndex] != controllerId ||
+            _slotPreviewPlacementHashes[slotIndex] != previewPlacementHash;
 
         if (changed)
         {
-            ReplaceSlotModel(slotIndex, prefab, previewClip, previewController, previewScaleMultiplier);
+            ReplaceSlotModel(
+                slotIndex,
+                prefab,
+                previewClip,
+                previewController,
+                previewPositionOffset,
+                previewEulerOffset,
+                previewScaleMultiplier);
             _slotOwnerIds[slotIndex] = player.OwnerClientId;
             _slotAvatarIds[slotIndex] = avatarId;
             _slotPrefabInstanceIds[slotIndex] = prefabId;
             _slotAnimationClipInstanceIds[slotIndex] = clipId;
             _slotControllerInstanceIds[slotIndex] = controllerId;
+            _slotPreviewPlacementHashes[slotIndex] = previewPlacementHash;
         }
 
         if (slotLabels != null && slotIndex < slotLabels.Length && slotLabels[slotIndex] != null)
@@ -128,14 +147,16 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         GameObject prefab,
         AnimationClip previewClip,
         RuntimeAnimatorController previewController,
+        Vector3 previewPositionOffset,
+        Vector3 previewEulerOffset,
         Vector3 previewScaleMultiplier)
     {
         ClearSlotModel(slotIndex);
         if (prefab == null || slots[slotIndex] == null) return;
 
         var model = Instantiate(prefab, slots[slotIndex]);
-        model.transform.localPosition = modelLocalPosition;
-        model.transform.localRotation = Quaternion.Euler(modelLocalEuler);
+        model.transform.localPosition = modelLocalPosition + previewPositionOffset;
+        model.transform.localRotation = Quaternion.Euler(modelLocalEuler + previewEulerOffset);
         model.transform.localScale = Vector3.Scale(modelLocalScale, previewScaleMultiplier);
 
         // Podium previews are local visuals only.
@@ -166,15 +187,31 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
 
     private static Vector3 ResolveScaleMultiplier(Vector3 value)
     {
-        bool allZero = Mathf.Approximately(value.x, 0f)
-                       && Mathf.Approximately(value.y, 0f)
-                       && Mathf.Approximately(value.z, 0f);
-        if (allZero) return Vector3.one;
+        if (IsZeroVector(value)) return Vector3.one;
 
         return new Vector3(
             Mathf.Approximately(value.x, 0f) ? 1f : value.x,
             Mathf.Approximately(value.y, 0f) ? 1f : value.y,
             Mathf.Approximately(value.z, 0f) ? 1f : value.z);
+    }
+
+    private static bool IsZeroVector(Vector3 value)
+    {
+        return Mathf.Approximately(value.x, 0f)
+               && Mathf.Approximately(value.y, 0f)
+               && Mathf.Approximately(value.z, 0f);
+    }
+
+    private static int ComputePreviewPlacementHash(Vector3 previewPositionOffset, Vector3 previewEulerOffset, Vector3 previewScaleMultiplier)
+    {
+        unchecked
+        {
+            int hash = 17;
+            hash = hash * 31 + previewPositionOffset.GetHashCode();
+            hash = hash * 31 + previewEulerOffset.GetHashCode();
+            hash = hash * 31 + previewScaleMultiplier.GetHashCode();
+            return hash;
+        }
     }
 
     private static void AttachPreviewAnimationPlayer(
@@ -269,6 +306,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         if (slotIndex < _slotPrefabInstanceIds.Length) _slotPrefabInstanceIds[slotIndex] = int.MinValue;
         if (slotIndex < _slotAnimationClipInstanceIds.Length) _slotAnimationClipInstanceIds[slotIndex] = int.MinValue;
         if (slotIndex < _slotControllerInstanceIds.Length) _slotControllerInstanceIds[slotIndex] = int.MinValue;
+        if (slotIndex < _slotPreviewPlacementHashes.Length) _slotPreviewPlacementHashes[slotIndex] = int.MinValue;
 
         if (slotLabels != null && slotIndex < slotLabels.Length && slotLabels[slotIndex] != null)
             slotLabels[slotIndex].text = "Player...";
@@ -304,6 +342,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
         _slotPrefabInstanceIds = new int[required];
         _slotAnimationClipInstanceIds = new int[required];
         _slotControllerInstanceIds = new int[required];
+        _slotPreviewPlacementHashes = new int[required];
 
         for (int i = 0; i < required; i++)
         {
@@ -312,6 +351,7 @@ public sealed class LobbyAvatarPodiumRoster : MonoBehaviour
             _slotPrefabInstanceIds[i] = int.MinValue;
             _slotAnimationClipInstanceIds[i] = int.MinValue;
             _slotControllerInstanceIds[i] = int.MinValue;
+            _slotPreviewPlacementHashes[i] = int.MinValue;
         }
     }
 }

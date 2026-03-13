@@ -49,14 +49,14 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     [SerializeField] private float countdownDuration = 0.25f;
     [SerializeField] private float minGreenDuration  = 3f;
     [SerializeField] private float maxGreenDuration  = 6f;
-    [SerializeField] private float turningDuration   = 1.2f;
+    [SerializeField] private float turningDuration   = 0.67f;
     [SerializeField] private float minRedDuration    = 2f;
     [SerializeField] private float maxRedDuration    = 5f;
 
     [Header("Movement Detection")]
     [SerializeField] private float movementThreshold   = 0.18f;
     [Tooltip("Seconds after Red Light begins before checks start. Covers network latency.")]
-    [SerializeField] private float redLightGracePeriod = 0.15f;
+    [SerializeField] private float redLightGracePeriod = 0.25f;
     [Tooltip("How long movement must remain above threshold before elimination.")]
     [SerializeField] private float redLightViolationSeconds = 0.2f;
 
