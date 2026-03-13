@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using Unity.Netcode;
 using UnityEngine.SceneManagement;
 
+// Creates the local crosshair/prompt UI and updates it from interaction state.
 public class Crosshair : NetworkBehaviour
 {
     private GameObject crosshairObject;

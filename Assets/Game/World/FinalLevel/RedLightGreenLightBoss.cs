@@ -4,24 +4,14 @@ using UnityEngine;
 
 /// <summary>
 /// Red Light Green Light boss controller.
-/// The boss does not move or rotate — it has eyes (point lights) and room
+/// The boss does not move or rotate -- it has eyes (point lights) and room
 /// lights that change colour via BossRoomLightController.
-///
-/// SETUP:
-/// 1. Attach to the boss NPC prefab (requires NetworkObject).
-/// 2. Assign BossRoomLightController in the inspector.
-/// 3. Place a BossRoomActivationTrigger in the boss room doorway and assign
-///    this boss as its target. Nothing starts until players enter the room.
-/// 4. Assign an optional containment collider. Only players inside it can be
-///    eliminated during Red Light.
 /// </summary>
 public class RedLightGreenLightBoss : NetworkBehaviour
 {
-    // ── Enums ────────────────────────────────────────────────────────────────
-
     public enum BossPhase
     {
-        Idle,       // waiting — game has not started
+        Idle,       // waiting -- game has not started
         Countdown,  // brief delay before first green light
         GreenLight, // players may move
         Turning,    // warning window before red light
@@ -29,15 +19,11 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         GameOver
     }
 
-    // ── Network state ────────────────────────────────────────────────────────
-
     public NetworkVariable<BossPhase> Phase = new NetworkVariable<BossPhase>(
         BossPhase.Idle,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
-
-    // ── Inspector ────────────────────────────────────────────────────────────
 
     [Header("References")]
     [SerializeField] private BossRoomLightController lightController;
@@ -67,8 +53,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     [SerializeField] private AudioClip countdownClip;
     [SerializeField] private AudioClip eliminatedClip;
 
-    // ── Private — server only ────────────────────────────────────────────────
-
     private float _phaseTimer;
     private float _graceTimer;
     private bool  _graceOver;
@@ -77,11 +61,7 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     private readonly List<ulong> _pendingEliminations = new();
     private readonly List<ulong> _staleTrackedIds = new();
 
-    // ── Private — all clients ────────────────────────────────────────────────
-
     private AudioSource _audio;
-
-    // ── Unity lifecycle ──────────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -153,14 +133,12 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         }
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
-
     /// <summary>Called by BossRoomActivationTrigger when players enter the room.</summary>
     public void Activate()
     {
         if (!IsServer) return;
         if (Phase.Value != BossPhase.Idle) return;
-        Debug.Log("[RLGL Boss] Room activated — starting immediately.");
+        Debug.Log("[RLGL Boss] Room activated -- starting immediately.");
         ServerSetPhase(BossPhase.GreenLight);
     }
 
@@ -171,8 +149,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         Debug.Log("[RLGL Boss] A player won!");
         ServerSetPhase(BossPhase.GameOver);
     }
-
-    // ── Server: phase transitions ────────────────────────────────────────────
 
     private void ServerSetPhase(BossPhase next)
     {
@@ -207,8 +183,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
 
         Phase.Value = next;
     }
-
-    // ── Server: movement detection ───────────────────────────────────────────
 
     private void ServerTakeSnapshots()
     {
@@ -354,8 +328,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         Debug.Log($"[RLGL Boss] Client {clientId} eliminated for moving on Red Light.");
     }
 
-    // ── Client: react to phase changes ───────────────────────────────────────
-
     private void OnPhaseChanged(BossPhase prev, BossPhase next)
     {
         // Audio plays locally from the NetworkVariable callback on all clients
@@ -400,8 +372,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         }
     }
 
-    // ── RPCs ─────────────────────────────────────────────────────────────────
-
     private enum SoundId { GreenLight, RedLight, Turning, Countdown, Eliminated }
 
     [ClientRpc]
@@ -422,8 +392,7 @@ public class RedLightGreenLightBoss : NetworkBehaviour
     [ClientRpc]
     private void OnEliminatedClientRpc(ClientRpcParams _ = default)
     {
-        Debug.Log("[RLGL] You moved on Red Light — eliminated!");
-        // Hook your UI here: PlayerHealthUI.ShowEliminated();
+        Debug.Log("[RLGL] You moved on Red Light -- eliminated!");
     }
 
     private bool IsInsideRedLightContainment(Vector3 worldPosition)
@@ -434,8 +403,6 @@ public class RedLightGreenLightBoss : NetworkBehaviour
         Vector3 closest = redLightContainmentCollider.ClosestPoint(worldPosition);
         return (closest - worldPosition).sqrMagnitude <= 0.0001f;
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void PlaySound(AudioClip clip)
     {

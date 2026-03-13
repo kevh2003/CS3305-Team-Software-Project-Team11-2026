@@ -1,9 +1,11 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using Unity.Netcode;
 
+// Owns WiFi minigame interaction, locking, and server-validated completion.
 public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 {
     private const ulong NoWifiUser = ulong.MaxValue;
@@ -30,6 +32,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 
     [Header("Locking")]
     [SerializeField] private float lockAcquireTimeoutSeconds = 0.5f;
+    [SerializeField] private float minCompletionHoldSeconds = 1f;
 
     [Header("Status Light")]
     [SerializeField] private Light statusLight;
@@ -53,6 +56,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     );
 
     private Collider _interactionCollider;
+    private readonly Dictionary<ulong, float> _lockAcquiredAtByClient = new();
 
     [Header("Interactable")]
     private string text = "Press E to fix WiFi";
@@ -91,6 +95,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     public override void OnNetworkDespawn()
     {
         CancelLockAcquire();
+        _lockAcquiredAtByClient.Clear();
 
         if (_miniGameCanvas != null)
             CloseMiniGame(resetCanvas: true);
@@ -446,7 +451,10 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             return;
 
         if (inUseByClientId.Value == NoWifiUser || inUseByClientId.Value == senderId)
+        {
             inUseByClientId.Value = senderId;
+            _lockAcquiredAtByClient[senderId] = Time.unscaledTime;
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -456,7 +464,10 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 
         ulong senderId = rpcParams.Receive.SenderClientId;
         if (inUseByClientId.Value == senderId)
+        {
             inUseByClientId.Value = NoWifiUser;
+            _lockAcquiredAtByClient.Remove(senderId);
+        }
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -477,6 +488,12 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             return;
         }
 
+        if (!_lockAcquiredAtByClient.TryGetValue(senderId, out float lockAcquiredAt))
+            return;
+
+        if ((Time.unscaledTime - lockAcquiredAt) < Mathf.Max(0f, minCompletionHoldSeconds))
+            return;
+
         ServerMarkCompleted();
     }
 
@@ -486,6 +503,8 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
         if (wifiCompleted.Value) return;
 
         wifiCompleted.Value = true;
+        if (inUseByClientId.Value != NoWifiUser)
+            _lockAcquiredAtByClient.Remove(inUseByClientId.Value);
         inUseByClientId.Value = NoWifiUser;
 
         if (ObjectiveState.Instance != null)
@@ -498,6 +517,7 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
 
         wifiCompleted.Value = false;
         inUseByClientId.Value = NoWifiUser;
+        _lockAcquiredAtByClient.Clear();
         _completionRequestSent = false;
     }
 
@@ -505,7 +525,10 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
     {
         if (!IsServer) return;
         if (inUseByClientId.Value == clientId)
+        {
             inUseByClientId.Value = NoWifiUser;
+            _lockAcquiredAtByClient.Remove(clientId);
+        }
     }
 
     public static void ServerReleaseAllIfOwner(ulong clientId)
@@ -692,7 +715,10 @@ public class StartGame : NetworkBehaviour, IWifiInteractable, IInteractable
             return true;
 
         if (!IsClientAlive(current))
+        {
+            _lockAcquiredAtByClient.Remove(current);
             inUseByClientId.Value = NoWifiUser;
+        }
 
         current = inUseByClientId.Value;
         return current == NoWifiUser || current == requestingClientId;

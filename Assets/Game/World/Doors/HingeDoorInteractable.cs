@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 
+// Networked hinged door interaction with lock, key, and AI path-block rules.
 public class HingeDoorInteractable : NetworkBehaviour, IInteractable
 {
     [Header("References")]

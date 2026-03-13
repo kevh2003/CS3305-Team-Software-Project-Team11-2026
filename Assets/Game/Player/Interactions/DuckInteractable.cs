@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(NetworkObject))]
+// Collectable objective item that reports progress through ObjectiveState.
 public class DuckInteractable : NetworkBehaviour, IInteractable
 {
     private bool collectedServerSide;

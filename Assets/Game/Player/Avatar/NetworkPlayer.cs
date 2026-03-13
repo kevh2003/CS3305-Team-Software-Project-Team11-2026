@@ -36,7 +36,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
     private float _airborneStartY = 0f;
 
     [Header("Sprint / Stamina")]
-    [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed here
+    [SerializeField] private float sprintMultiplier = 1.6f;     // adjust sprint speed
     [SerializeField] private float maxStaminaSeconds = 4f;      // sprint time : 4 seconds
     [SerializeField] private float staminaRegenPerSecond = 1.0f; // sprint regen regen time : 4 seconds
     [SerializeField] private float minMoveToSprint = 0.1f;       // prevents sprinting on the spot
@@ -170,7 +170,6 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (IsOwner)
             lookSensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PrefSensitivity, lookSensitivity), 0.02f, 2f);
 
-        // Safer lookup (won't hard-crash if renamed)
         _sprint = _playerInput.actions.FindAction("Sprint", throwIfNotFound: false);
 
         _selectedAvatarId.OnValueChanged -= OnSelectedAvatarChanged;
@@ -413,12 +412,7 @@ public sealed class NetworkPlayer : NetworkBehaviour
         if (_cc != null) _cc.enabled = true;
     }
 
-
-    /// <summary>
-    /// Called by RedLightGreenLightBoss via ClientRpc to freeze/unfreeze input.
-    /// Only acts on the owning client.
-    /// </summary>
-    public void SetFrozen(bool frozen)
+    public void SetFrozen(bool frozen) // obsolete, may remove in future - kev
     {
         if (!IsOwner) return;
         _frozen = frozen;

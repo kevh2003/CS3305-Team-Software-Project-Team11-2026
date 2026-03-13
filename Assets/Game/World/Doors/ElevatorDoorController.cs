@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
+// Networked sliding elevator doors with synced open/close state.
 public class ElevatorDoorController : NetworkBehaviour
 {
     [Header("Door Panels")]

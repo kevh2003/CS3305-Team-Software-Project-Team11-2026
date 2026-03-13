@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+// Displays the network match timer for the local owner.
 public class TimerUI : NetworkBehaviour
 {
     [Header("Scene names")]

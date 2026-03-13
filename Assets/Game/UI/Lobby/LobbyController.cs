@@ -6,9 +6,8 @@ using System.Text;
 
 /*
  * LobbyController
- * 
- * Lobby UI logic, currently;
- * - Shows player count
+ * Lobby UI logic;
+ * - Shows player count, join info, ready/unready, character select
  * - Host can start game (networked scene load to 03_Game)
  * - Leave returns locally to MainMenu after shutting down networking
  */

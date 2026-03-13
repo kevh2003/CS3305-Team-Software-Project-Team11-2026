@@ -7,6 +7,7 @@ using Unity.Netcode;
 /// CameraInteraction using LocalPlayerReference and direct Keyboard input for exit.
 /// While viewing a CCTV camera, left-clicking on the world will lure nearby enemies
 /// to investigate that position before returning to their original location.
+/// Right clicking will cycle through the available cameras.
 /// </summary>
 public class CameraInteraction : MonoBehaviour, IInteractable
 {
@@ -100,7 +101,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         RefreshCameraPrompt();
     }
 
-    // ─── Lure Logic ───────────────────────────────────────────────────────────
+    // --- Lure Logic -----------------------------------------------------------
 
     /// <summary>
     /// Casts a ray from the centre of the CCTV camera into the world.
@@ -147,7 +148,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         RefreshCameraPrompt(force: true);
     }
 
-    // ─── IInteractable ────────────────────────────────────────────────────────
+    // --- IInteractable --------------------------------------------------------
 
     public bool CanInteract()
     {
@@ -182,7 +183,7 @@ public class CameraInteraction : MonoBehaviour, IInteractable
         return false;
     }
 
-    // ─── Camera Switching ─────────────────────────────────────────────────────
+    // --- Camera Switching -----------------------------------------------------
 
     void EnterCCTVView()
     {

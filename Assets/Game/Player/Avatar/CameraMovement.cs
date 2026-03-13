@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+// Applies local look rotation from mouse/controller input with saved sensitivity.
 public class CameraMovement : MonoBehaviour
 {
     private const string PrefSensitivity = "settings_sensitivity";

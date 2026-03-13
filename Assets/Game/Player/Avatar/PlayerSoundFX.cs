@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Netcode;
 
+// Plays player SFX for interaction, damage, utility actions, and minigame loops.
 public class PlayerSoundFX : NetworkBehaviour
 {
     private const string PrefWifiLoopVolume = "settings_wifi_loop_volume";
@@ -272,6 +273,7 @@ public class PlayerSoundFX : NetworkBehaviour
         holdLoopSource.Play();
     }
 
+    // plays a random footstep audio clip from specified set
     private void PlayFootstepFromSet(AudioClip[] clips, float volume)
     {
         if (!IsOwner || isDead) return;

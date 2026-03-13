@@ -4,6 +4,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Authoritative replicated match timer with timeout-to-lobby flow.
 public class TimerNetwork : NetworkBehaviour
 {
     public static TimerNetwork Instance { get; private set; }
@@ -33,13 +34,13 @@ public class TimerNetwork : NetworkBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Start/stop based on network scene loads (best signal in NGO)
+        // Start/stop based on network scene loads
         if (IsServer && NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
         {
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadEventCompleted;
         }
 
-        // Fallback (if NGO scene events aren't firing for your setup)
+        // Fallback (if NGO scene events aren't firing)
         SceneManager.activeSceneChanged += OnActiveSceneChanged;
 
         // If we already spawned inside the game scene, start immediately

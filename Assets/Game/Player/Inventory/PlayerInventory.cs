@@ -5,6 +5,7 @@ using Unity.Netcode;
 using System.Collections.Generic;
 using System.Collections;
 
+// Networked player inventory with authoritative pickup/drop and item presentation.
 public class PlayerInventory : NetworkBehaviour
 {
     [Header("Hotbar Settings")]
@@ -16,6 +17,7 @@ public class PlayerInventory : NetworkBehaviour
     [Header("Torch Networking")]
     [SerializeField] private int torchItemId = 2;
     [SerializeField] private int keyItemId = 1;
+    [SerializeField] private float serverPickupRange = 6f;
     [SerializeField] private bool remoteTorchAnchorToCamera = true;
     [SerializeField] private Vector3 remoteTorchLocalOffset = new Vector3(0.08f, -0.24f, 0.03f);
     [SerializeField] private Vector3 remoteTorchLocalEuler = new Vector3(4f, 0f, 0f);
@@ -112,10 +114,7 @@ public class PlayerInventory : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
-        // IMPORTANT:
-        // - Server must keep this component enabled for ALL players (authoritative state / RPCs / spawning)
-        // - Only the owning client should read input + drive UI -kev
-        // - Non-owners remain enabled to render remote torch lights.
+        // Server stays enabled for authoritative state; only owner reads local input/UI.
 
         if (IsServer)
             ServerSetTorchState(false, false);
@@ -368,9 +367,18 @@ public class PlayerInventory : NetworkBehaviour
 
         if (!itemRef.TryGet(out NetworkObject itemNo)) return;
         if (!itemNo.IsSpawned) return;
+        if (!IsSenderInPickupRange(senderClientId, itemNo)) return;
+
+        var worldItem = itemNo.GetComponent<WorldItem>();
+        if (worldItem == null || worldItem.definition == null) return;
+
+        int serverItemId = worldItem.definition.itemId;
+
+        // Reject mismatched payloads; item identity is authoritative on the world object.
+        if (itemId != serverItemId) return;
 
         // Validate item exists in database on server
-        var def = GetDef(itemId);
+        var def = GetDef(serverItemId);
         if (def == null) return;
 
         int slot = -1;
@@ -384,24 +392,52 @@ public class PlayerInventory : NetworkBehaviour
         if (slot == -1) return; // inventory full
 
         // record on server
-        itemIds[slot] = itemId;
+        itemIds[slot] = serverItemId;
 
         // Remove the picked world object fully to avoid stale hidden instances lingering in-scene.
         itemNo.Despawn(true);
 
-        // If this item is the key, mark it collected for everyone
-        // NOTE: ensure this matches key itemId (door uses requiredKeyItemId = 1 by default) -kev
-        if (ObjectiveState.Instance != null && itemId == 1)
+        // If this item is the key, mark it collected for everyone.
+        if (ObjectiveState.Instance != null && serverItemId == keyItemId)
         {
             ObjectiveState.Instance.KeyCollected.Value = true;
         }
 
         // tell only this client to show UI/hand item
         ulong clientId = senderClientId;
-        GiveItemClientRpc(slot, itemId, new ClientRpcParams
+        GiveItemClientRpc(slot, serverItemId, new ClientRpcParams
         {
             Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
         });
+    }
+
+    private bool IsSenderInPickupRange(ulong senderClientId, NetworkObject itemNo)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return false;
+        if (!nm.ConnectedClients.TryGetValue(senderClientId, out var client)) return false;
+        if (client.PlayerObject == null) return false;
+        if (itemNo == null) return false;
+
+        Vector3 playerPos = client.PlayerObject.transform.position;
+        float maxSqr = serverPickupRange * serverPickupRange;
+        float bestSqr = float.PositiveInfinity;
+
+        var colliders = itemNo.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            var col = colliders[i];
+            if (col == null) continue;
+
+            Vector3 closest = col.ClosestPoint(playerPos);
+            float sqr = (closest - playerPos).sqrMagnitude;
+            if (sqr < bestSqr) bestSqr = sqr;
+        }
+
+        if (bestSqr < float.PositiveInfinity)
+            return bestSqr <= maxSqr;
+
+        return (itemNo.transform.position - playerPos).sqrMagnitude <= maxSqr;
     }
 
     [ClientRpc]
@@ -559,7 +595,7 @@ public class PlayerInventory : NetworkBehaviour
         return transform.position + flatForward * 1.5f + Vector3.up * 0.5f;
     }
 
-    // Drop all items on death logic (SERVER ONLY) - Called by PlayerHealth when a player dies - kev
+    // Called by PlayerHealth on the server when this player dies.
     public void DropAllItemsOnDeathServer()
     {
         if (!IsServer) return;

@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
+// Spawns the shared TimerNetwork object once the server starts listening.
 public class TimerBootstrap : MonoBehaviour
 {
     [SerializeField] private TimerNetwork timerNetworkPrefab;

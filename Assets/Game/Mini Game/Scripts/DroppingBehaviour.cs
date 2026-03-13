@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+// Handles slot drop logic for the WiFi drag-and-drop minigame.
 public class DroppingBehaviour : MonoBehaviour, IDropHandler
 {
     [Header("Player")]

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+// Keeps the gameplay HUD canvas alive while scenes change.
 public class PersistentCanvas : MonoBehaviour
 {
     [Header("References")]
@@ -18,7 +19,7 @@ public class PersistentCanvas : MonoBehaviour
         }
         
         DontDestroyOnLoad(gameObject);
-        Debug.Log("✅ GameCanvas set to DontDestroyOnLoad");
+        Debug.Log("GameCanvas set to DontDestroyOnLoad");
         
         // Subscribe to scene changes
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -41,7 +42,7 @@ public class PersistentCanvas : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        Debug.Log($"🎬 Scene loaded: {scene.name}");
+        Debug.Log($"Scene loaded: {scene.name}");
         UpdateUIVisibility(scene.name);
     }
 
@@ -60,6 +61,6 @@ public class PersistentCanvas : MonoBehaviour
             inventoryPanel.SetActive(false); // Always start hidden (Tab opens it)
         }
         
-        Debug.Log($"✅ UI visibility updated for scene: {sceneName}");
+        Debug.Log($"UI visibility updated for scene: {sceneName}");
     }
 }

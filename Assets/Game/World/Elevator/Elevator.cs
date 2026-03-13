@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
+// Server-driven elevator platform movement between two configured stops.
 public class ElevatorMover : NetworkBehaviour
 {
     [Header("Stops (world space)")]

@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+// Reveals NPC dialogue text for the local owning player inside the trigger.
 public class NPC : NetworkBehaviour
 {
     [TextArea(2, 8)]
@@ -36,7 +37,7 @@ public class NPC : NetworkBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!IsOwningPlayer(other)) return;
-        if (other.GetComponent<CharacterController>() == null) return;
+        if (other.GetComponentInParent<CharacterController>() == null) return;
         if (!TryResolveDialogueUi(other, out Canvas canvas, out TextMeshProUGUI textBox)) return;
 
         _activeCanvas = canvas;
@@ -53,7 +54,7 @@ public class NPC : NetworkBehaviour
     private void OnTriggerExit(Collider other)
     {
         if (!IsOwningPlayer(other)) return;
-        if (other.GetComponent<CharacterController>() == null) return;
+        if (other.GetComponentInParent<CharacterController>() == null) return;
         HideDialogue();
     }
 
@@ -64,7 +65,7 @@ public class NPC : NetworkBehaviour
 
     private bool IsOwningPlayer(Collider other)
     {
-        NetworkObject netObj = other.GetComponent<NetworkObject>();
+        NetworkObject netObj = other.GetComponentInParent<NetworkObject>();
         return netObj != null && netObj.IsOwner;
     }
 

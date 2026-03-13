@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Netcode;
 
+// Interactable pickup wrapper that forwards requests to PlayerInventory.
 public class WorldPickup : NetworkBehaviour, IInteractable
 {
     public bool CanInteract()
@@ -30,7 +31,7 @@ public class WorldPickup : NetworkBehaviour, IInteractable
             return false;
         }
 
-        // Ask server to pick it up. Server will despawn it.
+        // Ask server to pick it up. Server validates identity/range and despawns it.
         inv.PickupItemServerRpc(new NetworkObjectReference(no), worldItem.definition.itemId, inv.GetSelectedSlot());
         return true;
     }
@@ -57,7 +58,7 @@ public class WorldPickup : NetworkBehaviour, IInteractable
         foreach (var r in GetComponentsInChildren<Renderer>(true))
             r.enabled = visible;
 
-        // disable scripts so it can’t be interacted with
+        // disable scripts so it can't be interacted with
         enabled = visible;
 
     }

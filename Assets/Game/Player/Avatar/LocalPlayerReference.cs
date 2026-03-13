@@ -4,8 +4,6 @@ using Unity.Netcode;
 /// <summary>
 /// Improved singleton helper that provides access to the local player's components.
 /// Handles timing issues with NetworkPlayer.IsOwner by checking in multiple lifecycle methods.
-/// Add this script to your NetworkPlayer prefab.
-/// Specifically designed for hunter's camera interaction system.
 /// </summary>
 public class LocalPlayerReference : MonoBehaviour
 {
@@ -14,38 +12,48 @@ public class LocalPlayerReference : MonoBehaviour
     public Camera PlayerCamera { get; private set; }
     public NetworkPlayer NetworkPlayer { get; private set; }
     public UnityEngine.InputSystem.PlayerInput PlayerInput { get; private set; }
-    public Interactor Interactor { get; private set; }  // Added for convenience
+    public Interactor Interactor { get; private set; }
 
     private bool _hasRegistered = false;
+    private Coroutine _registerRoutine;
 
     private void Awake()
     {
         NetworkPlayer = GetComponent<NetworkPlayer>();
         PlayerCamera = GetComponentInChildren<Camera>(true);
         PlayerInput = GetComponent<UnityEngine.InputSystem.PlayerInput>();
-        Interactor = GetComponent<Interactor>();  // Cache the Interactor reference
+        Interactor = GetComponent<Interactor>();
 
         Debug.Log($"LocalPlayerReference.Awake() on {gameObject.name}");
     }
 
     private void OnEnable()
     {
-        TryRegisterAsInstance();
+        if (_registerRoutine == null)
+            _registerRoutine = StartCoroutine(RegisterWhenReady());
     }
 
     private void Start()
     {
-        // Try again in Start in case IsOwner wasn't ready in OnEnable
+        // Preserve eager registration attempt for immediate owner-ready cases.
         TryRegisterAsInstance();
     }
 
-    private void Update()
+    private System.Collections.IEnumerator RegisterWhenReady()
     {
-        // Keep trying until we successfully register (for the first few frames)
-        if (!_hasRegistered && Time.frameCount < 10)
+        while (!_hasRegistered)
         {
+            // Remote player copies should never claim the singleton.
+            if (NetworkPlayer != null && NetworkPlayer.IsSpawned && !NetworkPlayer.IsOwner)
+                break;
+
             TryRegisterAsInstance();
+            if (_hasRegistered)
+                break;
+            yield return null;
         }
+
+        _registerRoutine = null;
     }
 
     private void TryRegisterAsInstance()
@@ -63,7 +71,7 @@ public class LocalPlayerReference : MonoBehaviour
             Instance = this;
             _hasRegistered = true;
             
-            Debug.Log($"✅ LocalPlayerReference: Registered as Instance for local player (ClientId: {NetworkPlayer.OwnerClientId})");
+            Debug.Log($"LocalPlayerReference: Registered as Instance for local player (ClientId: {NetworkPlayer.OwnerClientId})");
             Debug.Log($"  - Camera found: {PlayerCamera != null}");
             Debug.Log($"  - PlayerInput found: {PlayerInput != null}");
             Debug.Log($"  - Interactor found: {Interactor != null}");
@@ -72,15 +80,17 @@ public class LocalPlayerReference : MonoBehaviour
         {
             Debug.LogWarning("LocalPlayerReference: NetworkPlayer component not found!");
         }
-        else if (!NetworkPlayer.IsOwner)
-        {
-            // This is a remote player, not the local one
-            Debug.Log($"LocalPlayerReference: Not owner (ClientId: {NetworkPlayer.OwnerClientId}), skipping registration");
-        }
+        // Remote copies are expected and intentionally do not register.
     }
 
     private void OnDisable()
     {
+        if (_registerRoutine != null)
+        {
+            StopCoroutine(_registerRoutine);
+            _registerRoutine = null;
+        }
+
         if (Instance == this)
         {
             Instance = null;

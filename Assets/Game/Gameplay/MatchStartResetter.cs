@@ -83,7 +83,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
                     health.IsDead.Value = true;
                 }
 
-                // 3) Clear inventory so they can’t interfere
+                // 3) Clear inventory so they can't interfere
                 var inv = player.GetComponent<PlayerInventory>();
                 if (inv != null)
                     inv.ResetInventoryForNewMatchServer();
@@ -175,7 +175,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             // new round
             obj.DucksFound.Value = 0; // reset ducks count
-            obj.ServerResetWifiForNewRound();
+            obj.ServerResetWifiForNewRound(); // reset wifi tasks
             obj.ServerResetKeyGateForNewRound();  // reset the pre-key gate for this new round
             obj.ServerBeginRoundRoster(); // lock roster + reset assignment submission tracking
             obj.ServerResetPostKeyObjectivesForNewRound();
@@ -184,7 +184,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
         {
             // lobby scene
             obj.DucksFound.Value = 0; // reset ducks
-            obj.ServerResetWifiForNewRound();
+            obj.ServerResetWifiForNewRound(); // reset wifi tasks
             obj.ServerResetAssignmentForLobby(); // unlock/reset assignment so late joiners can participate next round
             obj.ServerResetKeyGateForNewRound();// reset pre-key gate in lobby as an additional safety measure
             obj.ServerResetPostKeyObjectivesForNewRound();
@@ -285,7 +285,7 @@ public sealed class MatchStartResetter : NetworkBehaviour
 
     private void ResetAllDoors()
     {
-        // Any reset door in the scene with HingeDoorInteractable
+        // Any door in the scene with HingeDoorInteractable
         var doors = FindObjectsByType<HingeDoorInteractable>(FindObjectsSortMode.None);
         if (doors == null || doors.Length == 0) return;
 

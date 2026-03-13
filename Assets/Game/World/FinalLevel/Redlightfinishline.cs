@@ -5,12 +5,6 @@ using UnityEngine;
 /// Optional RLGL end trigger.
 /// By default this no longer ends the game; containment-based elimination
 /// should drive the mode instead.
-///
-/// SETUP:
-/// 1. Create an empty GameObject at the finish line.
-/// 2. Add a trigger Collider (BoxCollider, IsTrigger = true).
-/// 3. Attach this script and assign the boss reference if you explicitly want
-///    crossing to end RLGL.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class RedLightFinishLine : MonoBehaviour

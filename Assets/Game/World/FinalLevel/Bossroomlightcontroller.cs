@@ -2,20 +2,12 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Controls all lights in the boss room AND the boss's eye lights.
+/// Controls all lights in the boss room as well as the boss's eye lights.
 /// Both sets are plain Unity Light components (point lights).
 /// The boss calls SetGreen / SetRed / SetTurning / SetIdle and this script
-/// handles colour transitions and flicker effects on all clients locally —
+/// handles colour transitions and flicker effects on all clients locally --
 /// no NetworkBehaviour needed because the boss's NetworkVariable already
 /// syncs the phase, and each client reacts via OnValueChanged.
-///
-/// SETUP:
-/// 1. Attach to any GameObject in the boss room (no NetworkObject needed).
-/// 2. Assign all room Light components to the roomLights array.
-/// 3. Assign the boss's eye Light components to the eyeLights array.
-///    Eye lights lerp to a slightly brighter, more saturated version of
-///    each phase colour to make them stand out from the room.
-/// 4. Assign this to the BossRoomLightController field on RedLightGreenLightBoss.
 /// </summary>
 public class BossRoomLightController : MonoBehaviour
 {
@@ -64,8 +56,6 @@ public class BossRoomLightController : MonoBehaviour
     [SerializeField] private float flickerDuration = 0.3f;
     [SerializeField] private int   flickerCount    = 4;
 
-    // ── State ─────────────────────────────────────────────────────────────────
-
     private Color _roomTargetColour;
     private float _roomTargetIntensity;
     private Color _eyeTargetColour;
@@ -73,8 +63,6 @@ public class BossRoomLightController : MonoBehaviour
     private bool  _transitioning;
 
     private Coroutine _flickerRoutine;
-
-    // ── Init ──────────────────────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -88,8 +76,6 @@ public class BossRoomLightController : MonoBehaviour
 
         ApplyImmediate(roomIdleColour, roomIdleIntensity, eyeIdleColour, eyeIdleIntensity);
     }
-
-    // ── Update: lerp toward targets ───────────────────────────────────────────
 
     private void Update()
     {
@@ -126,8 +112,6 @@ public class BossRoomLightController : MonoBehaviour
         }
     }
 
-    // ── Public API called by the boss ─────────────────────────────────────────
-
     public void SetIdle()
     {
         StopFlicker();
@@ -155,8 +139,6 @@ public class BossRoomLightController : MonoBehaviour
         else
             TransitionTo(roomRedColour, roomRedIntensity, eyeRedColour, eyeRedIntensity);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void TransitionTo(Color roomCol, float roomInt, Color eyeCol, float eyeInt)
     {
